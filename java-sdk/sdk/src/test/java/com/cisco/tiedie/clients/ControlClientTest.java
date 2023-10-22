@@ -160,7 +160,7 @@ abstract class ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
                 "}", request.getBody().readUtf8());
 

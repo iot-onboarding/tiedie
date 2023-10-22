@@ -13,7 +13,7 @@ import werkzeug.serving
 import OpenSSL
 from access_point import get_ble_app
 from database import db, session
-from models import AdvTopic, ConnectionTopic, DataAppTopic, EndpointApp, GattTopic, User, AdvFilter
+from models import AdvTopic, DataAppTopic, EndpointApp, GattTopic, User, AdvFilter
 
 control_app = Blueprint("control", __name__, url_prefix="/control")
 
@@ -49,13 +49,14 @@ def authenticate_user(func):
                 return make_response(jsonify({"error": "Unauthorized"}), 403)
 
         api_key = request.headers.get("X-Api-Key")
+
         if request.json is None:
             return make_response(jsonify({"error": "Unauthorized"}), 403)
 
         control_app = request.json.get("controlApp")
         endpoint_app = session.scalar(select(EndpointApp).
                                       filter_by(applicationName=control_app))
-
+        print(endpoint_app.clientToken, api_key, control_app)
         if endpoint_app is None or api_key is None or api_key != endpoint_app.clientToken:
             return make_response(jsonify({"error": "Unauthorized"}), 403)
 
@@ -76,17 +77,16 @@ def connect():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
-    retries = ble["retries"]
     services = ble["services"]
-
+    retries = request.json.get("retries")
+    
     device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
 
-    resp, respcode = ble_app.connect(device.deviceMacAddress, retries)
+    resp, respcode = ble_app.connect(device.deviceMacAddress, services, retries)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
-
-    return resp, respcode
+    resp = resp.get_json()
+    resp['id'] = uuid
+    return jsonify(resp), respcode
 
 
 @control_app.route('/connectivity/disconnect', methods=['POST'])
@@ -100,9 +100,8 @@ def disconnect():
     device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
 
     resp, respcode =  ble_app.disconnect(device.deviceMacAddress)
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
-
+    resp = resp.get_json()
+    resp['id'] = uuid
     return resp, respcode
 
 @control_app.route('/data/discover', methods=['POST'])
@@ -110,20 +109,21 @@ def disconnect():
 def discover():
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
+    
     uuid = request.json.get("id")
+
 
     device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
 
     ble = request.json.get("ble")
-    retries = ble["retries"]
+    services = ble["services"]
 
-    resp, respcode = ble_app.discover(device.deviceMacAddress, retries)
+    resp, respcode = ble_app.discover(device.deviceMacAddress, services)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp = resp.get_json()
+    resp['id'] = uuid
 
-    return resp, respcode
+    return jsonify(resp), respcode
 
 
 @control_app.route('/data/read', methods=['POST'])
@@ -146,8 +146,8 @@ def read():
 
     resp, respcode = ble_app.read(device.deviceMacAddress, serviceUUID, characteristicUUID)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp = resp.get_json()
+    resp['id'] = uuid
 
     return resp, respcode
 
@@ -166,7 +166,7 @@ def write():
     ble = request.json.get("ble")
     serviceUUID = ble["serviceID"].lower()
     characteristicUUID = ble["characteristicID"].lower()
-    value = ble["value"].lower()
+    value = request.json.get("value").lower()
 
     device = session.scalar(select(User).filter_by(id=uuid))
 
@@ -175,8 +175,8 @@ def write():
 
     resp, respcode =  ble_app.write(device.deviceMacAddress, serviceUUID, characteristicUUID, value)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp = resp.get_json()
+    resp['id'] = uuid
 
     return resp, respcode
 
@@ -204,8 +204,8 @@ def subscribe():
 
     resp, respcode = ble_app.subscribe(device.deviceMacAddress, serviceUUID, characteristicUUID)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp = resp.get_json()
+    resp['id'] = uuid
 
     return resp, respcode
 
@@ -233,8 +233,8 @@ def unsubscribe():
 
     resp, respcode =  ble_app.unsubscribe(device.deviceMacAddress, serviceUUID, characteristicUUID)
 
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp = resp.get_json()
+    resp['id'] = uuid
 
     return resp, respcode
 
@@ -246,7 +246,7 @@ def register_topic():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuids = request.json.get("ids", [])
+    id = request.json.get("id", None)
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -261,33 +261,20 @@ def register_topic():
         serviceUUID = ble["serviceID"].lower()
         characteristicUUID = ble["characteristicID"].lower()
 
-        devices = session.scalars(
-            select(User).filter(User.id.in_(uuids))).all()
+        devices = [session.execute(select(User).filter_by(id=id)).scalar_one()]
 
         gatt_topic = GattTopic(
             topic, serviceUUID, characteristicUUID, data_format, devices)
         session.merge(gatt_topic)
         session.commit()
-    elif type == "connection":
-        devices = session.scalars(
-            select(User).filter(User.id.in_(uuids))).all()
-
-        if len(devices) == 0:
-            return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-        connection_topic = ConnectionTopic(topic, data_format, devices)
-
-        session.merge(connection_topic)
-        session.commit()
     else:
-        if len(uuids) > 0:
-            devices = session.scalars(
-                select(User).filter(User.id.in_(uuids))).all()
+        if id:
+            device = [session.execute(select(User).filter_by(id=id)).scalar_one()]
 
-            if len(devices) == 0:
+            if device is None:
                 return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-            adv_topic = AdvTopic(topic, data_format, devices)
+            adv_topic = AdvTopic(topic, data_format, device)
             session.merge(adv_topic)
             session.commit()
         else:
@@ -377,7 +364,7 @@ def register_data_app():
     data_apps = request.json.get("dataApps")
 
     for data_app in data_apps:
-        data_app_topic = DataAppTopic(data_app, topic)
+        data_app_topic = DataAppTopic(data_app['dataAppID'], topic)
         session.merge(data_app_topic)
 
     session.commit()

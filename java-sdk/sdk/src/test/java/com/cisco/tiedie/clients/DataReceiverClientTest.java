@@ -6,7 +6,6 @@ package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.auth.ApiKeyAuthenticator;
 import com.cisco.tiedie.auth.CertificateAuthenticator;
-import org.eclipse.paho.client.mqttv3.MqttException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
