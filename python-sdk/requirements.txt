@@ -1,0 +1,15 @@
+attr>=0.3.2
+beautifulsoup4>=4.12.2
+certifi>=2023.7.22
+cffi>=1.16.0
+charset-normalizer>=3.3.0
+cryptography>=41.0.4
+google>=3.0.0
+idna>=3.4
+paho-mqtt>=1.6.1
+protobuf>=4.25.0rc2
+pycparser>=2.21
+pyOpenSSL>=23.2.0
+requests>=2.31.0
+soupsieve>=2.5
+urllib3>=2.0.7

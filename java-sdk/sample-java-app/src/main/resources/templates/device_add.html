@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Add Device</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <h1>Add device</h1>
+
+        <form class="col-4" action="#" method="post" th:action="@{/devices/add}" th:object="${device}">
+            <div class="mb-3">
+                <label for="deviceDisplayName" class="form-label">Device Display name</label>
+                <input type="text" required class="form-control" id="deviceDisplayName" th:field="*{deviceDisplayName}"
+                    placeholder="Device Display name" />
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="adminState">
+                <label class="form-check-label" for="adminState" th:field="*{adminState}">Admin State</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="deviceMacAddress" class="form-label">Device MAC address</label>
+                <input type="text" required class="form-control" id="deviceMacAddress"
+                    th:field="*{bleExtension.deviceMacAddress}" placeholder="Device MAC address" />
+            </div>
+
+
+            <div class="mb-3">
+                <label for="versionSupport" class="form-label">Version Support</label>
+                <select class="form-select" multiple th:field="*{bleExtension.versionSupport}">
+                    <option value="4.0">4.0</option>
+                    <option value="4.1">4.1</option>
+                    <option value="4.2">4.2</option>
+                    <option value="5.0">5.0</option>
+                    <option value="5.1">5.1</option>
+                    <option value="5.2">5.2</option>
+                    <option value="5.3">5.3</option>
+                </select>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="isRandom">
+                <label class="form-check-label" for="isRandom" th:field="*{bleExtension.isRandom}">Random Address</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="passKey" class="form-label">Device Pass Key</label>
+                <input type="text" required class="form-control" id="passKey"
+                    th:field="*{bleExtension.pairingPassKey.key}" placeholder="Device Pass Key" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</body>
+
+</html>

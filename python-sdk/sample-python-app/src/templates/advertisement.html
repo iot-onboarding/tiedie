@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th-include="layout :: head">
+    <title id="title">Home</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+
+<body th-include="layout :: body">
+    <div id="main">
+        <h1>Advertisements</h1>
+
+        <!-- <form class="col-4" action="/unsubscribe" method="post">
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form> -->
+
+        <form class="col-4" action="/unsubscribe" method="post">
+            <input type="hidden" name="topic" value="{{ topic }}">
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form>
+
+        <table class="table">
+            <thead>
+                <th scope="col">MAC address</th>
+                <th scope="col">RSSI</th>
+                <th scope="col">Advertisement</th>
+                <th scope="col"></th>
+            </thead>
+            <tbody id="advertisement-table-body">
+            </tbody>
+        </table>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const topic = "{{ topic }}";
+                const tbody = document.getElementById("advertisement-table-body");
+        
+                const ws = io("ws://localhost:3000/advertisements");
+        
+                let adsMap = {};
+        
+                ws.on("connect", () => {
+                    console.log("Connected to server");
+                    ws.emit("subscribe", topic);
+                });
+        
+                ws.on("data", event => {
+ 
+                    const obj = JSON.parse(event.data);
+                    const data = atob(obj.data);
+        
+                    const macAddress = obj.bleAdvertisement.macAddress;
+                    const rssi = obj.bleAdvertisement.rssi;
+        
+                    let rawAd = new Uint8Array(data.length);
+                    for (let i = 0; i < data.length; i++) {
+                        rawAd[i] = data.charCodeAt(i);
+                    }
+        
+                    const ad = [];
+        
+                    while (rawAd.length > 0) {
+                        const length = rawAd[0];
+                        if (length === 0) {
+                            break;
+                        }
+                        const type = rawAd[1].toString(16).padStart(2, '0');
+                        const value = rawAd.slice(2, length + 1);
+        
+                        const hex = [...value].map(x => x.toString(16).padStart(2, '0')).join('');
+        
+                        ad.push({
+                            type: type,
+                            value: hex
+                        });
+        
+                        rawAd = rawAd.slice(length + 1);
+                    }
+        
+                    adsMap[macAddress] = {
+                        macAddress: macAddress,
+                        rssi: rssi,
+                        ad: ad
+                    };
+                });
+        
+                setInterval(() => {
+                    const tbody = document.getElementById("advertisement-table-body");
+                    tbody.innerHTML = "";
+                    const adsTable = Object.values(adsMap);
+        
+                    adsTable.sort((a, b) => {
+                        return b.rssi - a.rssi;
+                    });
+        
+                    for (let i = 0; i < adsTable.length; i++) {
+                        const row = tbody.insertRow(i);
+                        const macAddressCell = row.insertCell(0);
+                        const rssiCell = row.insertCell(1);
+                        const adCell = row.insertCell(2);
+                        const buttonCell = row.insertCell(3);
+        
+                        macAddressCell.innerHTML = adsTable[i].macAddress;
+                        rssiCell.innerHTML = adsTable[i].rssi;
+        
+                        for (const ad of adsTable[i].ad) {
+                            const type = document.createElement('span');
+                            type.className = "ble-ad-type";
+                            type.innerHTML = ad.type;
+        
+                            const value = document.createElement('span');
+                            value.className = "ble-ad-data";
+                            value.innerHTML = ad.value;
+        
+                            adCell.appendChild(type);
+                            adCell.appendChild(value);
+                        }
+                    }
+        
+                    adsMap = {};
+                }, 1000);
+            });
+        </script>        
+    </div

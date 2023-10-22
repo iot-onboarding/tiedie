@@ -1,0 +1,136 @@
+<head th:insert="~{layout :: head}">
+    <title id="title">Home</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <h1>Advertisements</h1>
+        <form id="subscriptionForm" class="col-8">
+            <div class="row mb-3">
+                <div class="form-group col-auto">
+                    <label for="filter-type">Filter Type:</label>
+                    <select class="form-select" id="filter-type">
+                        <option value="allow">Allow</option>
+                        <option value="deny">Deny</option>
+                    </select>
+                </div>
+                <div class="col-auto align-self-end">
+                    <input type="text" required class="form-control" id="topic" placeholder="Topic" />
+                </div>
+            </div>
+            <div class="filters mb-3"></div>
+            <button type="button" class="mb-3 btn btn-primary" id="addFilterButton">Add Filter</button>
+            <button type="button" class="mb-3 btn btn-success" id="submitButton">Submit</button>
+        </form>
+
+        <script th:inline="javascript">
+            // Define a function to create a new filter UI element
+            function createFilterUI() {
+                // Create a new filter element
+                const filterElement = document.createElement('div');
+                filterElement.classList.add('input-group', 'mb-3');
+
+                // Create the MAC filter input
+                const macFilterInput = document.createElement('input');
+                macFilterInput.type = 'text';
+                macFilterInput.classList.add('form-control', 'macFilterInput');
+                macFilterInput.placeholder = 'MAC Filter';
+                filterElement.appendChild(macFilterInput);
+
+                // Create the AD Type filter input
+                const adTypeFilterInput = document.createElement('input');
+                adTypeFilterInput.type = 'text';
+                adTypeFilterInput.classList.add('form-control', 'adTypeFilterInput');
+                adTypeFilterInput.placeholder = 'AD Type Filter';
+                filterElement.appendChild(adTypeFilterInput);
+
+                // Create the AD Data filter input
+                const adDataFilterInput = document.createElement('input');
+                adDataFilterInput.type = 'text';
+                adDataFilterInput.classList.add('form-control', 'adDataFilterInput');
+                adDataFilterInput.placeholder = 'AD Data Filter';
+                filterElement.appendChild(adDataFilterInput);
+
+                // Create the remove filter button
+                const removeFilterButton = document.createElement('button');
+                removeFilterButton.type = 'button';
+                removeFilterButton.classList.add('btn', 'btn-danger');
+                const trashIcon = document.createElement('i');
+                trashIcon.classList.add('bi', 'bi-trash3');
+                removeFilterButton.appendChild(trashIcon);
+                filterElement.appendChild(removeFilterButton);
+
+                // Add the remove filter button event listener
+                removeFilterButton.addEventListener('click', () => {
+                    filterElement.remove();
+                });
+
+                // Add the filter element to the UI
+                const filtersElement = document.querySelector('.filters');
+                filtersElement.appendChild(filterElement);
+            }
+
+            const formElement = document.getElementById('subscriptionForm');
+
+            const addFilterButton = document.getElementById('addFilterButton');
+
+            addFilterButton.addEventListener('click', () => {
+                createFilterUI();
+            });
+
+            const submitButton = document.getElementById('submitButton');
+            submitButton.addEventListener('click', () => {
+                const filterElements = document.querySelectorAll('.input-group');
+
+                // Create a filters array to store the filter objects
+                const filters = [];
+
+                // Loop through each filter element and get the values of the filter inputs
+                filterElements.forEach(filterElement => {
+                    const macFilterValue = filterElement.querySelector('.macFilterInput').value;
+                    const adTypeFilterValue = filterElement.querySelector('.adTypeFilterInput').value;
+                    const adDataFilterValue = filterElement.querySelector('.adDataFilterInput').value;
+
+                    // Create a filter object with the adType and adData values
+                    const filter = {
+                        "mac": macFilterValue == "" ? null : macFilterValue,
+                        "adType": adTypeFilterValue == "" ? null : adTypeFilterValue,
+                        "adData": adDataFilterValue == "" ? null : adDataFilterValue
+                    };
+
+                    // Add the filter object to the filters array
+                    filters.push(filter);
+                });
+
+                console.log(filters);
+
+                const topic = document.getElementById('topic').value;
+
+                fetch("/advertisements", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "topic": topic,
+                        "filterType": document.getElementById('filter-type').value,
+                        "filters": filters
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        var topic = data.topic;
+                        window.location.href = `/advertisement?topic=${topic}`;
+                    });
+            });
+        </script>
+    </div>
+
+</body>
+
+</html>

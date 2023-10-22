@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Error</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <h1>Error</h1>
+
+        <div class="alert alert-danger" role="alert">
+            <span th:text="${message}" />
+        </div>
+
+        <pre th:text="${trace}"></pre>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Devices</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <a class="btn btn-primary" href="/devices/add">Add Device</a>
+        <table class="table">
+            <thead>
+                <th scope="col">Device ID</th>
+                <th scope="col">Device Display Name</th>
+                <th scope="col">Device MAC Address</th>
+                <th scope="col"></th>
+                <th scope="col"></th>
+            </thead>
+            <tbody>
+                <tr th:each="device: ${devices}">
+                    <td scope="row" th:text="${device.id}" />
+                    <td th:text="${device.deviceDisplayName}" />
+                    <td th:text="${device.bleExtension.deviceMacAddress}" />
+                    <td>
+                        <span th:id="${device.id} + '-connected'" class="badge rounded-pill text-bg-success d-none">Connected</span>
+                        <span th:id="${device.id} + '-disconnected'" class="badge rounded-pill text-bg-danger">Disconnected</span>
+                    </td>
+                    <td>
+                        <a class="btn btn-primary" th:href="@{/devices/{id}(id=${device.id})}">View</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <script th:inline="javascript">
+            var devices = /*[[${devices}]]*/ [];
+
+            var topics = devices.map((device) => {
+                return `data-app/${device.id}/connection`;
+            });
+
+            var ws = new WebSocket("ws://localhost:3000/connection-status");
+
+            ws.onopen = () => {
+                ws.send(JSON.stringify(topics));
+            }
+
+            ws.onmessage = (event) => {
+                var obj = JSON.parse(event.data);
+
+                console.log(obj);
+                const id = obj.deviceId;
+
+                if (obj.bleConnectionStatus.connected) {
+                    document.getElementById(`${id}-connected`).classList.remove("d-none");
+                    document.getElementById(`${id}-disconnected`).classList.add("d-none");
+                } else {
+                    document.getElementById(`${id}-connected`).classList.add("d-none");
+                    document.getElementById(`${id}-disconnected`).classList.remove("d-none");
+                }
+            };
+        </script>
+    </div>
+</body>
+
+</html>

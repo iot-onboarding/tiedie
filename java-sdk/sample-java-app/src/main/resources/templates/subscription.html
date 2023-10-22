@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Subscription</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+
+        <h1>Topic</h1>
+        <h2>[[${topic}]]</h2>
+
+        <form class="col-4" action="#" method="post" th:action="@{/unsubscribe?topic={topic}(topic=${topic})}"
+            th:object="${device}">
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form>
+
+        <table class="table">
+            <thead>
+                <th scope="col">Notification</th>
+            </thead>
+            <tbody id="tbody">
+
+            </tbody>
+        </table>
+        
+        <script th:inline="javascript">
+            var tbody = document.getElementById("tbody");
+            var topic = new URLSearchParams(window.location.search).get('topic');
+
+            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+
+            ws.onopen = () => {
+                ws.send("");
+            }
+
+            ws.onmessage = (event) => {
+                var obj = JSON.parse(event.data);
+                var data = atob(obj.data);
+
+                var raw = "";
+                for (var i = 0; i < data.length; i++) {
+                    raw += data.charCodeAt(i).toString(16).padStart(2, '0');
+                }
+                // console.log(raw);
+
+                var row = document.createElement("tr");
+                var cell = document.createElement("td");
+                cell.className = "ble-ad-data text-black";
+                cell.innerText = raw;
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            };
+        </script>
+    </div>
+</body>
+
+</html>

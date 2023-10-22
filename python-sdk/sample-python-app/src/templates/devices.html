@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="layout :: head">
+    <title id="title">Devices</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+
+<body th:insert="layout :: body">
+    <div id="main">
+        <a class="btn btn-primary" href="/devices/add">Add Device</a>
+        <table class="table">
+            <thead>
+                <th scope="col">Device ID</th>
+                <th scope="col">Device Display Name</th>
+                <th scope="col">Device MAC Address</th>
+                <th scope="col"></th>
+                <th scope="col"></th>
+            </thead>
+            <tbody>
+                {% for device in devices %}
+                <tr>
+                    <td scope="row">{{ device.deviceID }}</td>
+                    <td> {{ device.deviceDisplayName }}</td>
+                    <td>{{ device.ble_extension.device_mac_address }}</td>
+                    <!-- <td>
+                        <span id="{{ device.deviceID }}-connected" class="badge rounded-pill text-bg-success d-none">Connected</span>
+                        <span id="{{ device.deviceID }}-disconnected" class="badge rounded-pill text-bg-danger">Disconnected</span>
+                    </td> -->
+                    <td>
+                        <a class="btn btn-primary" href="{{ url_for('get_device', id=device.deviceID) }}">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <script>
+            
+            var devices = {{ devices }};
+            console.log(devices);
+
+            console.log(devices)    
+            console.log(typeof(devices))
+            if (Array.isArray(devices)) {
+                var topics = devices.map((device) => {
+                    return `data-app/${device.deviceID}/connection`;
+                });
+                // Rest of your code using the `topics` array
+            } else {
+                console.error("devices is not an array");
+            }
+            console.log(topics);
+
+            var ws = io("ws://localhost:3000/connectionstatus");
+
+            ws.on("connect", () => {
+                console.log("Connected to websocket server");
+                ws.emit("subscribe", topics);
+            });
+
+            ws.onmessage = (event) => {
+                var obj = JSON.parse(event.data);
+
+                console.log(obj);
+                const id = obj.deviceId;
+
+                if (obj.bleConnectionStatus.connected) {
+                    document.getElementById(`${id}-connected`).classList.remove("d-none");
+                    document.getElementById(`${id}-disconnected`).classList.add("d-none");
+                } else {
+                    document.getElementById(`${id}-connected`).classList.add("d-none");
+                    document.getElementById(`${id}-disconnected`).classList.remove("d-none");
+                }
+            };
+        </script>
+    </div>
+</body>
+
+</html>

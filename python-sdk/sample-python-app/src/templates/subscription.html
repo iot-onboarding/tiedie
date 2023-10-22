@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Subscription</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div th:replace="layout :: main" th:with="title='Subscription'">
+        <h1>Topic</h1>
+        <h2 th:text="{{ topic }}">Topic</h2>
+
+        <form class="col-4" action="/unsubscribe" method="post">
+            <input type="hidden" name="topic" value="{{ topic }}">
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form>
+
+        <table class="table">
+            <thead>
+                <th scope="col">Notification</th>
+            </thead>
+            <tbody id="tbody">
+
+            </tbody>
+        </table>
+
+        <script th:inline="javascript">
+            var tbody = document.getElementById("tbody");
+            var topic = new URLSearchParams(window.location.search).get('topic');
+
+            var ws = io("ws://localhost:3000/subscription");
+
+            ws.on("connect", () => {
+                console.log("Connected to server");
+                ws.emit("subscribe", topic);
+            });
+
+            ws.addEventListener("data", event => {
+                console.log('Received message:', event.data);
+
+                var obj = JSON.parse(event.data);
+                var data = atob(obj.data);
+                console.log(data)
+
+                var raw = "";
+                for (var i = 0; i < data.length; i++) {
+                    raw += data.charCodeAt(i).toString(16).padStart(2, '0');
+                }
+                // console.log(raw);
+
+                var row = document.createElement("tr");
+                var cell = document.createElement("td");
+                cell.className = "ble-ad-data text-black";
+                cell.innerText = raw;
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            });
+        </script>
+    </div>
+</body>
+
+</html>
