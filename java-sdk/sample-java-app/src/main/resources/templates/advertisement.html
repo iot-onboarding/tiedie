@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Home</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <h1>Advertisements</h1>
+
+        <form class="col-4" action="#" method="post" th:action="@{/unsubscribe?topic={topic}(topic=${topic})}"
+            th:object="${device}">
+            <button type="submit" class="btn btn-danger">Unsubscribe</button>
+        </form>
+
+        <table class="table">
+            <thead>
+                <th scope="col">MAC address</th>
+                <th scope="col">RSSI</th>
+                <th scope="col">Advertisement</th>
+                <th scope="col"></th>
+            </thead>
+            <tbody id="tbody">
+
+            </tbody>
+        </table>
+
+        <script>
+            var tbody = document.getElementById("tbody");
+            var topic = new URLSearchParams(window.location.search).get('topic');
+
+            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+
+            var adsMap = {};
+
+            ws.onopen = () => {
+                ws.send("");
+            }
+
+            ws.onmessage = (event) => {
+                var obj = JSON.parse(event.data);
+                var data = atob(obj.data);
+
+                var macAddress = obj.bleAdvertisement.macAddress;
+                var rssi = obj.bleAdvertisement.rssi;
+
+                var rawAd = new Uint8Array(data.length);
+                for (var i = 0; i < data.length; i++) {
+                    rawAd[i] = data.charCodeAt(i);
+                }
+
+                var ad = [];
+
+                while (rawAd.length > 0) {
+                    var length = rawAd[0];
+                    if (length == 0) {
+                        break;
+                    }
+                    var type = rawAd[1].toString(16).padStart(2, '0');
+                    var value = rawAd.slice(2, length + 1);
+
+                    var hex = [...value].map(x => x.toString(16).padStart(2, '0')).join('');
+
+                    ad.push({
+                        type: type,
+                        value: hex
+                    });
+
+                    rawAd = rawAd.slice(length + 1);
+                }
+
+                adsMap[macAddress] = {
+                    macAddress: macAddress,
+                    rssi: rssi,
+                    ad: ad
+                };
+            };
+
+            setInterval(() => {
+                tbody.innerHTML = "";
+                var adsTable = Object.values(adsMap);
+
+                adsTable.sort((a, b) => {
+                    return b.rssi - a.rssi;
+                });
+
+                for (var i = 0; i < adsTable.length; i++) {
+                    var row = tbody.insertRow(i);
+                    var macAddressCell = row.insertCell(0);
+                    var rssiCell = row.insertCell(1);
+                    var adCell = row.insertCell(2);
+                    var buttonCell = row.insertCell(3);
+
+                    macAddressCell.innerHTML = adsTable[i].macAddress;
+                    rssiCell.innerHTML = adsTable[i].rssi;
+
+                    for (const ad of adsTable[i].ad) {
+                        var type = document.createElement('span');
+                        type.className = "ble-ad-type";
+                        type.innerHTML = ad.type;
+
+                        var value = document.createElement('span');
+                        value.className = "ble-ad-data";
+                        value.innerHTML = ad.value;
+
+                        adCell.appendChild(type);
+                        adCell.appendChild(value);
+                    }
+                }
+
+                adsMap = {};
+            }, 1000);
+        </script>
+    </div>
+
+
+</body>
+
+</html>

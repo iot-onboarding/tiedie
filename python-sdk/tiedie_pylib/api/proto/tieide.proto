@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package tiedie;
+
+message DataSubscription {
+    optional string device_id = 1;
+    bytes data = 2;
+
+    oneof subscription {
+        BLESubscription ble_subscription = 3;
+        BLEAdvertisement ble_advertisement = 4;
+        ZigbeeSubscription zigbee = 5;
+        RawPayload raw_payload = 6;
+    }
+
+    message BLESubscription {
+        optional string service_uuid = 1;
+        optional string characteristic_uuid = 2;
+    }
+
+    message BLEAdvertisement {
+        string mac_address = 1;
+        optional int32 rssi = 2;
+    }
+    
+    message ZigbeeSubscription {
+        optional int32 endpoint_id = 1;
+        optional int32 cluster_id = 2;
+        optional int32 attribute_id = 3;
+        optional int32 attribute_type = 4;
+    }
+    
+    message RawPayload {
+        optional string context_id = 1;
+    }
+}

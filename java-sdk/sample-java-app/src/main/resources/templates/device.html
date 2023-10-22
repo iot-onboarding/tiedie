@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Device</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <h1>Device Information</h1>
+
+        <span th:if="${parameters != null}" class="badge rounded-pill text-bg-success">Connected</span>
+
+        <table class="table">
+            <tbody>
+                <tr>
+                    <th>Device ID</th>
+                    <td th:text="${device.id}" />
+                </tr>
+                <tr>
+                    <th>Device Display Name</th>
+                    <td th:text="${device.deviceDisplayName}" />
+                </tr>
+                <tr>
+                    <th>Device MAC Address</th>
+                    <td th:text="${device.bleExtension.deviceMacAddress}" />
+                </tr>
+                <tr>
+                    <th>Device Pass Key</th>
+                    <td th:text="${device.bleExtension.pairingPassKey.key}" />
+                </tr>
+                <tr>
+                    <th>Device Version Support</th>
+                    <td th:text="${device.bleExtension.versionSupport}" />
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="row" th:if="${parameters == null}">
+            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/connect(id=${device.id})}"
+                th:object="${device}">
+                <button type="submit" class="btn btn-primary">Connect</button>
+            </form>
+
+            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/delete(id=${device.id})}"
+                th:object="${device}">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+
+            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/advertisements(id=${device.id})}"
+                th:object="${device}">
+                <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
+            </form>
+        </div>
+
+        <div th:if="${parameters != null}">
+            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/disconnect(id=${device.id})}"
+                th:object="${device}">
+                <button type="submit" class="btn btn-danger">Disconnect</button>
+            </form>
+            <table class="table">
+                <thead>
+                    <th scope="col">GATT Service UUID</th>
+                    <th scope="col">GATT Characteristic UUID</th>
+                    <th scope="col">Value</th>
+                    <th scope="col" />
+                </thead>
+                <tbody>
+                    <tr th:each="parameter, iStat: ${parameters}">
+                        <td class="ble-ad-data text-black" scope="row" th:text="${parameter.serviceUUID}" />
+                        <td class="ble-ad-data text-black" th:text="${parameter.charUUID}" />
+                        <td class="ble-ad-data text-black" th:id="'value-' + ${iStat.index}" />
+                        <td>
+                            <button class="btn btn-primary" th:if="${#lists.contains(parameter.flags, 'read')}"
+                                th:onclick="readValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Read</button>
+                            <button class="btn btn-success" th:if="${#lists.contains(parameter.flags, 'write')}"
+                                th:onclick="writeValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Write</button>
+                            <button class="btn btn-warning"
+                                th:if="${#lists.contains(parameter.flags, 'notify') or #lists.contains(parameter.flags, 'indicate')}"
+                                th:onclick="subscribe([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Subscribe</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="writeModal" tabindex="-1" aria-labelledby="writeModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="writeModalLabel">Write value</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="writeValue" class="form-label">Value</label>
+                            <input type="text" required class="form-control" id="writeValue"
+                                placeholder="Value to be written in hex" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary">Write</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- <div class="modal fade" id="subscribeModal" tabindex="-1" aria-labelledby="subscribeModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="subscribeModalLabel">Subscribe</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="topic" class="form-label">Topic</label>
+                            <input type="text" required class="form-control" id="topic" required
+                                placeholder="Topic" />
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="dataFormat">
+                            <label class="form-check-label" for="dataFormat">Payload data format</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary">Save changes</button>
+                    </div>
+                </div>
+            </div>
+        </div> -->
+
+        <script th:inline="javascript">
+            function readValue(index, id, svcUUID, charUUID) {
+                // call API with svcUUID and charUUID
+                console.log("readValue: " + svcUUID + ", " + charUUID);
+
+                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/read`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        document.getElementById(`value-${index}`).innerHTML = data.value;
+                    });
+            }
+
+            function writeValue(index, id, svcUUID, charUUID) {
+                // call API with svcUUID and charUUID
+                console.log("writeValue: " + svcUUID + ", " + charUUID);
+                const modal = new bootstrap.Modal('#writeModal');
+                modal.show();
+
+                const writeButton = document.querySelector('#writeModal .btn-primary');
+
+                writeButton= () => {
+                    const value = document.getElementById("writeValue").value;
+
+                    console.log("writeValue: " + value);
+
+                    fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/write`, {
+                        method: 'POST',
+                        body: value,
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log(data);
+                            document.getElementById(`value-${index}`).innerHTML = data.value;
+
+                            modal.hide();
+                        });
+                }
+            }
+
+            function subscribe(index, id, svcUUID, charUUID) {
+                // call API with svcUUID and charUUID
+                console.log("subscribe: " + svcUUID + ", " + charUUID);
+
+                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/subscribe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        var topic = data.topic;
+                        window.location.href = `/subscription?topic=${topic}`;
+                    });
+            }
+
+            var path = window.location.pathname;
+            var id = path.split("/")[2];
+
+            var topic = `data-app/${id}/connection`;
+
+            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+
+            ws.onopen = () => {
+                ws.send("");
+            }
+
+            ws.onmessage = (event) => {
+                var obj = JSON.parse(event.data);
+
+                console.log(obj);
+            };
+        </script>
+    </div>
+</body>
+
+</html>

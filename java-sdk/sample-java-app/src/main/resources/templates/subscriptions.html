@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Subscriptions</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+    <div id="main">
+        <table class="table">
+            <thead>
+                <th scope="col">Topic</th>
+                <th scope="col"></th>
+            </thead>
+            <tbody>
+                <tr th:each="topic: ${advertisementTopics}">
+                    <td scope="row" th:text="${topic}" />
+                    <td>
+                        <a class="btn btn-primary" th:href="@{/advertisement(topic=${topic})}">View</a>
+                    </td>
+                </tr>
+                <tr th:each="topic: ${subscriptionTopics}">
+                    <td scope="row" th:text="${topic}" />
+                    <td>
+                        <a class="btn btn-primary" th:href="@{/subscription(topic=${topic})}">View</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+</body>
+
+</html>

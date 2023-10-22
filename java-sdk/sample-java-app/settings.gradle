@@ -1,0 +1,3 @@
+rootProject.name = 'tiedie-sample-app'
+
+includeBuild '../tiedie-sdk-java'

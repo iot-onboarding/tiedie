@@ -1,0 +1,55 @@
+version: '3.4'
+
+services:
+  mosquitto:
+    restart: always
+    image: iegomez/mosquitto-go-auth:latest
+    ports:
+      - 8883:8883
+      - 9001:9001
+    volumes:
+      - ./mosquitto/config/:/etc/mosquitto/
+      - ./ca_certificates/:/etc/mosquitto/ca_certificates/
+    depends_on:
+      - postgres
+
+  tiedie-ap:
+    image: tiedie-ap:dev
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8081:8081
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    depends_on:
+      - mosquitto
+      - postgres
+    volumes:
+      - ./ca_certificates/:/app/ca_certificates/
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=8883
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=tiedie
+
+  postgres:
+    image: postgres:13.1
+    restart: always
+    environment:
+      - POSTGRES_DB=tiedie
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - '5432:5432'
+    volumes: 
+      - ./db:/docker-entrypoint-initdb.d/
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
