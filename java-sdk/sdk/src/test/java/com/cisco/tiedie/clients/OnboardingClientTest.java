@@ -6,6 +6,7 @@ package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.auth.ApiKeyAuthenticator;
 import com.cisco.tiedie.auth.CertificateAuthenticator;
+import com.cisco.tiedie.clients.utils.CertificateHelper;
 import com.cisco.tiedie.dto.HttpResponse;
 import com.cisco.tiedie.dto.scim.BleExtension;
 import com.cisco.tiedie.dto.scim.Device;
@@ -27,6 +28,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -40,11 +42,28 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 class OnboardingClientTest {
     private static final String ONBOARDING_APP_ID = "onboarding-app";
     private static final String ONBOARDING_API_KEY = UUID.randomUUID().toString();
-    private static final String ONBOARDING_CERT_PATH = "/onboarding-app.p12";
-
-    private static final String CA_PEM_PATH = "/ca.pem";
 
     private static final MockWebServer mockWebServer = new MockWebServer();
+
+    static X509Certificate rootCert;
+    static KeyStore keyStore;
+
+    static {
+        try {
+            var rootCertSubject = CertificateHelper.createX500Name("ca");
+            var rootKeyPair = CertificateHelper.createKeyPair();
+
+            rootCert = CertificateHelper.createCaCertificate(rootKeyPair, rootCertSubject);
+
+            var appKeyPair = CertificateHelper.createKeyPair();
+            var appCert = CertificateHelper.createAppCertificate(appKeyPair, ONBOARDING_APP_ID, rootKeyPair,
+                    rootCertSubject);
+
+            keyStore = CertificateHelper.createKeyStore(appKeyPair, appCert, ONBOARDING_APP_ID);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @BeforeAll
     static void setup() throws IOException {
@@ -61,27 +80,21 @@ class OnboardingClientTest {
     }
 
     private static OnboardingClient createOnboardingClientWithCert() throws Exception {
-        try (InputStream caStream = OnboardingClientTest.class.getResourceAsStream(CA_PEM_PATH);
-                InputStream clientKeystoreStream = OnboardingClientTest.class
-                        .getResourceAsStream(ONBOARDING_CERT_PATH)) {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(clientKeystoreStream, "".toCharArray());
+        InputStream caStream = CertificateHelper.createPemInputStream(rootCert);
+        CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
 
-            CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
-
-            HttpUrl baseUrl = mockWebServer.url("/scim/v2");
-            return new OnboardingClient(baseUrl.toString(), authenticator);
-        }
+        HttpUrl baseUrl = mockWebServer.url("/scim/v2");
+        return new OnboardingClient(baseUrl.toString(), authenticator);
     }
 
     private static OnboardingClient createOnboardingClientWithKey() throws Exception {
-        try (InputStream caStream = OnboardingClientTest.class.getResourceAsStream(CA_PEM_PATH)) {
-            ApiKeyAuthenticator authenticator = ApiKeyAuthenticator.create(caStream, ONBOARDING_APP_ID,
-                    ONBOARDING_API_KEY);
+        InputStream caStream = CertificateHelper.createPemInputStream(rootCert);
+        ApiKeyAuthenticator authenticator = ApiKeyAuthenticator.create(caStream,
+                ONBOARDING_APP_ID,
+                ONBOARDING_API_KEY);
 
-            HttpUrl baseUrl = mockWebServer.url("/scim/v2");
-            return new OnboardingClient(baseUrl.toString(), authenticator);
-        }
+        HttpUrl baseUrl = mockWebServer.url("/scim/v2");
+        return new OnboardingClient(baseUrl.toString(), authenticator);
     }
 
     public static Stream<Arguments> clientProvider() throws Exception {

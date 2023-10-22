@@ -4,9 +4,9 @@
 
 package com.cisco.tiedie.clients;
 
-
 import com.cisco.tiedie.auth.ApiKeyAuthenticator;
 import com.cisco.tiedie.auth.CertificateAuthenticator;
+import com.cisco.tiedie.clients.utils.CertificateHelper;
 import com.cisco.tiedie.dto.control.TiedieResponse;
 import com.cisco.tiedie.dto.control.TiedieStatus;
 import com.cisco.tiedie.dto.scim.Device;
@@ -28,6 +28,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -39,14 +40,31 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 abstract class ControlClientTest {
     static final String CONTROL_APP_ID = "control-app";
     private static final String CONTROL_API_KEY = UUID.randomUUID().toString();
-    private static final String CONTROL_CERT_PATH = "/control-app.p12";
-
-    private static final String CA_PEM_PATH = "/ca.pem";
 
     static MockWebServer mockWebServer = new MockWebServer();
 
     static ControlClient controlClientWithCert;
     static ControlClient controlClientWithKey;
+
+    static X509Certificate rootCert;
+    static KeyStore keyStore;
+
+    static {
+        try {
+            var rootCertSubject = CertificateHelper.createX500Name("ca");
+            var rootKeyPair = CertificateHelper.createKeyPair();
+
+            rootCert = CertificateHelper.createCaCertificate(rootKeyPair, rootCertSubject);
+
+            var appKeyPair = CertificateHelper.createKeyPair();
+            var appCert = CertificateHelper.createAppCertificate(appKeyPair, CONTROL_APP_ID, rootKeyPair,
+                    rootCertSubject);
+
+            keyStore = CertificateHelper.createKeyStore(appKeyPair, appCert, CONTROL_APP_ID);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @BeforeAll
     static void setup() throws Exception {
@@ -66,30 +84,21 @@ abstract class ControlClientTest {
         mockWebServer.shutdown();
     }
 
-    private static ControlClient createControlClientWithCert() {
-        try (InputStream caStream = ControlClientTest.class.getResourceAsStream(CA_PEM_PATH);
-             InputStream clientKeystoreStream = ControlClientTest.class.getResourceAsStream(CONTROL_CERT_PATH)) {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(clientKeystoreStream, "".toCharArray());
+    private static ControlClient createControlClientWithCert() throws Exception {
+        InputStream caStream = CertificateHelper.createPemInputStream(rootCert);
 
-            CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
+        CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
 
-            HttpUrl baseUrl = mockWebServer.url("/control");
-            return new ControlClient(baseUrl.toString(), authenticator);
-        } catch (Exception e) {
-            return null;
-        }
+        HttpUrl baseUrl = mockWebServer.url("/control");
+        return new ControlClient(baseUrl.toString(), authenticator);
     }
 
-    private static ControlClient createControlAppWithKey() {
-        try (InputStream caStream = ControlClientTest.class.getResourceAsStream(CA_PEM_PATH)) {
-            ApiKeyAuthenticator authenticator = ApiKeyAuthenticator.create(caStream, CONTROL_APP_ID, CONTROL_API_KEY);
+    private static ControlClient createControlAppWithKey() throws Exception {
+        InputStream caStream = CertificateHelper.createPemInputStream(rootCert);
+        ApiKeyAuthenticator authenticator = ApiKeyAuthenticator.create(caStream, CONTROL_APP_ID, CONTROL_API_KEY);
 
-            HttpUrl baseUrl = mockWebServer.url("/control");
-            return new ControlClient(baseUrl.toString(), authenticator);
-        } catch (Exception e) {
-            return null;
-        }
+        HttpUrl baseUrl = mockWebServer.url("/control");
+        return new ControlClient(baseUrl.toString(), authenticator);
     }
 
     @MethodSource("clientProvider")
@@ -134,8 +143,7 @@ abstract class ControlClientTest {
                         .setResponseCode(200)
                         .setBody("{\n" +
                                 "  \"status\" : \"SUCCESS\"\n" +
-                                "}")
-        );
+                                "}"));
 
         var deviceId = UUID.randomUUID().toString();
 
@@ -170,8 +178,6 @@ abstract class ControlClientTest {
     static Stream<Arguments> clientProvider() {
         return Stream.of(
                 arguments(named("With cert", controlClientWithCert)),
-                arguments(named("With key", controlClientWithKey))
-        );
+                arguments(named("With key", controlClientWithKey)));
     }
 }
-
