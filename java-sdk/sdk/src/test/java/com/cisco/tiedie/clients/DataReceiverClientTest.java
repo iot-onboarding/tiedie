@@ -6,27 +6,41 @@ package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.auth.ApiKeyAuthenticator;
 import com.cisco.tiedie.auth.CertificateAuthenticator;
+import com.cisco.tiedie.clients.utils.CertificateHelper;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
 import java.security.KeyStore;
+import java.security.cert.X509Certificate;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class DataReceiverClientTest {
-
-    private static final String CA_PEM_PATH = "/ca.pem";
     private static final String DATA_APP_ID = "data-app-1";
     private static final String DATA_APP_KEY = UUID.randomUUID().toString();
 
-    private static final String DATA_CERT_PATH = "/data-app.p12";
+    InputStream caStream;
+    KeyStore keyStore;
+
+    DataReceiverClientTest() throws Exception {
+        var rootCertSubject = CertificateHelper.createX500Name("ca");
+        var rootKeyPair = CertificateHelper.createKeyPair();
+        var rootCert = CertificateHelper.createCaCertificate(rootKeyPair, rootCertSubject);
+
+        var appKeyPair = CertificateHelper.createKeyPair();
+        X509Certificate appCert = CertificateHelper.createAppCertificate(appKeyPair, DATA_APP_ID, rootKeyPair,
+        rootCertSubject);
+        
+        caStream = CertificateHelper.createPemInputStream(rootCert);
+        keyStore = CertificateHelper.createKeyStore(appKeyPair, appCert, DATA_APP_ID);
+    }
 
     @Test
     @DisplayName("Data app with key")
     void dataAppWithKey() throws Exception {
-        InputStream caStream = DataReceiverClientTest.class.getResourceAsStream(CA_PEM_PATH);
         String baseUrl = "ssl://localhost:8883";
         var authenticator = ApiKeyAuthenticator.create(caStream, DATA_APP_ID, DATA_APP_KEY);
         var dataReceiverClient = new DataReceiverClient(baseUrl, authenticator);
@@ -37,18 +51,12 @@ class DataReceiverClientTest {
     @Test
     @DisplayName("Data app with cert")
     void dataAppWithCert() throws Exception {
-        try (InputStream caStream = ControlClientTest.class.getResourceAsStream(CA_PEM_PATH);
-             InputStream clientKeystoreStream = ControlClientTest.class.getResourceAsStream(DATA_CERT_PATH)) {
-            KeyStore keyStore = KeyStore.getInstance("PKCS12");
-            keyStore.load(clientKeystoreStream, "".toCharArray());
+        CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
+        String baseUrl = "ssl://localhost:8883";
 
-            CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
-            String baseUrl = "ssl://localhost:8883";
+        var dataReceiverClient = new DataReceiverClient(baseUrl, authenticator);
 
-            var dataReceiverClient = new DataReceiverClient(baseUrl, authenticator);
-
-            assertNotNull(dataReceiverClient);
-        }
+        assertNotNull(dataReceiverClient);
     }
 
 }

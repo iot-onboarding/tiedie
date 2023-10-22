@@ -8,7 +8,6 @@ import com.cisco.tiedie.auth.Authenticator;
 import com.cisco.tiedie.dto.HttpResponse;
 import com.cisco.tiedie.dto.scim.Device;
 import com.cisco.tiedie.dto.scim.EndpointApp;
-import com.cisco.tiedie.dto.scim.DeviceListResponse;
 import com.cisco.tiedie.dto.scim.EndpointAppListResponse;
 import okhttp3.MediaType;
 
