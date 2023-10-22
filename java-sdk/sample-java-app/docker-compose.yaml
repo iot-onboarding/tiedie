@@ -1,0 +1,11 @@
+services:
+  tiedie-sample-app:
+    image: tiedie-java-sample-app:latest
+    entrypoint: ["java","-jar","/app.jar", "--spring.config.location=config/application.properties"]
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 3000:3000
+    volumes:
+      - ./config:/config
