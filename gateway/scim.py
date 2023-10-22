@@ -76,7 +76,6 @@ def scim_addusers():
     pairingPassKey = None
     pairingOOBKey = None
     pairingOOBRN = None
-
     endpoint_apps = None
     endpointAppsExt = request.json.get(
         "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device", None)
@@ -98,7 +97,6 @@ def scim_addusers():
     if pairing:
         pairingOOBKey = pairing.get("key")
         pairingOOBRN = pairing.get("randNumber")
-    deviceID = request.json.get("id")
 
     existing_device = User.query.filter_by(
         deviceMacAddress=deviceMacAddress).first()
@@ -117,7 +115,6 @@ def scim_addusers():
 
     try:
         user = User(
-            id=deviceID,
             schemas=schemas,
             deviceDisplayName=deviceDisplayName,
             adminState=adminState,
@@ -150,7 +147,8 @@ def scim_addusers():
 def get_user(user_id):
     """Get SCIM User"""
     onboarding_app = request.args["onboardApp"]
-    user = User.query.filter_by(user_id=user_id).filter_by(endpointApps=onboarding_app).first()
+    print(onboarding_app)
+    user = User.query.filter_by(id=user_id).join(User.endpointApps).filter_by(applicationName=onboarding_app).first()
     if not user:
         return make_response(
             jsonify(
@@ -165,48 +163,6 @@ def get_user(user_id):
     return jsonify(user.serialize())
 
 
-@scim_app.route("/Devices", methods=["GET"])
-@authenticate_user
-def get_devices():
-    """Get SCIM Devices"""
-    start_index = 1
-    count = None
-
-    if "start_index" in request.args:
-        start_index = int(request.args["startIndex"])
-
-    if "count" in request.args:
-        count = int(request.args["count"])
-
-    if "filter" in request.args:
-        single_filter = request.args["filter"].split(" ")
-        filter_value = single_filter[2].strip('"')
-
-        users = User.query.filter_by(deviceMacAddress=filter_value).first()
-
-        if not users:
-            users = []
-        else:
-            users = [users]
-
-    else:
-        users = User.query.paginate(
-            page=start_index, per_page=count, error_out=False).items
-
-    serialized_users = [e.serialize() for e in users]
-
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-                "totalResults": len(users),
-                "startIndex": start_index,
-                "itemsPerPage": len(users),
-                "Resources": serialized_users,
-            }
-        ),
-        200,
-    )
 
 
 @scim_app.route("/Devices/<string:user_id>", methods=["PUT"])
@@ -226,7 +182,8 @@ def update_user(user_id):
             400,
         )
 
-    user = User.query.get(user_id)
+    onboarding_app = request.args["onboardApp"]
+    user = User.query.filter_by(id=user_id).join(User.endpointApps).filter_by(applicationName=onboarding_app).first()
 
     if not user:
         return make_response(
@@ -271,7 +228,8 @@ def update_user(user_id):
 @authenticate_user
 def delete_user(user_id):
     """Delete SCIM User"""
-    user = User.query.get(user_id)
+    onboarding_app = request.args["onboardApp"]
+    user = User.query.filter_by(id=user_id).join(User.endpointApps).filter_by(applicationName=onboarding_app).first()
     if not user:
         return make_response(
             jsonify(
@@ -285,144 +243,6 @@ def delete_user(user_id):
         )
     else:
         session.delete(user)
-        session.commit()
-        return make_response("", 204)
-
-
-@scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
-@authenticate_user
-def get_endpoint(id):
-    """Get SCIM Endpoint"""
-    endpoint_app = session.scalar(select(EndpointApp).filter_by(id=id))
-    if not endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "detail": "Endpoint App not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
-    else:
-        return make_response(jsonify(endpoint_app.serialize()), 200)
-
-
-@scim_app.route("/EndpointApps", methods=["GET"])
-@authenticate_user
-def get_endpoints():
-    """Get SCIM Endpoint"""
-    start_index = 1
-    count = None
-
-    if "start_index" in request.args:
-        start_index = int(request.args["startIndex"])
-
-    if "count" in request.args:
-        count = int(request.args["count"])
-
-    if "filter" in request.args:
-        single_filter = request.args["filter"].split(" ")
-        filter_value = single_filter[2].strip('"')
-
-        endpoint_apps = EndpointApp.query.filter_by(
-            applicationName=filter_value).first()
-
-        if not endpoint_apps:
-            endpoint_apps = []
-        else:
-            endpoint_apps = [endpoint_apps]
-
-    else:
-        endpoint_apps = EndpointApp.query.paginate(
-            page=start_index, per_page=count, error_out=False).items
-
-    serialized_endpoint_apps = [e.serialize() for e in endpoint_apps]
-
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-                "totalResults": len(endpoint_apps),
-                "startIndex": start_index,
-                "itemsPerPage": len(endpoint_apps),
-                "Resources": serialized_endpoint_apps,
-            }
-        ),
-        200,
-    )
-
-
-@scim_app.route('/EndpointApps', methods=['POST'])
-@authenticate_user
-def create_endpoint():
-    """Create SCIM Endpoint"""
-    if not request.json:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
-
-    # check if endpoint app already exists
-    endpoint_app = session.scalar(select(EndpointApp).filter_by(
-        applicationName=request.json.get("applicationName")))
-
-    if endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Endpoint App already exists",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
-
-    endpoint_app = EndpointApp()
-    endpoint_app.applicationType = request.json.get("applicationType")
-    endpoint_app.applicationName = request.json.get("applicationName")
-    endpoint_app.certificateInfo = request.json.get("certificateInfo", None)
-    if endpoint_app.certificateInfo is None:
-        endpoint_app.clientToken = uuid.uuid4()  # type: ignore
-        if endpoint_app.applicationType == "telemetry":
-            endpoint_app.password = make_hash(str(endpoint_app.clientToken))
-    endpoint_app.createdTime = datetime.datetime.now()
-    endpoint_app.modifiedTime = datetime.datetime.now()
-
-    session.add(endpoint_app)
-    session.commit()
-
-    return make_response(jsonify(endpoint_app.serialize()), 201)
-
-
-@scim_app.route("/EndpointApps/<string:id>", methods=["DELETE"])
-@authenticate_user
-def delete_endpoint(id):
-    """Delete SCIM Endpoint"""
-    endpoint_app = EndpointApp.query.get(id)
-    if not endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "detail": "Endpoint App not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
-    else:
-        session.delete(endpoint_app)
         session.commit()
         return make_response("", 204)
 
@@ -443,7 +263,7 @@ def bulk_command():
             ),
             400,
         )
-    print(request.json.get("schemas"))
+
     if request.json.get("schemas") == ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"]:
         operations = request.json.get("Operations")
         results = []

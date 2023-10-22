@@ -30,7 +30,7 @@
             var tbody = document.getElementById("tbody");
             var topic = new URLSearchParams(window.location.search).get('topic');
 
-            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+            var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
 
             var adsMap = {};
 
@@ -39,28 +39,28 @@
             }
 
             ws.onmessage = (event) => {
-                var obj = JSON.parse(event.data);
-                var data = atob(obj.data);
+                const obj = JSON.parse(event.data);
+                const data = atob(obj.data);
 
-                var macAddress = obj.bleAdvertisement.macAddress;
-                var rssi = obj.bleAdvertisement.rssi;
+                const macAddress = obj.bleAdvertisement.macAddress;
+                const rssi = obj.bleAdvertisement.rssi;
 
-                var rawAd = new Uint8Array(data.length);
-                for (var i = 0; i < data.length; i++) {
+                let rawAd = new Uint8Array(data.length);
+                for (let i = 0; i < data.length; i++) {
                     rawAd[i] = data.charCodeAt(i);
                 }
 
-                var ad = [];
+                const ad = [];
 
                 while (rawAd.length > 0) {
-                    var length = rawAd[0];
-                    if (length == 0) {
+                    const length = rawAd[0];
+                    if (length === 0) {
                         break;
                     }
-                    var type = rawAd[1].toString(16).padStart(2, '0');
-                    var value = rawAd.slice(2, length + 1);
+                    const type = rawAd[1].toString(16).padStart(2, '0');
+                    const value = rawAd.slice(2, length + 1);
 
-                    var hex = [...value].map(x => x.toString(16).padStart(2, '0')).join('');
+                    const hex = [...value].map(x => x.toString(16).padStart(2, '0')).join('');
 
                     ad.push({
                         type: type,
@@ -79,28 +79,28 @@
 
             setInterval(() => {
                 tbody.innerHTML = "";
-                var adsTable = Object.values(adsMap);
+                const adsTable = Object.values(adsMap);
 
                 adsTable.sort((a, b) => {
                     return b.rssi - a.rssi;
                 });
 
-                for (var i = 0; i < adsTable.length; i++) {
-                    var row = tbody.insertRow(i);
-                    var macAddressCell = row.insertCell(0);
-                    var rssiCell = row.insertCell(1);
-                    var adCell = row.insertCell(2);
-                    var buttonCell = row.insertCell(3);
+                for (let i = 0; i < adsTable.length; i++) {
+                    const row = tbody.insertRow(i);
+                    const macAddressCell = row.insertCell(0);
+                    const rssiCell = row.insertCell(1);
+                    const adCell = row.insertCell(2);
+                    const buttonCell = row.insertCell(3);
 
                     macAddressCell.innerHTML = adsTable[i].macAddress;
                     rssiCell.innerHTML = adsTable[i].rssi;
 
                     for (const ad of adsTable[i].ad) {
-                        var type = document.createElement('span');
+                        const type = document.createElement('span');
                         type.className = "ble-ad-type";
                         type.innerHTML = ad.type;
 
-                        var value = document.createElement('span');
+                        const value = document.createElement('span');
                         value.className = "ble-ad-data";
                         value.innerHTML = ad.value;
 
@@ -110,7 +110,7 @@
                 }
 
                 adsMap = {};
-            }, 1000);
+            }, 2000);
         </script>
     </div>
 

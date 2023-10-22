@@ -128,10 +128,9 @@ class ApiKeyAuthenticator:
 
 
     def set_ssl_context_mqtt(self, mqtt):
-        mqtt.tls_set(ca_certs=self.ca_file_path)
-        mqtt.tls_insecure_set(self.SKIP_HOSTNAME_VERIFICATION)
-        # mqtt.username_pw_set(self.app_id, password=self.api_key)
-        mqtt.username_pw_set("admin", "admin")
+        # mqtt.tls_set(ca_certs=self.ca_file_path)
+        # mqtt.tls_insecure_set(self.SKIP_HOSTNAME_VERIFICATION)
+        mqtt.username_pw_set(self.app_id, password=self.api_key)
         return mqtt
 
 

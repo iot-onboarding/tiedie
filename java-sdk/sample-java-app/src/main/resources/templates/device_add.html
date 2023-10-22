@@ -8,7 +8,6 @@
 <body th:insert="~{layout :: body}">
     <div id="main">
         <h1>Add device</h1>
-
         <form class="col-4" action="#" method="post" th:action="@{/devices/add}" th:object="${device}">
             <div class="mb-3">
                 <label for="deviceDisplayName" class="form-label">Device Display name</label>
@@ -45,11 +44,11 @@
                 <label class="form-check-label" for="isRandom" th:field="*{bleExtension.isRandom}">Random Address</label>
             </div>
 
-            <div class="mb-3">
+            <!-- <div class="mb-3">
                 <label for="passKey" class="form-label">Device Pass Key</label>
                 <input type="text" required class="form-control" id="passKey"
                     th:field="*{bleExtension.pairingPassKey.key}" placeholder="Device Pass Key" />
-            </div>
+            </div> -->
 
             <button type="submit" class="btn btn-primary">Submit</button>
         </form>

@@ -18,18 +18,20 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class TiedieWriteRequest extends TiedieBasicRequest {
+    private String value;
     private BleWriteRequest ble;
     private ZigbeeWriteRequest zigbee;
 
     public static TiedieWriteRequest createRequest(DataParameter dataParameter, String value, String controlAppId) {
         var tiedieRequest = new TiedieWriteRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         if (dataParameter instanceof BleDataParameter) {
             BleDataParameter bleDataParameter = (BleDataParameter) dataParameter;
             tiedieRequest.setTechnology(Technology.BLE);
-            var bleWriteRequest = new BleWriteRequest(bleDataParameter.getServiceUUID(), bleDataParameter.getCharUUID(), value);
+            tiedieRequest.setValue(value);
+            var bleWriteRequest = new BleWriteRequest(bleDataParameter.getServiceUUID(), bleDataParameter.getCharUUID());
 
             tiedieRequest.setBle(bleWriteRequest);
         } else if (dataParameter instanceof ZigbeeDataParameter) {
@@ -59,9 +61,8 @@ public class TiedieWriteRequest extends TiedieBasicRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     private static class BleWriteRequest {
-        private String serviceUUID;
-        private String characteristicUUID;
-        private String value;
+        private String serviceID;
+        private String characteristicID;
     }
 
     @Data

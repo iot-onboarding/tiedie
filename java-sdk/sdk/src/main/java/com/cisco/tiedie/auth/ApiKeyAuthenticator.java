@@ -87,7 +87,7 @@ public class ApiKeyAuthenticator implements Authenticator {
             mqttConnectOptions.setUserName(appId);
             mqttConnectOptions.setPassword(apiKey.toCharArray());
             mqttConnectOptions.setHttpsHostnameVerificationEnabled(!SKIP_HOSTNAME_VERIFICATION);
-            mqttConnectOptions.setSocketFactory(sslContext.getSocketFactory());
+            // mqttConnectOptions.setSocketFactory(sslContext.getSocketFactory());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

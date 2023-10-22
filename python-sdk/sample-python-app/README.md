@@ -5,9 +5,11 @@ All rights reserved.
 See accompanying LICENSE file in this distribution
 
 Running the App
-```bash
 
-python3 python3 -m pip install -r requirements.txt
+Configure the sample app in `config.ini`.
+
+```bash
+pip install -r requirements.txt
 
 cd src/
 python3 app.py

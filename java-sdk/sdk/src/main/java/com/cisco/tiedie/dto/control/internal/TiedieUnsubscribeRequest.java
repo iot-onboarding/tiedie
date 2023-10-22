@@ -36,7 +36,7 @@ public class TiedieUnsubscribeRequest extends TiedieBasicRequest {
 
     public static TiedieUnsubscribeRequest createRequest(BleDataParameter dataParameter, String controlAppId) {
         var tiedieRequest = new TiedieUnsubscribeRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.BLE);
@@ -50,7 +50,7 @@ public class TiedieUnsubscribeRequest extends TiedieBasicRequest {
 
     private static TiedieUnsubscribeRequest createRequest(ZigbeeDataParameter dataParameter, String controlAppId) {
         var tiedieRequest = new TiedieUnsubscribeRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.ZIGBEE);
@@ -70,8 +70,8 @@ public class TiedieUnsubscribeRequest extends TiedieBasicRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     private static class BleUnsubscribeRequest {
-        private String serviceUUID;
-        private String characteristicUUID;
+        private String serviceID;
+        private String characteristicID;
     }
 
     @Data

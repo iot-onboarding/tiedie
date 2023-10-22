@@ -47,13 +47,11 @@ class ConnectOperation(Operation):
     def bt_evt_connection_opened(self, evt):
         if self.handle == evt.connection:
             self.log.info(f"Connection opened: {evt.address}")
-            self.data_producer.publish_connection_status(evt, self.address, True)
             self.set()
 
     def bt_evt_connection_closed(self, evt):
         if self.handle == evt.connection:
             self.log.info(evt)
-            self.data_producer.publish_connection_status(evt, self.address, False)
             # is true if connection was opened before
             if self.is_set():
                 self.is_done = True

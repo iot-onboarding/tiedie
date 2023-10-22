@@ -9,6 +9,12 @@ from .httpclient import AbstractHttpClient, HttpResponse
 from tiedie_pylib.models import *
 
 
+from typing import List
+from .auth import Authenticator
+from .httpclient import AbstractHttpClient, HttpResponse
+from ..models import *
+
+
 class OnboardingClient(AbstractHttpClient):
     """A class used to communicate with the TieDie onboarding SCIM APIs."""
     def __init__(self, base_url, authenticator):
@@ -20,33 +26,12 @@ class OnboardingClient(AbstractHttpClient):
         return self.post("/Devices", device, Device)
     
 
-    def getDevice(self, device_id):
+    def getDevice(self, device_id, onb_app):
         """Get the Device object using its unique ID."""
-        return self.get(f"/Devices/{device_id}", Device)
+        return self.get(f"/Devices/{device_id}/", Device, params={"onboardApp": onb_app})
     
 
-    def getDevices(self):
-        """Get a list of Device objects."""
-        response = self.get("/Devices", ListResponse)
-        return [Device.create(resource) for resource in response.body["Resources"]]
-    
-
-    def deleteDevice(self, device_id):
+    def deleteDevice(self, device_id, onb_app):
         """Un-onboard a device on the controller."""
-        return self.delete(f"/Devices/{device_id}", None)
+        return self.delete(f"/Devices/{device_id}", None, params={"onboardApp": onb_app})
     
-    
-    def getEndpointApps(self):
-        """Get a list of EndpointApp objects."""
-        httpResponse = self.get("/EndpointApps", EndpointAppListResponse)
-        return httpResponse
-    
-
-    def getEndpointApp(self, id: str):
-        """Get the EndpointApp object using its unique ID."""
-        return self.get(f"/EndpointApps/{id}", EndpointApp)
-    
-
-    def createEndpointApp(self, endpointApp: EndpointApp):
-        """Create a new EndpointApp object."""
-        return self.post("/EndpointApps", endpointApp, EndpointApp)
