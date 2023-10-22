@@ -11,7 +11,6 @@ import lombok.NonNull;
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 
 import java.util.List;
@@ -128,5 +127,15 @@ public class DataReceiverClient {
         }
 
         mqttClient.subscribe(topicsArray, mqttListeners);
+    }
+
+    /**
+     * Unsubscribe from a topic.
+     * 
+     * @param topic The topic to subscribe on
+     * @throws Exception if any MQTT problem was encountered
+     */
+    public void unsubscribe(String topic) throws Exception {
+        mqttClient.unsubscribe(topic);
     }
 }

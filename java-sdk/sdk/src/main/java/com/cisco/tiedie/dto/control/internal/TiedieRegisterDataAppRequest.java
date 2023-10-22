@@ -15,10 +15,17 @@ import java.util.List;
 @AllArgsConstructor
 public class TiedieRegisterDataAppRequest {
     private String topic;
-    private List<String> dataApps;
+    private List<DataApp> dataApps;
     private String controlApp;
 
     public static TiedieRegisterDataAppRequest createRequest(String dataApp, String topic, String controlApp) {
-        return new TiedieRegisterDataAppRequest(topic, List.of(dataApp), controlApp);
+        return new TiedieRegisterDataAppRequest(topic, List.of(new DataApp(dataApp)), controlApp);
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    private static class DataApp {
+        private String dataAppID;
     }
 }
