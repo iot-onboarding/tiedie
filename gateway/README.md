@@ -68,7 +68,8 @@ To register a control or data app, you can use the `EndpointApps` SCIM APIs.
 
 ## Generate a new CA cert for testing
 
-```cd certs
+```
+   cd certs
    sh make-ca-certs.sh
 ```
 
@@ -82,7 +83,8 @@ To register a control or data app, you can use the `EndpointApps` SCIM APIs.
 
 ## Generate Client Certs
 
-```cd certs
+```
+   cd certs
    ./gen_cert client
 ```
 
