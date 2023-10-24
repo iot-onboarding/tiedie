@@ -20,6 +20,12 @@ is this:
    the indications and notifications.
 6. Disconnect when finished
 
+This repository contains the following components: 
+1. Gateway. See [`gateway/README.md`](gateway/README.md) for more information.
+2. Java SDK. See [`java-sdk/README.md`](java-sdk/README.md)
+3. Java sample application. See [`java-sdk/sample-java-app/README.md`](java-sdk/sample-java-app/README.md)
+4. Python SDK. See [`python-sdk/README.md`](python-sdk/README.md)
+5. Python sample application. See [`python-sdk/sample-python-app/README.md`](python-sdk/sample-python-app/README.md)
 
 ## How do I contribute?
 
@@ -31,8 +37,8 @@ applies.
 
 This repository contains code that implements-
 
- - draft-ietf-scim-device-model
- - draft-brinckman-asdf-nipc
+ - [draft-ietf-scim-device-model](https://datatracker.ietf.org/doc/draft-ietf-scim-device-model/)
+ - [draft-brinckman-asdf-nipc](https://datatracker.ietf.org/doc/draft-brinckman-nipc/)
 
 With this combination, applications can control their non-IP devices
 using the SCIM provisioning interface and an application layer gateway
