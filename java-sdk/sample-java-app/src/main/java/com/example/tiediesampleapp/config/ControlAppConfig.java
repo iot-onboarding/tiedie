@@ -4,6 +4,7 @@
 
 package com.example.tiediesampleapp.config;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
@@ -30,15 +31,17 @@ import com.cisco.tiedie.dto.scim.EndpointAppType;
 @Component
 @Configuration
 public class ControlAppConfig extends ClientConfig {
-
     @Value("${control-app.id}")
     private String controlAppId;
 
-    @Value("${control-app.auth-type}")
+    @Value("${control-app.auth-type:token}")
     private String controlAppAuthType;
 
-    private static final String CONTROL_CERT_PATH = "/control-app.p12";
-    private static final String CONTROL_BASE_URL = "https://localhost:8081/control";
+    @Value("${control-app.base_url}")
+    private String controlAppBaseUrl;
+
+    @Value("${control-app.cert_path:#{null}}")
+    private String controlAppCertPath;
 
     private EndpointApp createEndpointApp(OnboardingClient onboardingClient) throws Exception {
         var controlAppBuilder = EndpointApp.builder()
@@ -46,8 +49,8 @@ public class ControlAppConfig extends ClientConfig {
                 .applicationType(EndpointAppType.DEVICE_CONTROL);
 
         if (controlAppAuthType.equals("cert")) {
-            InputStream caStream = ControlAppConfig.class.getResourceAsStream(CA_PEM_PATH);
-            InputStream clientKeystoreStream = ControlAppConfig.class.getResourceAsStream(CONTROL_CERT_PATH);
+            InputStream caStream = new FileInputStream(caPath);
+            InputStream clientKeystoreStream = new FileInputStream(controlAppCertPath);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(clientKeystoreStream, "".toCharArray());
 
@@ -90,9 +93,9 @@ public class ControlAppConfig extends ClientConfig {
     }
 
     public Authenticator getAuthenticator(EndpointApp endpointApp) throws Exception {
-        try (InputStream caStream = ControlAppConfig.class.getResourceAsStream(CA_PEM_PATH);
-                InputStream clientKeystoreStream = ControlAppConfig.class.getResourceAsStream(CONTROL_CERT_PATH)) {
+        try (InputStream caStream = new FileInputStream(caPath)) {
             if (endpointApp.getCertificateInfo() != null) {
+                InputStream clientKeystoreStream = new FileInputStream(controlAppCertPath);
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
                 keyStore.load(clientKeystoreStream, "".toCharArray());
 
@@ -109,6 +112,6 @@ public class ControlAppConfig extends ClientConfig {
     public ControlClient getControlClient(OnboardingClient onboardingClient, @Qualifier("controlApp") EndpointApp endpointApp) throws Exception {
         Authenticator authenticator = getAuthenticator(endpointApp);
 
-        return new ControlClient(CONTROL_BASE_URL, authenticator);
+        return new ControlClient(controlAppBaseUrl, authenticator);
     }
 }

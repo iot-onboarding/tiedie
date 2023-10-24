@@ -15,8 +15,11 @@ import javax.naming.ldap.LdapName;
 import javax.naming.ldap.Rdn;
 import javax.security.auth.x500.X500Principal;
 
+import org.springframework.beans.factory.annotation.Value;
+
 public abstract class ClientConfig {
-    protected static final String CA_PEM_PATH = "/ca.pem";
+    @Value("${client.ca_path}")
+    protected String caPath;
 
     protected String getCnFromKeyStore(KeyStore keyStore) {
         try {
