@@ -12,8 +12,9 @@ For the Java SDK, Java version 11 or greater or openjdk version 11 to 18 should 
 
 All instructions for building the SDK take place in the SDK directory.
 
-> cd ./sdk
-
+```bash
+cd ./sdk
+```
 
 Build the JAR using the following command: 
 
