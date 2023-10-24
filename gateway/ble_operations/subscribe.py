@@ -2,6 +2,13 @@
 # All rights reserved.
 # See license in distribution for details.
 
+"""
+
+Class for subscribing to Bluetooth Low Energy (BLE) characteristic
+notifications/indications, forwarding data, and managing notifications.
+
+"""
+
 from http import HTTPStatus
 import uuid
 import bgapi
@@ -12,6 +19,7 @@ from data_producer import DataProducer
 
 
 class SubscribeOperation(Operation):
+    """ Handles subscribing to a BLE characteristic, handling notifications and indications. """
     def __init__(self,
                  lib: bgapi.BGLib,
                  handle: int,
@@ -32,6 +40,7 @@ class SubscribeOperation(Operation):
         self.__disable = False
 
     def run(self):
+        """ run Function """
         self.log.info(
             f"subscribe to characteristic {self.char_handle} from {self.handle}")
 
@@ -49,35 +58,40 @@ class SubscribeOperation(Operation):
         self.wait()
 
     def bt_evt_gatt_characteristic_value(self, evt):
+        """ Processes characteristic value notifications/indications. """
         if self.handle == evt.connection and \
                 self.char_handle == evt.characteristic and \
-                (evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_NOTIFICATION or evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):  # type: ignore
+                evt.att_opcode in (self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_NOTIFICATION, 
+                                   self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):  # type: ignore
             self.log.info(evt)
-            if evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION:  # type: ignore
+            if evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION:  #type: ignore
                 try:
                     self.lib.bt.gatt.send_characteristic_confirmation(   # type: ignore
                     self.handle)
-                except Exception as e:
-                    self.log.error(e)
+                except ImportError as error_exp:
+                    self.log.error(error_exp)
                     # TODO: Why does this happen?
             self.data_producer.publish_notification(
                 self.address, self.service_uuid, self.char_uuid, evt.value)
 
     def disable_notification(self):
+        """ Disables notifications/indications for the characteristic. """
         self.clear()
         self.__disable = True
         self.lib.bt.gatt.set_characteristic_notification(  # type: ignore
-            self.handle, self.char_handle, self.lib.bt.gatt.CLIENT_CONFIG_FLAG_DISABLE)  # type: ignore
+            self.handle,self.char_handle, self.lib.bt.gatt.CLIENT_CONFIG_FLAG_DISABLE)  #type:ignore
 
         self.wait()
 
     def bt_evt_gatt_procedure_completed(self, evt):
+        """ Handles procedure completion events and sets the operation's state. """
         if self.handle == evt.connection:
             self.set()
             if self.__disable:
                 self.is_done = True
 
     def response(self) -> tuple[Response, int]:
+        """ Response Function """
         if self.is_set():
             return jsonify({"status": "SUCCESS", "requestID": uuid.uuid4()}), HTTPStatus.OK
 

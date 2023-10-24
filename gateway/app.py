@@ -2,6 +2,13 @@
 # All rights reserved.
 # See license in distribution for details.
 
+""" 
+
+This script configures components, like MQTT and PostgreSQL, initializes them,
+and serves a secure Flask web application with MQTT and BLE integration.
+
+"""
+
 import datetime
 import uuid
 import ssl
@@ -39,6 +46,7 @@ app.register_blueprint(scim_app)
 @app.cli.command("register-onboarding-app")
 @click.argument("name")
 def onboarding_apiauth(name):
+    """ Defines authentication during onboarding """
     key = uuid.uuid4()
     authkey = OnboardingAppKey(name, str(key))
     db.session.add(authkey)
@@ -47,6 +55,7 @@ def onboarding_apiauth(name):
 
 
 def mqtt_connect() -> mqtt.Client:
+    """ Function MQTT connect """
     client = mqtt.Client()
     client.tls_set(ca_certs="ca_certificates/ca.pem")
     client.tls_insecure_set(True)
@@ -83,7 +92,7 @@ if __name__ == "__main__":
     if not access_point.ble_app.ready.wait(timeout=BOOT_TIMEOUT):
         access_point.ble_app.stop()
         mqtt_client.loop_stop()
-        raise Exception("Failed to boot")
+        raise RuntimeError("Failed to boot")
 
     access_point.ble_app.start_scan()
 
