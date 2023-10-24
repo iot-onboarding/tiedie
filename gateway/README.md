@@ -60,31 +60,35 @@ python3 app.py
 To register an onboarding app, run the following command:
 
 
-```
+```bash
 flask register-onboarding-app <onboarding_app_name>
 ```
 
 To register a control or data app, you can use the `EndpointApps` SCIM APIs. 
 
-## Generate a new CA cert for testing
-
-```
-   cd certs
-   sh make-ca-certs.sh
-```
-
 ## Generate Server Certs
 
-### Create server private key and certificate
+### Create server private key and server CSR
+```bash
+openssl req -nodes -new -keyout server.key -out server.csr
+```
 
-```cd certs
-  ./gen_cert server
+### Generate server certicate 
+```bash
+openssl x509 -req -days 365 -in server.csr -CA ca_certificates/ca.pem -CAkey ca_certificates/ca.key -CAcreateserial -out server.crt
 ```
 
 ## Generate Client Certs
 
+### Create client private key and client CSR
+```bash
+openssl req -nodes -new -keyout client.key -out client.csr
 ```
-   cd certs
-   ./gen_cert client
+
+### Generate client certicate
+```bash
+openssl x509 -req -days 365 -in client.csr -CA ca_certificates/ca.pem -CAkey ca_certificates/ca.key -CAcreateserial -out client.crt
 ```
+
+(ca.key) -> Private key of CA  and  (ca.pem) -> Root Certificate of CA 
 
