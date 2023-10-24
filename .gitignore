@@ -5,3 +5,12 @@
 **/*$py.class
 
 **/*.egg-info/
+
+**/*.pem
+**/*.crt
+**/*.key
+**/*.p12
+**/*.srl
+
+**/venv
+**/build
