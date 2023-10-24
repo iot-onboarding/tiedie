@@ -10,6 +10,7 @@ services:
     volumes:
       - ./mosquitto/config/:/etc/mosquitto/
       - ./ca_certificates/:/etc/mosquitto/ca_certificates/
+      - ./certs:/etc/mosquitto/certs/
     depends_on:
       - postgres
 

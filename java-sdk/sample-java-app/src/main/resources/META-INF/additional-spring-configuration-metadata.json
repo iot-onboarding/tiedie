@@ -21,6 +21,11 @@
             "description": "Onboarding App API Key"
         },
         {
+            "name": "onboarding-app.cert_path",
+            "type": "java.lang.String",
+            "description": "Onboarding App certificate path"
+        },
+        {
             "name": "control-app.base_url",
             "type": "java.lang.String",
             "description": "Control App Base URL"
@@ -31,9 +36,9 @@
             "description": "Control App ID"
         },
         {
-            "name": "control-app.key",
+            "name": "control-app.cert_path",
             "type": "java.lang.String",
-            "description": "Control App API Key"
+            "description": "Control App certificate path"
         },
         {
             "name": "data-app.base_url",
@@ -46,9 +51,9 @@
             "description": "Data App ID"
         },
         {
-            "name": "data-app.key",
+            "name": "data-app.cert_path",
             "type": "java.lang.String",
-            "description": "Data App API Key"
+            "description": "Data App certificate path"
         }
     ]
 }

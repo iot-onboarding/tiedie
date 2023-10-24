@@ -4,6 +4,7 @@
 
 package com.example.tiediesampleapp.config;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
@@ -34,11 +35,18 @@ public class DataAppConfig extends ClientConfig {
     @Value("${data-app.id}")
     private String dataAppId;
 
-    @Value("${data-app.auth-type}")
+    @Value("${data-app.auth-type:token}")
     private String dataAppAuthType;
 
-    private static final String DATA_CERT_PATH = "/data-app.p12";
-    private static final String DATA_BASE_URL = "ssl://localhost:8883";
+    @Value("${data-app.base_url}")
+    private String dataAppBaseUrl;
+
+    @Value("${data-app.cert_path:#{null}}")
+    private String dataAppCertPath;
+
+    @Value("${client.ca_path}")
+    private String caPath;
+
 
     private EndpointApp createEndpointApp(OnboardingClient onboardingClient) throws Exception {
         var dataAppBuilder = EndpointApp.builder()
@@ -46,8 +54,8 @@ public class DataAppConfig extends ClientConfig {
                 .applicationType(EndpointAppType.TELEMETRY);
 
         if (dataAppAuthType.equals("cert")) {
-            InputStream caStream = DataAppConfig.class.getResourceAsStream(CA_PEM_PATH);
-            InputStream clientKeystoreStream = DataAppConfig.class.getResourceAsStream(DATA_CERT_PATH);
+            InputStream caStream = new FileInputStream(caPath);
+            InputStream clientKeystoreStream = new FileInputStream(dataAppCertPath);
             KeyStore keyStore = KeyStore.getInstance("PKCS12");
             keyStore.load(clientKeystoreStream, "".toCharArray());
 
@@ -90,8 +98,8 @@ public class DataAppConfig extends ClientConfig {
     }
 
     public Authenticator getAuthenticator(EndpointApp endpointApp) throws Exception {
-        try (InputStream caStream = DataAppConfig.class.getResourceAsStream(CA_PEM_PATH);
-                InputStream clientKeystoreStream = DataAppConfig.class.getResourceAsStream(DATA_CERT_PATH)) {
+        try (InputStream caStream = new FileInputStream(caPath);
+                InputStream clientKeystoreStream = new FileInputStream(dataAppCertPath)) {
             if (endpointApp.getCertificateInfo() != null) {
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
                 keyStore.load(clientKeystoreStream, "".toCharArray());
@@ -109,7 +117,7 @@ public class DataAppConfig extends ClientConfig {
     public DataReceiverClient getDataReceiverClient(OnboardingClient onboardingClient, @Qualifier("dataApp") EndpointApp endpointApp) throws Exception {
         Authenticator authenticator = getAuthenticator(endpointApp);
 
-        return new DataReceiverClient(DATA_BASE_URL, authenticator);
+        return new DataReceiverClient(dataAppBaseUrl, authenticator);
     }
 
 }
