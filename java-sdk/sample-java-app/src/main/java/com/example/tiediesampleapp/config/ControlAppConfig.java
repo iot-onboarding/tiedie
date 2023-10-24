@@ -39,7 +39,7 @@ public class ControlAppConfig extends ClientConfig {
     ControlClient getControlClient(OnboardingClient onboardingClient) throws Exception {
         try (InputStream caStream = new FileInputStream(caPath)) {
             Authenticator authenticator = ApiKeyAuthenticator.create(caStream, controlAppId, controlAppKey);
-        return new ControlClient(controlAppBaseUrl, authenticator);
+            return new ControlClient(controlAppBaseUrl, authenticator);
         }
     }
 }
