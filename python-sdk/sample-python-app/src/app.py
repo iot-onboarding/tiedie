@@ -22,7 +22,10 @@ logger = logging.getLogger('socketio')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
-app.config.from_pyfile("config.ini")
+if os.environ.get("DOCKER_BUILD"):
+    app.config.from_pyfile("/config/config.ini")
+else:
+    app.config.from_pyfile("../config/config.ini")
 
 client_config = ClientConfig(app)
 
@@ -76,8 +79,8 @@ class AdvertisementHandler(Namespace):
         
         data_receiver_client.subscribe(topic, callback)
 
-    def on_unsubscribe(self):
-        data_receiver_client.unsubscribe('advertisements')
+    def on_unsubscribe(self, topic):
+        data_receiver_client.unsubscribe(topic)
         
     def on_error(self, error):
         print(error)
