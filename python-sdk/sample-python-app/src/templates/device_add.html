@@ -1,14 +1,8 @@
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-<head th:insert="~{layout :: head}">
-    <title id="title">Add Device</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
-<body th:insert="~{layout :: body}">
+{% extends 'layout.html' %}
+
+{% block main %}
     <div id="main">
-        <h1>Add device</h1>
+        <h1>{% block title %}Add device{% endblock %}</h1>
         <form class="col-4" action="{{ url_for('add_device') }}" method="post">
             <div class="mb-3">
                 <label for="deviceDisplayName" class="form-label">Device Display name</label>
@@ -42,13 +36,14 @@
                 <label class="form-check-label" for="isRandom">Random Address</label>
             </div>
 
-            <div class="mb-3">
+            <!-- <div class="mb-3">
                 <label for="passKey" class="form-label">Device Pass Key</label>
                 <input type="text" required class="form-control" id="passKey" name="passKey" placeholder="Device Pass Key" />
-            </div>
+            </div> -->
 
             <button type="submit" class="btn btn-primary">Submit</button>
         </form>
     </div>
 </body>
 </html>
+{% endblock %}

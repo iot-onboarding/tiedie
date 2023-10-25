@@ -135,31 +135,3 @@ class DataProducer:
                 if is_adv_allowed(topic, adv_fields, evt.address):
                     self.mqtt_client.publish(
                         str(topic.topic), ble_adv.SerializeToString())
-
-    def publish_connection_status(self, evt, address, connected: bool):
-        from app import app
-        with app.app_context():
-            user = session.scalar(select(User).filter(
-                func.lower(User.deviceMacAddress) == func.lower(address)))
-
-            if user is None:
-                return
-
-            ble_connection = data_app_pb2.DataSubscription()
-            ble_connection.device_id = str(user.id)
-            ble_connection_status = data_app_pb2.DataSubscription.BLEConnectionStatus()
-            ble_connection_status.mac_address = address
-            ble_connection_status.connected = connected
-            if not connected:
-                ble_connection_status.reason = evt.reason
-
-            ble_connection.ble_connection_status.CopyFrom(
-                ble_connection_status)
-
-            for connection_topic in user.connection_topics:
-                self.mqtt_client.publish(
-                    topic=str(connection_topic.topic),
-                    payload=ble_connection.SerializeToString(),
-                    qos=1,
-                    retain=True
-                )

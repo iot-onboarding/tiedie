@@ -32,15 +32,6 @@ adv_topic_devices = db.Table(
     ),
 )
 
-connection_topic_devices = db.Table(
-    "connection_topic_devices",
-    Column(
-        "topic", String(), db.ForeignKey("connection_topics.topic"), primary_key=True
-    ),
-    Column(
-        "device_id", UUID(as_uuid=True), db.ForeignKey("bledevices.id"), primary_key=True
-    ),
-)
 
 devices_endpoint_apps = db.Table(
     "devices_endpoint_apps",
@@ -82,12 +73,8 @@ class User(db.Model):
     adv_topics = relationship("AdvTopic",
                               secondary=adv_topic_devices, back_populates="devices")
 
-    connection_topics: Mapped[List["ConnectionTopic"]] = relationship("ConnectionTopic",
-                                                                      secondary=connection_topic_devices, back_populates="devices")
-
     def __init__(
         self,
-        id,
         schemas,
         deviceDisplayName,
         adminState,
@@ -105,7 +92,6 @@ class User(db.Model):
         endpointApps,
         tCreated,
     ):
-        self.id = id
         self.schemas = schemas
         self.deviceDisplayName = deviceDisplayName
         self.adminState = adminState
@@ -131,9 +117,8 @@ class User(db.Model):
     def serialize(self):
         response = {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
-                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
-                        "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"],
-            "id": self.id,
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
+            "id": str(self.id),
             "deviceDisplayName": self.deviceDisplayName,
             "adminState": self.adminState,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
@@ -179,11 +164,9 @@ class User(db.Model):
             response["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = {
-                "applications": [{"value": app.id,
-                                  "$ref": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/scim/v2/EndpointApps/{app.id}"
-                                  } for app in self.endpointApps],
-                "deviceControlEnterpriseEndpoint": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/control",
-                "telemetryEnterpriseEndpoint": f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
+                "onboardingUrl": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/scim/v2/EndpointApps/onboarding",
+                "deviceControlUrl": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/control",
+                "dataReceiverUrl": f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
         return response
     
@@ -210,7 +193,7 @@ class EndpointApp(db.Model):
     def serialize(self):
         return {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
-            "id": self.id,
+            "id": str(self.id),
             "applicationType": self.applicationType,
             "applicationName": self.applicationName,
             "certificateInfo": self.certificateInfo,
@@ -299,20 +282,6 @@ class AdvTopic(db.Model):
 
     def __repr__(self):
         return "<topic {}>".format(self.topic)
-
-
-class ConnectionTopic(db.Model):
-    __tablename__ = "connection_topics"
-
-    topic = Column(String(), primary_key=True, unique=True)
-    data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[User]] = relationship(
-        secondary=connection_topic_devices, back_populates="connection_topics")
-
-    def __init__(self, topic: str, data_format, devices: Any):
-        self.topic = topic
-        self.data_format = data_format
-        self.devices.extend(devices)
 
 
 class DataAppTopic(db.Model):

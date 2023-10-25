@@ -10,6 +10,7 @@ import com.cisco.tiedie.clients.utils.CertificateHelper;
 import com.cisco.tiedie.dto.HttpResponse;
 import com.cisco.tiedie.dto.scim.BleExtension;
 import com.cisco.tiedie.dto.scim.Device;
+import com.cisco.tiedie.dto.scim.EndpointAppsExtension;
 import com.cisco.tiedie.utils.ObjectMapperSingleton;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import okhttp3.HttpUrl;
@@ -29,6 +30,7 @@ import java.io.InputStream;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -102,8 +104,7 @@ class OnboardingClientTest {
 
         return Stream.of(
                 arguments(named("With cert", onboardingClientWithCert)),
-                arguments(named("With key", onboardingClientWithKey))
-        );
+                arguments(named("With key", onboardingClientWithKey)));
     }
 
     @DisplayName("Create Device")
@@ -116,21 +117,22 @@ class OnboardingClientTest {
                 new MockResponse()
                         .setResponseCode(201)
                         .setBody("{\n" +
-                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                                +
                                 "\"id\" : \"" + deviceId + "\",\n" +
                                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                                 "  \"adminState\" : false,\n" +
                                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                                +
                                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
-                                "    \"addressType\" : false,\n" +
+                                "    \"isRandom\" : false,\n" +
                                 "    \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" : {\n" +
                                 "      \"key\" : 123456\n" +
                                 "    }\n" +
                                 "  }\n" +
-                                "}")
-        );
+                                "}"));
 
         var device = Device.builder()
                 .deviceDisplayName("BLE Monitor")
@@ -140,6 +142,11 @@ class OnboardingClientTest {
                         .isRandom(false)
                         .versionSupport(Arrays.asList("4.1", "4.2", "5.0", "5.1", "5.2", "5.3"))
                         .pairingPassKey(new BleExtension.PairingPassKey(123456))
+                        .build())
+                .endpointAppsExtension(EndpointAppsExtension.builder()
+                        .onboardingUrl(ONBOARDING_APP_ID)
+                        .deviceControlUrl(List.of("control-app"))
+                        .dataReceiverUrl(List.of("data-app"))
                         .build())
                 .build();
 
@@ -165,21 +172,22 @@ class OnboardingClientTest {
                 new MockResponse()
                         .setResponseCode(200)
                         .setBody("{\n" +
-                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                                +
                                 "\"id\" : \"" + deviceId + "\",\n" +
                                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                                 "  \"adminState\" : false,\n" +
                                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                                +
                                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
-                                "    \"addressType\" : false,\n" +
+                                "    \"isRandom\" : false,\n" +
                                 "    \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" : {\n" +
                                 "      \"key\" : 123456\n" +
                                 "    }\n" +
                                 "  }\n" +
-                                "}")
-        );
+                                "}"));
         mockWebServer.enqueue(new MockResponse()
                 .setStatus("HTTP/1.1 404 Not Found")
                 .setBody("{\n" +
@@ -202,11 +210,11 @@ class OnboardingClientTest {
         assertNull(response.getBody());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/scim/v2/Devices/" + deviceId, request.getPath());
+        assertEquals("/scim/v2/Devices/" + deviceId + "?onboardApp=" + ONBOARDING_APP_ID, request.getPath());
         assertEquals("GET", request.getMethod());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/scim/v2/Devices/1234", request.getPath());
+        assertEquals("/scim/v2/Devices/1234?onboardApp=" + ONBOARDING_APP_ID, request.getPath());
         assertEquals("GET", request.getMethod());
     }
 
@@ -224,7 +232,7 @@ class OnboardingClientTest {
         assertEquals("No Content", response.getMessage());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/scim/v2/Devices/" + deviceId, request.getPath());
+        assertEquals("/scim/v2/Devices/" + deviceId + "?onboardApp=" + ONBOARDING_APP_ID, request.getPath());
         assertEquals("DELETE", request.getMethod());
         assertEquals(0, request.getBodySize());
     }

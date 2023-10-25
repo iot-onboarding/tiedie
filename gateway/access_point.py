@@ -53,7 +53,7 @@ class AccessPoint(BluetoothApp):
 
         scan_operation.run()
 
-    def connect(self, address, services, retries=3) -> tuple[Response, int]:
+    def connect(self, address, services=[], retries=3) -> tuple[Response, int]:
         """ Connect to a device """
         if not self.connectable():
             return jsonify({"status": "FAILURE", "requestID": uuid.uuid4(), "reason": "max connections"}), HTTPStatus.BAD_REQUEST
@@ -69,7 +69,7 @@ class AccessPoint(BluetoothApp):
         if not operation.is_set():
             return operation.response()
 
-        discover_operation = DiscoverOperation(self.lib, operation.handle, services)
+        discover_operation = DiscoverOperation(self.lib, operation.handle, retries, services)
         self.operations.append(discover_operation)
 
         discover_operation.run()
@@ -79,13 +79,13 @@ class AccessPoint(BluetoothApp):
 
         return discover_operation.response()
 
-    def discover(self, address, retries) -> tuple[Response, int]:
+    def discover(self, address, services=[], retries = 3 ) -> tuple[Response, int]:
         """ Discover services of a device """
         if address not in self.conn_reqs:
             return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
 
         discover_operation = DiscoverOperation(
-            self.lib, self.conn_reqs[address].handle, retries)
+            self.lib, self.conn_reqs[address].handle, retries, services)
         self.operations.append(discover_operation)
 
         discover_operation.run()

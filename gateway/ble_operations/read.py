@@ -38,7 +38,7 @@ class ReadOperation(Operation):
 
     def response(self) -> tuple[Response, int]:
         if self.is_set():
-            return jsonify({"status": "SUCCESS", "requestID": uuid.uuid4(), "value": self.value}), HTTPStatus.OK
+            return jsonify({"status": "SUCCESS", "id": "", "requestID": uuid.uuid4(), "value": self.value}), HTTPStatus.OK
 
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 

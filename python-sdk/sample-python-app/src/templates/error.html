@@ -1,16 +1,8 @@
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+{% extends 'layout.html' %}
 
-<head>
-    <title id="title">Error</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
-
-<body>
+{% block main %}
     <div id="main">
-        <h1>Error</h1>
+        <h1>{% block title %}Error{% endblock %}</h1>
 
         <div class="alert alert-danger" role="alert">
             <span>{{ error }}</span>
@@ -18,6 +10,6 @@
 
         <pre>{{ trace }}</pre>
     </div>
-</body>
+{% endblock %}
 
 </html>

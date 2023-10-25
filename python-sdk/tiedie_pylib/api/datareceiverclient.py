@@ -5,7 +5,7 @@
 
 import paho.mqtt.client as mqtt
 from typing import Callable, Optional
-from .auth import Authenticator
+from ..api.auth import Authenticator
 from .proto import data_app_pb2
 
 

@@ -46,7 +46,7 @@ class Descriptor:
 
 
 class DiscoverOperation(Operation):
-    def __init__(self, lib, handle: int, retries: int = 3, services=None):
+    def __init__(self, lib, handle: int, retries: int = 3, services=[]):
         super().__init__(lib)
         self.handle = handle
         self.requested_services = services
@@ -91,6 +91,7 @@ class DiscoverOperation(Operation):
                         continue
 
             self.is_done = True
+            break
 
         if retries == self.retries + 1:
             self.is_done = True
@@ -122,25 +123,28 @@ class DiscoverOperation(Operation):
             self.clear()
 
     def response(self) -> tuple[Response, int]:
+        device_services = [
+            {
+                "serviceID": service.uuid,
+                "characteristics": [
+                    {
+                        "characteristicID": characteristic.uuid,
+                        "flags": characteristic.properties,
+                        "descriptors": [
+                            {
+                                "descriptorID": descriptor.uuid,
+                            } for descriptor in characteristic.descriptors.values()
+                        ],
+                    } for characteristic in service.characteristics.values()
+                ],
+            } for service in self.services.values() if self.requested_services is [] or service.uuid in self.requested_services
+        ]
+
         return jsonify({
             "status": "SUCCESS",
+            "id": "",
             "requestID": uuid.uuid4(),
-            "services": [
-                {
-                    "uuid": service.uuid,
-                    "characteristics": [
-                        {
-                            "serviceID": characteristic.uuid,
-                            "flags": characteristic.properties,
-                            "descriptors": [
-                                {
-                                    "characteristicID": descriptor.uuid,
-                                } for descriptor in characteristic.descriptors.values()
-                            ],
-                        } for characteristic in service.characteristics.values()
-                    ],
-                } for service in self.services.values() if self.requested_services is None or service.uuid in self.requested_services
-            ]
+            "services": device_services
         }), HTTPStatus.OK
 
     def __repr__(self):

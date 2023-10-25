@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+option java_package = "com.cisco.tiedie.proto";
+option java_multiple_files = true;
+
 package tiedie;
 
 message DataSubscription {
@@ -11,6 +14,7 @@ message DataSubscription {
         BLEAdvertisement ble_advertisement = 4;
         ZigbeeSubscription zigbee = 5;
         RawPayload raw_payload = 6;
+        BLEConnectionStatus ble_connection_status = 7;
     }
 
     message BLESubscription {
@@ -28,6 +32,12 @@ message DataSubscription {
         optional int32 cluster_id = 2;
         optional int32 attribute_id = 3;
         optional int32 attribute_type = 4;
+    }
+
+    message BLEConnectionStatus {
+        string mac_address = 1;
+        bool connected = 2;
+        optional int32 reason = 3;
     }
     
     message RawPayload {

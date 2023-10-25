@@ -7,8 +7,14 @@
 
 <body th:insert="~{layout :: body}">
     <div id="main">
-        <a class="btn btn-primary" href="/devices/add">Add Device</a>
-        <table class="table">
+        <div class="col-6">
+            <form class="input-group">
+                <input type="text" class="form-control" id="deviceId" placeholder="Enter device ID" required>
+                <button type="button" class="btn btn-primary" onclick="redirectToDevice()">Go</button>
+            </form>
+        </div>
+        <a class="btn btn-primary mt-3" href="/devices/add">Add Device</a>
+        <!-- <table class="table">
             <thead>
                 <th scope="col">Device ID</th>
                 <th scope="col">Device Display Name</th>
@@ -30,9 +36,9 @@
                     </td>
                 </tr>
             </tbody>
-        </table>
+        </table> -->
 
-        <script th:inline="javascript">
+        <!-- <script th:inline="javascript">
             var devices = /*[[${devices}]]*/ [];
 
             var topics = devices.map((device) => {
@@ -59,6 +65,18 @@
                     document.getElementById(`${id}-disconnected`).classList.remove("d-none");
                 }
             };
+        </script> -->
+
+        <script>
+            function redirectToDevice() {
+                var deviceId = document.getElementById("deviceId").value;
+                if (deviceId) {
+                    // Redirect to the /devices/<id> route
+                    window.location.href = "/devices/" + deviceId;
+                } else {
+                    alert("Please enter a valid Device ID.");
+                }
+            }
         </script>
     </div>
 </body>
