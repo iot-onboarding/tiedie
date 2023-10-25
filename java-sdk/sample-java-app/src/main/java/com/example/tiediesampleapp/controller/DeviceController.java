@@ -4,6 +4,7 @@
 
 package com.example.tiediesampleapp.controller;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,7 +13,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -34,9 +34,10 @@ import com.cisco.tiedie.dto.control.DataParameter;
 import com.cisco.tiedie.dto.control.DataRegistrationOptions;
 import com.cisco.tiedie.dto.control.DataResponse;
 import com.cisco.tiedie.dto.control.TiedieResponse;
+import com.cisco.tiedie.dto.control.ble.BleConnectRequest;
 import com.cisco.tiedie.dto.control.ble.BleDataParameter;
+import com.cisco.tiedie.dto.control.ble.BleService;
 import com.cisco.tiedie.dto.scim.Device;
-import com.cisco.tiedie.dto.scim.EndpointApp;
 import com.cisco.tiedie.dto.scim.EndpointAppsExtension;
 import com.example.tiediesampleapp.model.AdvertisementRequest;
 
@@ -49,13 +50,19 @@ public class DeviceController {
     @Autowired
     ControlClient controlClient;
 
-    @Autowired
-    @Qualifier("controlApp")
-    private EndpointApp controlApp;
+    // @Autowired
+    // @Qualifier("controlApp")
+    // private EndpointApp controlApp;
 
-    @Autowired
-    @Qualifier("dataApp")
-    private EndpointApp dataApp;
+    // @Autowired
+    // @Qualifier("dataApp")
+    // private EndpointApp dataApp;
+
+    @Value("${onboarding-app.id}")
+    private String onboardingAppId;
+
+    @Value("${control-app.id}")
+    private String controlAppId;
 
     @Value("${data-app.id}")
     private String dataAppId;
@@ -66,15 +73,11 @@ public class DeviceController {
 
     @GetMapping("/")
     public String index() throws Exception {
-        return "index";
+        return "devices";
     }
 
     @GetMapping("/devices")
     public String getAllDevices(Model model) throws Exception {
-        HttpResponse<List<Device>> response = onboardingClient.getDevices();
-
-        model.addAttribute("devices", response.getBody());
-
         return "devices";
     }
 
@@ -106,10 +109,14 @@ public class DeviceController {
     @PostMapping("/devices/add")
     public String addDevice(@ModelAttribute Device device, Model model) throws Exception {
         System.out.println(device);
-        device.setEndpointAppsExtension(new EndpointAppsExtension(List.of(controlApp, dataApp)));
+        device.setEndpointAppsExtension(EndpointAppsExtension.builder()
+                .onboardingUrl(onboardingAppId)
+                .deviceControlUrl(List.of(controlAppId))
+                .dataReceiverUrl(List.of(dataAppId))
+                .build());
         HttpResponse<Device> response = onboardingClient.createDevice(device);
 
-        if (response.getStatusCode() != 201) {
+        if (response.getStatusCode() != 200 && response.getStatusCode() != 201) {
             model.addAttribute("error", "Failed to create device");
             return "error";
         }
@@ -128,7 +135,7 @@ public class DeviceController {
                 .devices(List.of(response.getBody()))
                 .build());
 
-        return "redirect:/devices";
+        return "redirect:/devices/" + response.getBody().getId();
     }
 
     @GetMapping("/devices/{id}")
@@ -143,12 +150,14 @@ public class DeviceController {
         Device device = response.getBody();
         model.addAttribute("device", device);
 
-        TiedieResponse<List<DataParameter>> dataResponse = controlClient.discover(device);
+        TiedieResponse<List<DataParameter>> dataResponse = controlClient.discover(device,
+                List.of(new BleDataParameter("1800")));
 
         if (dataResponse.getHttpStatusCode() != 200) {
             return "device";
         }
 
+        System.out.println(dataResponse.getBody());
         List<BleDataParameter> bleDataParameters = dataResponse
                 .getBody()
                 .stream()
@@ -162,8 +171,18 @@ public class DeviceController {
     }
 
     @PostMapping("/devices/{id}/connect")
-    public String connectDevice(@ModelAttribute Device device, Model model) throws Exception {
-        TiedieResponse<List<DataParameter>> response = controlClient.connect(device);
+    public String connectDevice(@ModelAttribute Device device, Model model, @RequestParam String serviceUUIDs)
+            throws Exception {
+        String[] uuids = serviceUUIDs.split(",");
+        List<BleService> services = new ArrayList<>();
+        for (String uuid : uuids) {
+            services.add(new BleService(uuid));
+        }
+
+        TiedieResponse<List<DataParameter>> response = controlClient.connect(device,
+                BleConnectRequest.builder()
+                        .services(services)
+                        .build());
 
         if (response.getHttpStatusCode() != 200) {
             return "error";
@@ -187,7 +206,7 @@ public class DeviceController {
     public String deleteDevice(@PathVariable("id") String id, Model model) throws Exception {
         HttpResponse<Void> response = onboardingClient.deleteDevice(id);
 
-        if (response.getStatusCode() != 204) {
+        if (response.getStatusCode() != 200 && response.getStatusCode() != 204) {
             return "error";
         }
 
@@ -274,6 +293,8 @@ public class DeviceController {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         TiedieResponse<DataResponse> response = controlClient.write(parameter, value);
+
+        System.out.println(response.getBody());
 
         return response.getBody();
     }

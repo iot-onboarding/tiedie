@@ -14,13 +14,13 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class TiedieUnregisterTopicRequest extends TiedieBasicRequest {
     private String topic;
-    private List<String> uuids;
+    private List<String> ids;
 
     public static TiedieUnregisterTopicRequest createRequest(String topic, List<String> uuids, String controlAppId) {
         var tiedieRequest = new TiedieUnregisterTopicRequest();
 
         tiedieRequest.setControlApp(controlAppId);
-        tiedieRequest.setUuids(uuids);
+        tiedieRequest.setIds(uuids);
         tiedieRequest.setTopic(topic);
 
         return tiedieRequest;

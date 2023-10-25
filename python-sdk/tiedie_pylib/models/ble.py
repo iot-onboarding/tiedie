@@ -11,64 +11,9 @@ from .scim import Device
 from dataclasses import dataclass
 
 
-class BleReadRequest:
-    service_uuid: str = ""
-    characteristic_uuid: str = ""
-
-    def __init__(self, service_uuid: str, characteristic_uuid: str):
-        self.service_uuid = service_uuid
-        self.characteristic_uuid = characteristic_uuid
-
-
-    def __json__(self):
-        return self.__dict__()
-    
-
-    def __dict__(self):
-        return {
-            "serviceUUID": self.service_uuid,
-            "characteristicUUID": self.characteristic_uuid
-        }
-
-
-class BleSubscribeRequest:
-    def __init__(self, serviceUUID: str, characteristicUUID: str):
-        self.serviceUUID = serviceUUID
-        self.characteristicUUID = characteristicUUID
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
-        }
-
-
-class BleConnectRequest:
-    def __init__(self, services: List[str], retries: int, retryMultipleAPs: bool):
-        self.services = services
-        self.retries = retries
-        self.retryMultipleAPs = retryMultipleAPs
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "services": [
-            {
-                "serviceID": service
-            } for service in self.services
-            ],
-            "retries": self.retries,
-            "retryMultipleAPs": self.retryMultipleAPs
-        }
+@dataclass
+class DataParameter:
+    device_id: str
 
 
 class BleDataParameter(DataParameter):
@@ -88,15 +33,13 @@ class BleDataParameter(DataParameter):
             "deviceId": self.device_id,
             "serviceUUID": self.serviceUUID,
             "charUUID": self.charUUID,
-            "flags": self.flags
+            "flags": self.flags if self.flags else []
         }
+    
 
-
-class BleWriteRequest:
-    def __init__(self, service_uuid, characteristic_uuid, value):
-        self.service_uuid = service_uuid
-        self.characteristic_uuid = characteristic_uuid
-        self.value = value
+class BleServicesRequest:
+    def __init__(self, services: List[str]):
+        self.services = services
 
 
     def __json__(self):
@@ -105,22 +48,24 @@ class BleWriteRequest:
 
     def __dict__(self):
         return {
-            "serviceUUID": self.service_uuid,
-            "characteristicUUID": self.characteristic_uuid,
-            "value": self.value
+            "services": [
+            {
+                "serviceID": service
+            } for service in self.services
+            ]
         }
+    
 
-
-class BleDiscoverResponse:
+class BleDiscoveServices:
     def __init__(self, services: List = []):
         self.services = services
 
 
-    def toParameterList(self, device_id: str) -> List[DataParameter]:
+    def toParameterList(self, device_id: str):
         parameters = []
         for service in self.services:
             for characteristic in service.get('characteristics'):
-                parameter = BleDataParameter(device_id, service.get('uuid'), characteristic.get('uuid'), characteristic.get('flags'))
+                parameter = BleDataParameter(device_id, service.get('serviceUUID'), characteristic.get('characteristicUUID'), characteristic.get('flags'))
                 parameters.append(parameter)
         return parameters
 
@@ -153,23 +98,38 @@ class BleDiscoverResponse:
         }
     
 
-class BleAdvertisementFilterType(Enum):
-    ALLOW = "allow"
-    DENY = "deny"
+class BleReadWriteRequest:
+    def __init__(self, service_uuid: str = "", characteristic_uuid: str = ""):
+        self.service_uuid = service_uuid
+        self.characteristic_uuid = characteristic_uuid
 
 
     def __json__(self):
-        return self.value
-   
-   
+        return self.__dict__()
+    
+
     def __dict__(self):
-        return self.value
+        return {
+            "serviceID": self.service_uuid,
+            "characteristicID": self.characteristic_uuid
+        }
 
 
-class BleAdvertisementFilter:
-    mac: str
-    adType: str
-    adData: str
+class BleSubscribeRequest:
+    def __init__(self, serviceUUID: str, characteristicUUID: str):
+        self.serviceUUID = serviceUUID
+        self.characteristicUUID = characteristicUUID
+
+
+    def __json__(self):
+        return self.__dict__()
+
+
+    def __dict__(self):
+        return {
+            "serviceID": self.serviceUUID,
+            "characteristicID": self.characteristicUUID
+        }
 
 
 class BleUnsubscribeRequest:
@@ -184,26 +144,32 @@ class BleUnsubscribeRequest:
 
     def __dict__(self):
         return {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
+            "serviceID": self.serviceUUID,
+            "characteristicID": self.characteristicUUID
         }
 
 
-class BleTopicType(Enum):
-    GATT = 'gatt'
-    ADVERTISEMENTS = 'advertisements'
-    CONNECTION = 'connection'
+class BleAdvertisementFilter:
+    mac: str
+    adType: str
+    adData: str
+
+
+class BleAdvertisementFilterType(Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+
 
     def __json__(self):
-        return self.__dict__()
-
-
+        return self.value
+   
+   
     def __dict__(self):
         return self.value
     
 
 class BleRegisterTopicRequest:
-    type: BleTopicType
+    type: BLETopicType
 
     def __init__(self, type):
         super().__init__()
@@ -221,14 +187,9 @@ class BleRegisterTopicRequest:
 
 
 class BleGattTopic(BleRegisterTopicRequest):
-    serviceUUID: str
-    characteristicUUID: str
-
-    def __init__(self, serviceUUID: str, characteristicUUID: str):
-        super().__init__(type=BleTopicType.GATT)
-        self.serviceUUID = serviceUUID
-        self.characteristicUUID = characteristicUUID
-
+    def __init__(self, data_parameter: BleDataParameter):
+        super().__init__(type=BLETopicType.GATT)
+        self.data_parameter = data_parameter
 
     def __json__(self):
         return self.__dict__()
@@ -237,8 +198,8 @@ class BleGattTopic(BleRegisterTopicRequest):
     def __dict__(self):
         parent_dict = super().__dict__()
         current_dict = {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
+            "serviceID": self.data_parameter.serviceUUID,
+            "characteristicID": self.data_parameter.charUUID
         }
         return {**parent_dict, **current_dict}
 
@@ -248,7 +209,7 @@ class BleAdvertisementTopic(BleRegisterTopicRequest):
     filters: List
 
     def __init__(self, filterType: str, filters: List):
-        super().__init__(type=BleTopicType.ADVERTISEMENTS)
+        super().__init__(type=BLETopicType.ADV)
         self.filterType = filterType
         self.filters = filters
 
@@ -261,14 +222,14 @@ class BleAdvertisementTopic(BleRegisterTopicRequest):
         parent_dict = super().__dict__()
         current_dict = {
             "filterType": self.filterType,
-            "filters": self.filters
+            "filters": self.filters if self.filters else []
         }
         return {**parent_dict, **current_dict}
 
 
 class BleConnectionTopic(BleRegisterTopicRequest):
     def __init__(self):
-        super().__init__(type=BleTopicType.CONNECTION)
+        super().__init__(type=BLETopicType.CONN)
 
 
     def __json__(self):
@@ -280,72 +241,31 @@ class BleConnectionTopic(BleRegisterTopicRequest):
     
 
 @dataclass
-class DataParameter:
-    """
-    Unique ID of the device
-    """
-    device_id: str
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "device_id": self.device_id
-        }
-
-
-@dataclass
 class RegistrationOptions:
-    devices: List[Device]
-    dataFormat: DataFormat
-
-    def __json__(self):
-        return self.__dict__()
-    
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat
-        }
+    type: BLETopicType = None
+    dataFormat: RegisterDataFormat = None
 
 
 @dataclass
 class DataRegistrationOptions(RegistrationOptions):
-    dataParameter: DataParameter
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat,
-            "dataParameter": self.dataParameter
-        }
+    def __init__(self, service: BleDataParameter, dataformat: RegisterDataFormat = None):
+        super().__init__(BLETopicType.GATT, dataformat)
+        self.service = service
 
 
 @dataclass
 class ConnectionRegistrationOptions(RegistrationOptions):
-    pass
+    def __init__(self, dataformat: RegisterDataFormat = None, deviceID: str = None):
+        super().__init__(BLETopicType.CONN, dataformat)
+        self.dataformat = dataformat
+        self.deviceID = deviceID
 
 
 @dataclass
 class AdvertisementRegistrationOptions(RegistrationOptions):
-    advertisementFilterType: BleAdvertisementFilterType
-    advertisementFilters: List[BleAdvertisementFilter]
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat,
-            "advertisementFilterType": self.advertisementFilterType,
-            "advertisementFilters": self.advertisementFilters
-        }
+    def __init__(self, filterType: BleAdvertisementFilterType = None, filters: List[BleAdvertisementFilter] = None, 
+                 dataformat: RegisterDataFormat = None, deviceID = None):
+        super().__init__(BLETopicType.ADV, dataformat)
+        self.deviceID = deviceID
+        self.filterType = filterType
+        self.filters = filters

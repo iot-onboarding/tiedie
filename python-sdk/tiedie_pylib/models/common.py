@@ -15,9 +15,26 @@ class Technology(Enum):
         return self.value
     
 
-class DataFormat(Enum):
-    JSON = "json"
-    XML = "xml"
+class SubscribeDataFormat(Enum):
+    PAYLOAD = "payload"
+    FULL = "full"
+
+    def __json__(self):
+        return self.value
+    
+    
+class RegisterDataFormat(Enum):
+    DEFAULT = "default"
+    PAYLOAD = "payload"
+
+    def __json__(self):
+        return self.value
+    
+
+class BLETopicType(Enum):
+    GATT = "gatt"
+    CONN = "connection_events"
+    ADV = "advertisements"
 
     def __json__(self):
         return self.value
@@ -39,27 +56,9 @@ class DataParameter:
     def __json__(self):
         return json.dumps(self.__dict__())
     
-
-class ListResponse:
-    totalResults: int
-    startIndex: int
-    itemsPerPage: int
-    resources: list
-
-    @classmethod
-    def from_json(cls, json_str):
-        return cls(json.loads(json_str))
-    
-    
-class EndpointAppListResponse:
-    totalResults: int
-    startIndex: int
-    itemsPerPage: int
-    resources: list
-    
     
 class SubscriptionOptions:
-    def __init__(self, topic: str = None, dataFormat: DataFormat = None, minReportTime: int = None, maxReportTime: int = None):
+    def __init__(self, topic: str = None, dataFormat: SubscribeDataFormat = SubscribeDataFormat.PAYLOAD, minReportTime: int = None, maxReportTime: int = None):
         self.topic = topic
         self.dataFormat = dataFormat
         self.minReportTime = minReportTime

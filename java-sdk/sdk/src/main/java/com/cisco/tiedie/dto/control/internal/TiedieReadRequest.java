@@ -20,7 +20,7 @@ public class TiedieReadRequest extends TiedieBasicRequest {
 
     public static TiedieReadRequest createRequest(DataParameter dataParameter, String controlAppId) {
         var tiedieRequest = new TiedieReadRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         if (dataParameter instanceof BleDataParameter) {
@@ -50,8 +50,8 @@ public class TiedieReadRequest extends TiedieBasicRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     private static class BleReadRequest {
-        private String serviceUUID;
-        private String characteristicUUID;
+        private String serviceID;
+        private String characteristicID;
     }
 
     @Data

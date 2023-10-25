@@ -8,7 +8,6 @@ import com.cisco.tiedie.auth.Authenticator;
 import com.cisco.tiedie.dto.HttpResponse;
 import com.cisco.tiedie.dto.scim.Device;
 import com.cisco.tiedie.dto.scim.EndpointApp;
-import com.cisco.tiedie.dto.scim.DeviceListResponse;
 import com.cisco.tiedie.dto.scim.EndpointAppListResponse;
 import okhttp3.MediaType;
 
@@ -62,24 +61,7 @@ public class OnboardingClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public HttpResponse<Device> getDevice(String id) throws IOException {
-        return get("/Devices/" + id, Device.class);
-    }
-
-    /**
-     * Get a list of Device objects.
-     *
-     * @return Device objects from the backend.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public HttpResponse<List<Device>> getDevices() throws IOException {
-        HttpResponse<DeviceListResponse> httpResponse = get("/Devices", DeviceListResponse.class);
-
-        HttpResponse<List<Device>> newResponse = new HttpResponse<>();
-        newResponse.setStatusCode(httpResponse.getStatusCode());
-        newResponse.setMessage(httpResponse.getMessage());
-        newResponse.setBody(httpResponse.getBody().getResources());
-
-        return newResponse;
+        return get("/Devices/" + id + "?onboardApp=" + authenticator.getClientID(), Device.class);
     }
 
     /**
@@ -90,7 +72,7 @@ public class OnboardingClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public HttpResponse<Void> deleteDevice(String id) throws IOException {
-        return delete("/Devices/" + id, Void.class);
+        return delete("/Devices/" + id + "?onboardApp=" + authenticator.getClientID(), Void.class);
     }
 
     public HttpResponse<List<EndpointApp>> getEndpointApps() throws IOException {

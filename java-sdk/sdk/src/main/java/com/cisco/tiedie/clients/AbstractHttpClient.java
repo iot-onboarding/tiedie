@@ -28,9 +28,12 @@ abstract class AbstractHttpClient {
 
     private final MediaType mediaType;
 
+    protected Authenticator authenticator;
+
     AbstractHttpClient(String baseUrl, MediaType mediaType, Authenticator authenticator) {
         this.baseUrl = baseUrl;
         this.mediaType = mediaType;
+        this.authenticator = authenticator;
 
         var httpClientBuilder = OkHttpSingleton.getInstance()
                 .newBuilder()
@@ -70,6 +73,7 @@ abstract class AbstractHttpClient {
                 tiedieResponse.setHttpMessage(response.message());
                 tiedieResponse.setBody(mapper.convertValue(tiedieResponse.getMap(), returnClass));
             } catch (IOException e) {
+                e.printStackTrace();
                 return tiedieResponse;
             }
             return tiedieResponse;

@@ -5,7 +5,6 @@
 
 import json
 import requests
-from requests.exceptions import HTTPError
 from enum import Enum
 
 
@@ -15,10 +14,10 @@ class TiedieStatus(Enum):
 
 
 class TiedieResponse:
-    def __init__(self, status, http_status_code, http_message, body, map: dict = None):
+    def __init__(self, status, httpStatusCode, httpMessage, body, map: dict = None):
         self.status = status
-        self.http_status_code = http_status_code
-        self.http_message = http_message
+        self.httpStatusCode = httpStatusCode
+        self.httpMessage = httpMessage
         self.body = body
         self.map = map
 
@@ -75,20 +74,21 @@ class AbstractHttpClient:
         return self.map_response(response, return_class)
     
 
-    def get(self, path, return_class):
+    def get(self, path, return_class, params=None):
         headers = {"Content-Type": self.media_type}
 
         response = self.http_client.get(
             self.base_url + path,
             headers=headers,
             verify=False,
+            params=params
             
         )
 
         return self.map_response(response, return_class)
     
 
-    def delete(self, path, return_class):
+    def delete(self, path, return_class, params=None):
         headers = {
             "Content-Type": self.media_type
         }
@@ -97,6 +97,7 @@ class AbstractHttpClient:
             self.base_url + path,
             headers=headers,
             verify=False,
+            params=params
         )
 
         return self.map_response(response, return_class)
@@ -130,8 +131,9 @@ class AbstractHttpClient:
             constructor_args = {k: v for k, v in json_data.items() if k in return_class.__init__.__code__.co_varnames}
             tiedie_response.body = return_class(**constructor_args)
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError or ValueError:
             pass
+
         except KeyError:
             tiedie_response = TiedieResponse(
                 TiedieStatus.FAILURE,
@@ -139,7 +141,5 @@ class AbstractHttpClient:
                 response.reason,
                 None
             )
-        except ValueError:  
-            pass
-
+            
         return tiedie_response

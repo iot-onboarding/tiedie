@@ -39,6 +39,10 @@
         <div class="row" th:if="${parameters == null}">
             <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/connect(id=${device.id})}"
                 th:object="${device}">
+                <div class="mb-3">
+                    <label for="serviceUUIDs" class="form-label">Service UUIDs (comma-separated)</label>
+                    <input type="text" class="form-control" id="serviceUUIDs" name="serviceUUIDs" required placeholder="Enter Service UUIDs">
+                </div>
                 <button type="submit" class="btn btn-primary">Connect</button>
             </form>
 
@@ -159,7 +163,7 @@
 
                 const writeButton = document.querySelector('#writeModal .btn-primary');
 
-                writeButton= () => {
+                writeButton.onclick = () => {
                     const value = document.getElementById("writeValue").value;
 
                     console.log("writeValue: " + value);
@@ -174,7 +178,7 @@
                         .then(response => response.json())
                         .then(data => {
                             console.log(data);
-                            document.getElementById(`value-${index}`).innerHTML = data.value;
+                            document.getElementById(`value-${index}`).innerHTML = value;
 
                             modal.hide();
                         });
@@ -204,7 +208,7 @@
 
             var topic = `data-app/${id}/connection`;
 
-            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+            var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
 
             ws.onopen = () => {
                 ws.send("");
