@@ -2,14 +2,21 @@
 # All rights reserved.
 # See license in distribution for details.
 
+"""
+
+This module defines a Flask-based SCIM API with user and endpoint 
+app management, authentication, and error handling.
+
+"""
+
 import uuid
+import datetime
+from functools import wraps
 from flask import Blueprint, abort, jsonify, make_response, request, current_app
 from sqlalchemy import select
-from functools import wraps
+from werkzeug.test import EnvironBuilder
 from database import db, session
 from models import EndpointApp, User, OnboardingAppKey
-from werkzeug.test import EnvironBuilder
-import datetime
 
 from util import make_hash
 
@@ -27,7 +34,6 @@ def authenticate_user(func):
         api_key = request.headers.get("X-Api-Key")
         if api_key and bool(OnboardingAppKey.query.filter_by(keyVal=api_key).first()):
             return func(*args, **kwargs)
-        else:
             return make_response(jsonify({"error": "Unauthorized"}), 403)
 
     return check_apikey
@@ -38,7 +44,10 @@ def authenticate_user(func):
 @scim_app.route('/Devices', methods=['POST'])
 @authenticate_user
 def scim_addusers():
-    """Create SCIM User"""
+    """
+    This code defines a SCIM API endpoint for creating users, 
+    extracts data from the request JSON, and stores user information in a database.
+    """
     # Get the request json and check if it is valid
     if not request.json:
         return make_response(
@@ -62,7 +71,8 @@ def scim_addusers():
         "deviceMacAddress")
     isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "isRandom")
-    separateBroadcastAddress = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    separateBroadcastAddress = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "separateBroadcastAddress", [])
     irk = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "irk", "")
@@ -148,7 +158,10 @@ def scim_addusers():
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
 def get_user(user_id):
-    """Get SCIM User"""
+    """ 
+    SCIM API: Retrieve user data by ID and onboardApp parameters. 
+    If not found, a "User not found" response with a status code of 404 is returned.
+    """
     onboarding_app = request.args["onboardApp"]
     user = User.query.filter_by(user_id=user_id).filter_by(endpointApps=onboarding_app).first()
     if not user:
@@ -212,7 +225,10 @@ def get_devices():
 @scim_app.route("/Devices/<string:user_id>", methods=["PUT"])
 @authenticate_user
 def update_user(user_id):
-    """Update SCIM User"""
+    """
+    Function to retrieve SCIM device data based on parameters like start index, count, and filters. 
+    It returns a JSON response with a list of serialized devices.
+    """
     if not request.json:
         return make_response(
             jsonify(
@@ -243,17 +259,22 @@ def update_user(user_id):
         user.id = request.json.get("id")
         user.deviceDisplayName = request.json.get("deviceDisplayName")
         user.adminState = request.json.get("adminState")
-        user.versionSupport = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        user.versionSupport = request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "versionSupport")
-        user.deviceMacAddress = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        user.deviceMacAddress = request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "deviceMacAddress")
         user.isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "isRandom")
-        user.pairingMethods = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        user.pairingMethods = request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingNull = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        user.pairingNull = request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingJustWorksKeys = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        user.pairingJustWorksKeys = request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
             "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"].get("key")
         user.pairingPassKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
             "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
@@ -357,7 +378,7 @@ def get_endpoints():
 @scim_app.route('/EndpointApps', methods=['POST'])
 @authenticate_user
 def create_endpoint():
-    """Create SCIM Endpoint"""
+    """ Creates SCIM endpoint app; checks validity, avoids duplicates, returns response. """
     if not request.json:
         return make_response(
             jsonify(
@@ -408,7 +429,7 @@ def create_endpoint():
 @scim_app.route("/EndpointApps/<string:id>", methods=["DELETE"])
 @authenticate_user
 def delete_endpoint(id):
-    """Delete SCIM Endpoint"""
+    """ Deletes SCIM endpoint app by ID, handles not-found case, returns responses. """
     endpoint_app = EndpointApp.query.get(id)
     if not endpoint_app:
         return make_response(
@@ -430,7 +451,7 @@ def delete_endpoint(id):
 @scim_app.route("/Bulk", methods=["POST"])
 @authenticate_user
 def bulk_command():
-    """SCIM Bulk"""
+    """ Processes SCIM bulk requests, handles operations, and returns summarized results. """
     if request.json is None:
         return make_response(
             jsonify(
@@ -454,7 +475,7 @@ def bulk_command():
             bulkID = op.get("bulkId")
 
             environ = EnvironBuilder(
-                path=requestpath, method=method, json=data, environ_base=request.environ).get_environ()
+                path=requestpath,method=method,json=data,environ_base=request.environ).get_environ()
 
             with current_app.request_context(environ):
                 try:

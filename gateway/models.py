@@ -2,13 +2,21 @@
 # All rights reserved.
 # See license in distribution for details.
 
+"""
+
+This script defines SQLAlchemy models for database interactions,
+representing users, endpoint applications, topics, and filters for a
+web application.
+
+"""
+
 from datetime import datetime
 from typing import Any, List, Optional
 
+import uuid
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-import uuid
 from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT
 from database import db
 
@@ -53,6 +61,7 @@ devices_endpoint_apps = db.Table(
 
 
 class User(db.Model):
+    """ Represent BLE device information and associated data fields. """
     __tablename__ = "bledevices"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -82,8 +91,9 @@ class User(db.Model):
     adv_topics = relationship("AdvTopic",
                               secondary=adv_topic_devices, back_populates="devices")
 
-    connection_topics: Mapped[List["ConnectionTopic"]] = relationship("ConnectionTopic",
-                                                                      secondary=connection_topic_devices, back_populates="devices")
+    connection_topics: Mapped[List["ConnectionTopic"]] = \
+        relationship("ConnectionTopic", secondary=connection_topic_devices,
+                     back_populates="devices")
 
     def __init__(
         self,
@@ -126,9 +136,10 @@ class User(db.Model):
         self.modTime = tCreated
 
     def __repr__(self):
-        return "<id {}>".format(self.id)
+        return f"<id {self.id}>"
 
     def serialize(self):
+        """serialize function"""
         response = {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
@@ -150,7 +161,6 @@ class User(db.Model):
         if self.irk:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "irk"] = self.irk
-            
         if self.separateBroadcastAddress:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "separateBroadcastAddress"] = self.separateBroadcastAddress
@@ -178,17 +188,23 @@ class User(db.Model):
         if self.endpointApps is not None:
             response["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
-            response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = {
+            response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
+                {
                 "applications": [{"value": app.id,
-                                  "$ref": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/scim/v2/EndpointApps/{app.id}"
+                                  "$ref":  f"https://{EXTERNAL_HOST}:" +
+                                  f"{EXTERNAL_PORT}/scim/v2/EndpointApps/" +
+                                  f"{app.id}"
                                   } for app in self.endpointApps],
-                "deviceControlEnterpriseEndpoint": f"https://{EXTERNAL_HOST}:{EXTERNAL_PORT}/control",
-                "telemetryEnterpriseEndpoint": f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
+                "deviceControlEnterpriseEndpoint":
+                    f"https://{EXTERNAL_HOST}:" +
+                    "{EXTERNAL_PORT}/control",
+                "telemetryEnterpriseEndpoint":
+                    f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
         return response
-    
 
 class EndpointApp(db.Model):
+    """ Store information about applications linked to BLE devices. """
     __tablename__ = "endpoint_app"
 
     id: Mapped[str] = mapped_column(
@@ -205,9 +221,10 @@ class EndpointApp(db.Model):
     is_admin: Mapped[bool] = mapped_column(Boolean(), default=False)
 
     def __repr__(self):
-        return "<id {}>".format(self.id)
+        return f"<id {self.id}>"
 
     def serialize(self):
+        """ Serialize function """
         return {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
             "id": self.id,
@@ -225,6 +242,7 @@ class EndpointApp(db.Model):
 
 
 class OnboardingAppKey(db.Model):
+    """ Store keys for onboarding applications. """
     __tablename__ = "onboardingapi_key"
 
     keyType = Column(String(), primary_key=True, unique=True)
@@ -236,6 +254,7 @@ class OnboardingAppKey(db.Model):
 
 
 class GattTopic(db.Model):
+    """ Define topics for GATT services and their data formats. """
     __tablename__ = "gatt_topics"
 
     topic = Column(String(), primary_key=True, unique=True)
@@ -254,10 +273,11 @@ class GattTopic(db.Model):
         self.devices.extend(devices)
 
     def __repr__(self):
-        return "<topic {}>".format(self.topic)
+        return f"<topic {self.topic}>"
 
 
 class AdvFilter(db.Model):
+    """ Define filters for BLE advertisement topics. """
     __tablename__ = "adv_filters"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -273,10 +293,11 @@ class AdvFilter(db.Model):
         self.ad_data_filter = ad_data_filter
 
     def __repr__(self):
-        return "<id {}>".format(self.id)
+        return f"<id {self.id}>"
 
 
 class AdvTopic(db.Model):
+    """ Represent topics for BLE advertisement data. """
     __tablename__ = "adv_topics"
 
     topic = Column(String(), primary_key=True, unique=True)
@@ -287,7 +308,9 @@ class AdvTopic(db.Model):
     filter_type = Column(String())
     filters: Mapped[List[AdvFilter]] = relationship()
 
-    def __init__(self, topic, data_format, devices: Optional[Any] = None, filter_type: Optional[String] = None, filters: Optional[List[AdvFilter]] = None):
+    def __init__(self, topic, data_format, devices: Optional[Any] = None,
+                 filter_type: Optional[String] = None,
+                 filters: Optional[List[AdvFilter]] = None):
         self.topic = topic
         self.data_format = data_format
         if devices is not None:
@@ -298,10 +321,11 @@ class AdvTopic(db.Model):
             self.filters.extend(filters)
 
     def __repr__(self):
-        return "<topic {}>".format(self.topic)
+        return f"<topic {self.topic}>"
 
 
 class ConnectionTopic(db.Model):
+    """ Define topics for BLE connection status updates. """
     __tablename__ = "connection_topics"
 
     topic = Column(String(), primary_key=True, unique=True)
@@ -316,6 +340,7 @@ class ConnectionTopic(db.Model):
 
 
 class DataAppTopic(db.Model):
+    """ Store topics associated with data applications. """
     __tablename__ = "data_app_topics"
 
     data_app_id = Column(String(), ForeignKey(
@@ -329,4 +354,4 @@ class DataAppTopic(db.Model):
         self.rw = 1
 
     def __repr__(self):
-        return "<data_app_id {}>".format(self.data_app_id)
+        return f"<data_app_id {self.data_app_id}>"

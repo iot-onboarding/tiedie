@@ -56,7 +56,7 @@ class GenericApp(threading.Thread):
         super().__init__()
 
     def event_handler(self, evt):
-        """ Public event handler to perform user actions. Meant to be overridden by child classes. """
+        """Public event handler to perform user actions. Meant to be overridden by child classes."""
 
     def _event_handler(self, evt):
         """ Private event handler to perform internal actions. """
@@ -82,7 +82,7 @@ class GenericApp(threading.Thread):
                 # On Windows hosts, timeout is needed in both threaded and non-threaded modes.
                 # On POSIX hosts, timeout is needed only in threaded mode.
                 # The timeout value is a tradeoff between CPU load and KeyboardInterrupt response time.
-                # timeout=None: minimal CPU usage, KeyboardInterrupt not recognized until the next event.
+            #timeout=None: minimal CPU usage, KeyboardInterrupt not recognized until the next event.
                 # timeout=0: maximal CPU usage, KeyboardInterrupt recognized immediately.
                 # See the documentation of Queue.get method for details.
                 evt = self.lib.get_event(timeout=0.1)
@@ -97,7 +97,7 @@ class GenericApp(threading.Thread):
                 # Get additional info from trace.
                 trace = traceback.extract_tb(sys.exc_info()[-1])[-3]
                 self.log.error("%s", err)
-                self.log.error("  File '%s', line %d, in %s", trace.filename, trace.lineno, trace.name)
+                self.log.error("  File '%s', line %d, in %s",trace.filename,trace.lineno,trace.name)
                 self.log.error("    %s", trace.line)
                 self._run = False
                 exit_code = -1
@@ -130,7 +130,8 @@ class BluetoothApp(GenericApp):
             version = "{major}.{minor}.{patch}".format(**vars(evt))
             self.log.info("Bluetooth stack booted: v%s-b%s", version, evt.build)
             if version != self.lib.bt.__version__:
-                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, self.lib.bt.__version__)
+                bt_vr = self.lib.bt.__version__
+                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
             # Get Bluetooth address
             _, self.address, self.address_type = self.lib.bt.system.get_identity_address()
             self.log.info("Bluetooth %s address: %s",
@@ -156,7 +157,8 @@ class BtMeshApp(GenericApp):
             version = "{major}.{minor}.{patch}".format(**vars(evt))
             self.log.info("Bluetooth stack booted: v%s-b%s", version, evt.build)
             if version != self.lib.bt.__version__:
-                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, self.lib.bt.__version__)
+                bt_vr = self.lib.bt.__version__
+                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
             # Initialize Bluetooth Mesh device
             self.lib.btmesh.node.init()
 
