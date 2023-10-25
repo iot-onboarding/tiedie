@@ -50,4 +50,7 @@ class Ieee11073Float(float):
         mantissa = int(mantissa)
         if sign == 1:
             mantissa = -1 * mantissa
-        return mantissa.to_bytes(3, byteorder='little', signed=True) + exponent.to_bytes(1, byteorder='little', signed=True)
+            mantissa_tobytes = mantissa.to_bytes(3, byteorder='little', signed=True)
+            exponent_tobytes = exponent.to_bytes(1, byteorder='little', signed=True)
+        return  mantissa_tobytes + exponent_tobytes
+    

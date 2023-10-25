@@ -2,6 +2,13 @@
 # All rights reserved.
 # See license in distribution for details.
 
+""" 
+
+This module integrates Flask, SQLAlchemy, and Paho MQTT for managing 
+Bluetooth Low Energy device data and MQTT communication in a project.
+
+"""
+
 from flask import current_app
 import paho.mqtt.client as mqtt
 from sqlalchemy import Column, func, and_, select
@@ -9,8 +16,13 @@ from database import db, session
 from models import AdvTopic, GattTopic, User
 from proto import data_app_pb2
 
+from app import app
 
 class AdvField:
+    """ 
+    Represents an advertising field with length, type, and data properties. 
+    It provides a method from_bytes for creating AdvField objects from bytes. 
+    """
     def __init__(self, length: int, type: str, data: str):
         self.length = length
         self.type = type
@@ -18,6 +30,7 @@ class AdvField:
 
     @staticmethod
     def from_bytes(seq: bytes):
+        """ function from_bytes """
         ads: list[AdvField] = []
 
         while seq:
@@ -34,6 +47,7 @@ class AdvField:
 
 
 def is_filter_match(value: str, filter: Column[str] | str) -> bool:
+    """ Checks if a value matches a filter (filter can contain wildcards). """
     if filter == "*":
         return True
 
@@ -54,6 +68,7 @@ def is_filter_match(value: str, filter: Column[str] | str) -> bool:
 
 
 def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) -> bool:
+    """ Determines if an advertisement is allowed based on the topic filters. """
     if len(topic.filters) == 0:
         return True
 
@@ -78,13 +93,17 @@ def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) ->
 
 
 class DataProducer:
+    """ 
+    Handles data production and publishing over MQTT. 
+    It has methods for publishing notifications, advertisements, and connection status. 
+    """
     mqtt_client: mqtt.Client
 
     def __init__(self, mqtt_client: mqtt.Client):
         self.mqtt_client = mqtt_client
 
-    def publish_notification(self, mac_address: str, service_uuid: str, char_uuid: str, value: bytes):
-        from app import app
+    def publish_notification(self,mac_address: str,service_uuid: str,char_uuid: str, value: bytes):
+        """ publish_notification function """
         with app.app_context():
             user = session.scalar(select(User)
                                   .join(GattTopic, User.gatt_topics)
@@ -110,7 +129,7 @@ class DataProducer:
                     topic.topic, ble_sub.SerializeToString())
 
     def publish_advertisement(self, evt):
-        from app import app
+        """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
         with app.app_context():
             user = session.scalar(select(User).filter(
                 func.lower(User.deviceMacAddress) == func.lower(evt.address)))
@@ -137,7 +156,7 @@ class DataProducer:
                         str(topic.topic), ble_adv.SerializeToString())
 
     def publish_connection_status(self, evt, address, connected: bool):
-        from app import app
+        """ Publishes BLE connection status updates to MQTT topics based on conditions. """
         with app.app_context():
             user = session.scalar(select(User).filter(
                 func.lower(User.deviceMacAddress) == func.lower(address)))

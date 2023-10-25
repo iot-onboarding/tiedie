@@ -2,6 +2,14 @@
 # All rights reserved.
 # See license in distribution for details.
 
+"""
+
+This script defines BLE communication. Manages device connections, 
+actions like scanning, reading/writing, and subscribing/unsubscribing 
+to characteristics.
+
+"""
+
 import uuid
 import threading
 from http import HTTPStatus
@@ -22,6 +30,7 @@ from silabs.common.util import BluetoothApp, get_connector
 
 
 class ConnectionRequest:
+    """ class containing attributes for a connection request """
     def __init__(self, address: str, handle: int, services: dict[str, Service]):
         self.address = address
         self.handle = handle
@@ -29,6 +38,7 @@ class ConnectionRequest:
 
 
 class AccessPoint(BluetoothApp):
+    """ Manages Bluetooth Low Energy (BLE) operations and connections."""
     operations: list[Operation] = []
 
     # map of addresses to connection handles
@@ -40,6 +50,7 @@ class AccessPoint(BluetoothApp):
         self.data_producer = data_producer
 
     def start(self):
+        """ Start accesspoint function """
         super().start()
 
     def connectable(self):
@@ -56,10 +67,14 @@ class AccessPoint(BluetoothApp):
     def connect(self, address, services, retries=3) -> tuple[Response, int]:
         """ Connect to a device """
         if not self.connectable():
-            return jsonify({"status": "FAILURE", "requestID": uuid.uuid4(), "reason": "max connections"}), HTTPStatus.BAD_REQUEST
+            reqstr = {"status": "FAILURE", "requestID": uuid.uuid4(), "reason": "max connections"}
+            jsonstring = jsonify(reqstr)
+            return jsonstring, HTTPStatus.BAD_REQUEST
 
         if address in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "requestID": uuid.uuid4(), "reason": "already connected"}), HTTPStatus.BAD_REQUEST
+            reqstr = {"status": "FAILURE", "requestID": uuid.uuid4(), "reason": "already connected"}
+            jsonstring = jsonify(reqstr)
+            return jsonstring, HTTPStatus.BAD_REQUEST
 
         operation = ConnectOperation(self.lib, self.data_producer, address, services, retries)
         self.operations.append(operation)
@@ -111,7 +126,7 @@ class AccessPoint(BluetoothApp):
 
         return operation.response()
 
-    def write(self, address: str, service_uuid: str, char_uuid: str, value: str) -> tuple[Response, int]:
+    def write(self, address:str, service_uuid:str, char_uuid:str, value:str) -> tuple[Response,int]:
         """ Read a characteristic of a device """
         if address not in self.conn_reqs:
             return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
@@ -164,7 +179,9 @@ class AccessPoint(BluetoothApp):
 
         # find the subscription operation
         for operation in self.operations:
-            if isinstance(operation, SubscribeOperation) and operation.handle == handle and operation.char_handle == characteristic.char_handle:
+            charhandle_match = operation.char_handle == characteristic.char_handle
+            chk_handle = operation.handle == handle
+            if isinstance(operation, SubscribeOperation) and chk_handle and charhandle_match:
                 operation.disable_notification()
                 return operation.response()
 
@@ -181,16 +198,19 @@ class AccessPoint(BluetoothApp):
         return operation.response()
 
     def bt_evt_system_boot(self, evt):
+        """ do a system boot and set configurations"""
         self.log.info("System booted")
         self.ready.set()
 
     def bt_evt_connection_closed(self, evt):
+        """ function bt_evt_connection_closed """
         for address, conn_req in self.conn_reqs.items():
             if conn_req.handle == evt.connection:
                 self.conn_reqs.pop(address)
                 break
 
     def event_handler(self, evt):
+        """ function to define actions based on different events """
         remove_ops: list[Operation] = []
 
         for operation in self.operations:
@@ -206,10 +226,12 @@ ble_app: AccessPoint = None  # type: ignore
 
 
 def create_ble_app(data_producer: DataProducer) -> AccessPoint:
+    """ function to create BLE app """
     connector = get_connector()
     ble_app = AccessPoint(connector, data_producer)
     return ble_app
 
 
 def get_ble_app() -> AccessPoint:
+    """ Retrieves the existing BLE application. """
     return ble_app

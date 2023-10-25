@@ -1,18 +1,27 @@
+
 # Copyright (c) 2023, Cisco and/or its affiliates.
 # All rights reserved.
 # See license in distribution for details.
 
+"""
+
+`ConnectOperation` class manages Bluetooth connections, handles events,
+provides response data, and is part of a larger system/application.
+
+"""
+
 from http import HTTPStatus
 from flask import Response, jsonify
-from ble_operations.operation import Operation
 import bgapi
+from operation import Operation
+
 
 from config import CONNECTION_TIMEOUT
 from data_producer import DataProducer
 
-
 class ConnectOperation(Operation):
-    def __init__(self, lib: bgapi.BGLib, data_producer: DataProducer, address: str, services, retries: int):
+    """ Connects to a device and manages connection status. """
+    def __init__(self,lib:bgapi.BGLib,data_producer:DataProducer,address:str,services,retries:int):
         super().__init__(lib)
         self.handle = 0
         self.address = address.lower()
@@ -21,9 +30,10 @@ class ConnectOperation(Operation):
         self.data_producer = data_producer
 
     def run(self):
+        """ Connects with retries using specified address type """
         address_type = self.lib.bt.gap.ADDRESS_TYPE_STATIC_ADDRESS  # type: ignore
 
-        if (self.__is_public_address(self.address)):
+        if self.__is_public_address(self.address):
             address_type = self.lib.bt.gap.ADDRESS_TYPE_PUBLIC_ADDRESS  # type: ignore
 
         retries = 0
@@ -35,7 +45,7 @@ class ConnectOperation(Operation):
             if not self.wait(timeout=CONNECTION_TIMEOUT):
                 retries += 1
                 self.log.warning(
-                    f"failed to open connection to {self.address}")
+                    "failed to open connection to %s", self.address)
                 self.lib.bt.connection.close(self.handle)  # type: ignore
             else:
                 break
@@ -45,12 +55,14 @@ class ConnectOperation(Operation):
             self.is_done = True
 
     def bt_evt_connection_opened(self, evt):
+        """ Handles connection opened event, logs it, and sets the status. """
         if self.handle == evt.connection:
-            self.log.info(f"Connection opened: {evt.address}")
+            self.log.info("Connection opened: %s",evt.address)
             self.data_producer.publish_connection_status(evt, self.address, True)
             self.set()
 
     def bt_evt_connection_closed(self, evt):
+        """ Handles connection closed event, logs it, and sets status if needed. """
         if self.handle == evt.connection:
             self.log.info(evt)
             self.data_producer.publish_connection_status(evt, self.address, False)
@@ -59,6 +71,7 @@ class ConnectOperation(Operation):
                 self.is_done = True
 
     def response(self) -> tuple[Response, int]:
+        """ Returns a success response with handle if set, otherwise failure. """
         if self.is_set():
             return jsonify({"status": "SUCCESS", "handle": self.handle}), HTTPStatus.OK
 
