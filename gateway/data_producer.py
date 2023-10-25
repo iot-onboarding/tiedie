@@ -16,13 +16,13 @@ from database import db, session
 from models import AdvTopic, GattTopic, User
 from proto import data_app_pb2
 
-from app import app
 
 class AdvField:
     """ 
     Represents an advertising field with length, type, and data properties. 
     It provides a method from_bytes for creating AdvField objects from bytes. 
     """
+
     def __init__(self, length: int, type: str, data: str):
         self.length = length
         self.type = type
@@ -102,8 +102,9 @@ class DataProducer:
     def __init__(self, mqtt_client: mqtt.Client):
         self.mqtt_client = mqtt_client
 
-    def publish_notification(self,mac_address: str,service_uuid: str,char_uuid: str, value: bytes):
+    def publish_notification(self, mac_address: str, service_uuid: str, char_uuid: str, value: bytes):
         """ publish_notification function """
+        from app import app
         with app.app_context():
             user = session.scalar(select(User)
                                   .join(GattTopic, User.gatt_topics)
@@ -130,6 +131,7 @@ class DataProducer:
 
     def publish_advertisement(self, evt):
         """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
+        from app import app
         with app.app_context():
             user = session.scalar(select(User).filter(
                 func.lower(User.deviceMacAddress) == func.lower(evt.address)))
