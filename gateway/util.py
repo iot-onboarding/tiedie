@@ -1,3 +1,5 @@
+""" Utility module """
+
 # Copyright (c) 2023, Cisco and/or its affiliates.
 # All rights reserved.
 # See license in distribution for details.
@@ -9,6 +11,7 @@ import hashlib
 SALT_LENGTH = 16
 HASH_FUNCTION = 'sha512'
 COST_FACTOR = 100000
+
 
 def make_hash(pwd: str):
     """ Hashes a password with PBKDF2 and returns a formatted hash. """

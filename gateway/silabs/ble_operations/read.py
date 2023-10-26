@@ -13,11 +13,13 @@ import uuid
 from http import HTTPStatus
 from flask import Response, jsonify
 import bgapi
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
 
 
 class ReadOperation(Operation):
     """ ReadOperation class for reading a BLE characteristic with response generation. """
+    value: str
+
     def __init__(self, lib: bgapi.BGLib, handle: int, char_handle: int):
         super().__init__(lib)
         self.handle = handle
@@ -26,7 +28,7 @@ class ReadOperation(Operation):
     def run(self):
         """ run function """
         self.log.info(
-            f"reading characteristic {self.char_handle} from {self.handle}")
+            "reading characteristic %d from %d", self.char_handle, self.handle)
         self.lib.bt.gatt.read_characteristic_value(  # type: ignore
             self.handle, self.char_handle)
 
@@ -50,7 +52,8 @@ class ReadOperation(Operation):
     def response(self) -> tuple[Response, int]:
         """ response function """
         if self.is_set():
-            json_arg = jsonify({"status": "SUCCESS", "requestID": uuid.uuid4(),"value": self.value})
+            json_arg = jsonify(
+                {"status": "SUCCESS", "requestID": uuid.uuid4(), "value": self.value})
             return json_arg, HTTPStatus.OK
 
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST

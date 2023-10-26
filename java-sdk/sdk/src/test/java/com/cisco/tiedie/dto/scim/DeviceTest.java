@@ -43,11 +43,13 @@ class DeviceTest {
         String json = mapper.writeValueAsString(device);
 
         String expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                +
                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"isRandom\" : false,\n" +
@@ -70,7 +72,8 @@ class DeviceTest {
         json = mapper.writeValueAsString(device);
 
         expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
@@ -86,7 +89,8 @@ class DeviceTest {
                 .dppExtension(DppExtension.builder()
                         .dppVersion(2)
                         .bootstrappingMethod(List.of("QR"))
-                        .bootstrapKey("MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=")
+                        .bootstrapKey(
+                                "MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=")
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .classChannel(Arrays.asList("81/1", "115/36"))
                         .serialNumber("4774LH2b4044")
@@ -96,13 +100,15 @@ class DeviceTest {
         json = mapper.writeValueAsString(device);
 
         expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
-                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n" +
+                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n"
+                +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"classChannel\" : [ \"81/1\", \"115/36\" ],\n" +
                 "    \"serialNumber\" : \"4774LH2b4044\"\n" +
@@ -127,11 +133,13 @@ class DeviceTest {
         String json = mapper.writeValueAsString(device);
 
         String expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                +
                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"isRandom\" : false,\n" +
@@ -149,11 +157,11 @@ class DeviceTest {
         zigbeeExtension.setDeviceEui64Address("50325FFFFEE76728");
         device.setZigbeeExtension(zigbeeExtension);
 
-
         json = mapper.writeValueAsString(device);
 
         expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
@@ -168,7 +176,8 @@ class DeviceTest {
         var dppExtension = new DppExtension();
         dppExtension.setDppVersion(2);
         dppExtension.setBootstrappingMethod(List.of("QR"));
-        dppExtension.setBootstrapKey("MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=");
+        dppExtension.setBootstrapKey(
+                "MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=");
         dppExtension.setDeviceMacAddress("AA:BB:CC:11:22:33");
         dppExtension.setClassChannel(Arrays.asList("81/1", "115/36"));
         dppExtension.setSerialNumber("4774LH2b4044");
@@ -176,13 +185,15 @@ class DeviceTest {
         json = mapper.writeValueAsString(device);
 
         expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
-                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n" +
+                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n"
+                +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"classChannel\" : [ \"81/1\", \"115/36\" ],\n" +
                 "    \"serialNumber\" : \"4774LH2b4044\"\n" +
@@ -195,11 +206,13 @@ class DeviceTest {
     @DisplayName("Test device parsing")
     void testDeviceParsing() throws JsonProcessingException {
         String json = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                +
                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"isRandom\" : false,\n" +
@@ -225,7 +238,8 @@ class DeviceTest {
         assertEquals(expected, device);
 
         json = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
@@ -248,13 +262,15 @@ class DeviceTest {
         assertEquals(expected, device);
 
         json = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
-                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n" +
+                "    \"bootstrapKey\" : \"MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=\",\n"
+                +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"classChannel\" : [ \"81/1\", \"115/36\" ],\n" +
                 "    \"serialNumber\" : \"4774LH2b4044\"\n" +
@@ -269,7 +285,8 @@ class DeviceTest {
                 .dppExtension(DppExtension.builder()
                         .dppVersion(2)
                         .bootstrappingMethod(List.of("QR"))
-                        .bootstrapKey("MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=")
+                        .bootstrapKey(
+                                "MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADURzxmttZoIRIPWGoQMV00XHWCAQIhXruVWOz0NjlkIA=")
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .classChannel(Arrays.asList("81/1", "115/36"))
                         .serialNumber("4774LH2b4044")
@@ -297,18 +314,18 @@ class DeviceTest {
                 .endpointAppsExtension(
                         new EndpointAppsExtension(List.of(
                                 EndpointApp.builder().id(controlAppId).build(),
-                                EndpointApp.builder().id(dataAppId).build()
-                        ))
-                )
+                                EndpointApp.builder().id(dataAppId).build())))
                 .build();
 
         var json = mapper.writeValueAsString(device);
         var expected = "{\n" +
-                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device\" ],\n" +
+                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device\" ],\n"
+                +
                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                 "  \"adminState\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                +
                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
                 "    \"isRandom\" : false,\n" +

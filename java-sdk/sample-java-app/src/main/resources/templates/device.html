@@ -159,7 +159,7 @@
 
                 const writeButton = document.querySelector('#writeModal .btn-primary');
 
-                writeButton= () => {
+                writeButton.onclick = () => {
                     const value = document.getElementById("writeValue").value;
 
                     console.log("writeValue: " + value);

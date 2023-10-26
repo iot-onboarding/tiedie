@@ -43,9 +43,11 @@ LOG_FORMAT = "%(asctime)s: %(name)s %(levelname)s - %(message)s"
 BT_XAPI = os.path.join(os.path.dirname(__file__), "../api/sl_bt.xapi")
 BTMESH_XAPI = os.path.join(os.path.dirname(__file__), "../api/sl_btmesh.xapi")
 
+
 class GenericApp(threading.Thread):
     """ Generic application class. """
     _id = itertools.count(0)
+
     def __init__(self, connector, apis):
         self.id = next(self._id)
         self.lib = bgapi.BGLib(connector, apis)
@@ -82,7 +84,7 @@ class GenericApp(threading.Thread):
                 # On Windows hosts, timeout is needed in both threaded and non-threaded modes.
                 # On POSIX hosts, timeout is needed only in threaded mode.
                 # The timeout value is a tradeoff between CPU load and KeyboardInterrupt response time.
-            #timeout=None: minimal CPU usage, KeyboardInterrupt not recognized until the next event.
+                # timeout=None: minimal CPU usage, KeyboardInterrupt not recognized until the next event.
                 # timeout=0: maximal CPU usage, KeyboardInterrupt recognized immediately.
                 # See the documentation of Queue.get method for details.
                 evt = self.lib.get_event(timeout=0.1)
@@ -97,7 +99,8 @@ class GenericApp(threading.Thread):
                 # Get additional info from trace.
                 trace = traceback.extract_tb(sys.exc_info()[-1])[-3]
                 self.log.error("%s", err)
-                self.log.error("  File '%s', line %d, in %s",trace.filename,trace.lineno,trace.name)
+                self.log.error("  File '%s', line %d, in %s",
+                               trace.filename, trace.lineno, trace.name)
                 self.log.error("    %s", trace.line)
                 self._run = False
                 exit_code = -1
@@ -116,8 +119,10 @@ class GenericApp(threading.Thread):
     def reset(self):
         """ Reset device, meant to be overridden by child classes. """
 
+
 class BluetoothApp(GenericApp):
     """ Application class for Bluetooth devices. """
+
     def __init__(self, connector, apis=BT_XAPI):
         self.address = None
         self.address_type = None
@@ -128,15 +133,17 @@ class BluetoothApp(GenericApp):
         if evt == "bt_evt_system_boot":
             # Check Bluetooth stack version
             version = "{major}.{minor}.{patch}".format(**vars(evt))
-            self.log.info("Bluetooth stack booted: v%s-b%s", version, evt.build)
+            self.log.info("Bluetooth stack booted: v%s-b%s",
+                          version, evt.build)
             if version != self.lib.bt.__version__:
                 bt_vr = self.lib.bt.__version__
-                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
+                self.log.warning(
+                    "BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
             # Get Bluetooth address
             _, self.address, self.address_type = self.lib.bt.system.get_identity_address()
             self.log.info("Bluetooth %s address: %s",
-                "static random" if self.address_type else "public device",
-                self.address)
+                          "static random" if self.address_type else "public device",
+                          self.address)
 
     def reset(self):
         """ Reset Bluetooth device. """
@@ -145,8 +152,10 @@ class BluetoothApp(GenericApp):
             # Use the system hello command to synchronize the CPC communication with the target
             self.lib.bt.system.hello()
 
+
 class BtMeshApp(GenericApp):
     """ Application class for Bluetooth mesh devices """
+
     def __init__(self, connector, apis=[BT_XAPI, BTMESH_XAPI]):
         super().__init__(connector=connector, apis=apis)
 
@@ -155,10 +164,12 @@ class BtMeshApp(GenericApp):
         if evt == "bt_evt_system_boot":
             # Check Bluetooth stack version
             version = "{major}.{minor}.{patch}".format(**vars(evt))
-            self.log.info("Bluetooth stack booted: v%s-b%s", version, evt.build)
+            self.log.info("Bluetooth stack booted: v%s-b%s",
+                          version, evt.build)
             if version != self.lib.bt.__version__:
                 bt_vr = self.lib.bt.__version__
-                self.log.warning("BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
+                self.log.warning(
+                    "BGAPI version mismatch: %s (target) != %s (host)", version, bt_vr)
             # Initialize Bluetooth Mesh device
             self.lib.btmesh.node.init()
 
@@ -166,12 +177,15 @@ class BtMeshApp(GenericApp):
         """ Reset for Bluetooth mesh device """
         self.lib.bt.system.reset(self.lib.bt.system.BOOT_MODE_BOOT_MODE_NORMAL)
 
+
 class CustomHelpFormatter(argparse.ArgumentDefaultsHelpFormatter,
                           argparse.RawDescriptionHelpFormatter):
     """ Combination of help formatters. """
 
+
 class ArgumentParser(argparse.ArgumentParser):
     """ Custom argument parser for GenericApp and its derivatives """
+
     def __init__(self, *args, single_mode=True, epilog=None, formatter_class=CustomHelpFormatter, **kwargs):
         self.single_mode = single_mode
         self.cpc_options = 'common.cpc_connector' in sys.modules
@@ -231,6 +245,12 @@ class ArgumentParser(argparse.ArgumentParser):
             choices=logging._nameToLevel.keys(),
             help="Log level",
             default="INFO")
+        self.add_argument(
+            "--device",
+            choices=["silabs", "mock"],
+            help="Device",
+            default="silabs"
+        )
 
     def parse_args(self, *args, **kwargs):
         """ Implement special argument parsing rules """
@@ -255,36 +275,44 @@ class ArgumentParser(argparse.ArgumentParser):
             args.cpc = ["cpcd_0"]
         if args.cpc and not os.path.exists(args.cpc_lib_path):
             self.print_usage()
-            print(f"{self.prog}: error: CPC library doesn't exist at {args.cpc_lib_path}")
+            print(
+                f"{self.prog}: error: CPC library doesn't exist at {args.cpc_lib_path}")
             sys.exit(-1)
         if args.cpc and args.conn and args.single_mode:
             self.print_usage()
             print(f"{self.prog}: error: Too many connections specified:"
-                f" -c {args.cpc[0]}, {args.conn}")
+                  f" -c {args.cpc[0]}, {args.conn}")
             sys.exit(-1)
         if args.conn and args.single_mode:
             # Use list representation in single mode too
             args.conn = [args.conn]
+
+        if args.device != "silabs":
+            return args
+
         if not args.conn and not args.cpc:
             # Try to autodetect serial device if no input is provided
             args.conn = get_device_list()
             if not args.conn:
                 self.print_usage()
                 print(f"{self.prog}: error: No serial device found."
-                    " Please specify connection explicitly.")
+                      " Please specify connection explicitly.")
                 sys.exit(-1)
             elif args.single_mode and len(args.conn) > 1:
                 self.print_usage()
                 print(f"{self.prog}: error: {len(args.conn)} serial devices found:"
-                    f"{', '.join(args.conn)}. Please specify connection explicitly.")
+                      f"{', '.join(args.conn)}. Please specify connection explicitly.")
                 sys.exit(-1)
         return args
+
 
 def get_connector(args=None):
     """ Return CPC, serial or socket connector instance from arguments. """
     if args is None:
         args = ArgumentParser().parse_args()
     connector = []
+    if args.device != "silabs":
+        return None
     if args.cpc:
         for cpc in args.cpc:
             try:
@@ -303,6 +331,7 @@ def get_connector(args=None):
         return connector[0]
     return connector
 
+
 def get_device_list():
     """ Find Segger J-Link devices based on USB vendor ID. """
     device_list = []
@@ -310,6 +339,7 @@ def get_device_list():
         if com.vid == 0x1366:
             device_list.append(com.device)
     return device_list
+
 
 def connector_from_str(param):
     """ Return a serial or socket connector instance from a string parameter.
@@ -327,6 +357,7 @@ def connector_from_str(param):
         # Assume serial port.
         connector_type = bgapi.SerialConnector
     return connector_type(param)
+
 
 def find_service_in_advertisement(adv_data, uuid):
     """ Find service with the given UUID in the advertising data. """

@@ -24,7 +24,7 @@ class Operation(threading.Event):
 
     def run(self):
         """ run function """
-        pass
+        raise NotImplementedError()
 
     def handle_event(self, evt):
         """ handle_event function """

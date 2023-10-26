@@ -25,6 +25,16 @@ public class BleDataParameter extends DataParameter {
     private List<String> flags;
 
     /**
+     * Create BLE parameter to be used for service discovery.
+     * 
+     * @param serviceUUID BLE service UUID
+     */
+    public BleDataParameter(String serviceUUID) {
+        super(null);
+        this.serviceUUID = serviceUUID;
+    }
+
+    /**
      * Create BLE parameters to be used for the read/write operation.
      *
      * @param deviceId    Device ID

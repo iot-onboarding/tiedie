@@ -12,15 +12,16 @@ app management, authentication, and error handling.
 import uuid
 import datetime
 from functools import wraps
-from flask import Blueprint, abort, jsonify, make_response, request, current_app
+from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from database import db, session
+from database import session
 from models import EndpointApp, User, OnboardingAppKey
 
 from util import make_hash
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
+
 
 def authenticate_user(func):
     """Verify x-api-key"""
@@ -34,7 +35,8 @@ def authenticate_user(func):
         api_key = request.headers.get("X-Api-Key")
         if api_key and bool(OnboardingAppKey.query.filter_by(keyVal=api_key).first()):
             return func(*args, **kwargs)
-            return make_response(jsonify({"error": "Unauthorized"}), 403)
+
+        return make_response(jsonify({"error": "Unauthorized"}), 403)
 
     return check_apikey
 
@@ -63,55 +65,55 @@ def scim_addusers():
         )
 
     schemas = request.json.get("schemas")
-    deviceDisplayName = request.json.get("deviceDisplayName")
-    adminState = request.json.get("adminState")
-    versionSupport = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    device_display_name = request.json.get("deviceDisplayName")
+    admin_state = request.json.get("adminState")
+    version_support = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "versionSupport")
-    deviceMacAddress = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    device_mac_address = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "deviceMacAddress")
-    isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    is_random = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "isRandom")
-    separateBroadcastAddress = request.json[
+    separate_broadcast_address = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "separateBroadcastAddress", [])
     irk = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "irk", "")
-    pairingMethods = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    pairing_methods = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "pairingMethods", [])
-    pairingNull = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    pairing_null = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-    pairingJustWorks = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    pairing_just_works = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device")
-    pairingJustWorksKeys = None
-    pairingPassKey = None
-    pairingOOBKey = None
-    pairingOOBRN = None
+    pairing_just_works_key = None
+    pairing_pass_key = None
+    pairing_oob_key = None
+    pairing_oobrn = None
 
     endpoint_apps = None
-    endpointAppsExt = request.json.get(
+    endpoint_apps_ext = request.json.get(
         "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device", None)
-    if endpointAppsExt is not None:
-        applications = endpointAppsExt.get("applications")
+    if endpoint_apps_ext is not None:
+        applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
 
-    if pairingJustWorks:
-        pairingJustWorksKeys = pairingJustWorks.get("key")
-    pairingPass = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    if pairing_just_works:
+        pairing_just_works_key = pairing_just_works.get("key")
+    pairing_pass = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device")
-    if pairingPass:
-        pairingPassKey = pairingPass.get("key")
+    if pairing_pass:
+        pairing_pass_key = pairing_pass.get("key")
     pairing = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device")
     if pairing:
-        pairingOOBKey = pairing.get("key")
-        pairingOOBRN = pairing.get("randNumber")
-    deviceID = request.json.get("id")
+        pairing_oob_key = pairing.get("key")
+        pairing_oobrn = pairing.get("randNumber")
+    device_id = request.json.get("id")
 
     existing_device = User.query.filter_by(
-        deviceMacAddress=deviceMacAddress).first()
+        device_mac_address=device_mac_address).first()
 
     if existing_device:
         return make_response(
@@ -127,23 +129,23 @@ def scim_addusers():
 
     try:
         user = User(
-            id=deviceID,
+            device_id=device_id,
             schemas=schemas,
-            deviceDisplayName=deviceDisplayName,
-            adminState=adminState,
-            versionSupport=versionSupport,
-            deviceMacAddress=deviceMacAddress,
-            isRandom=isRandom,
-            separateBroadcastAddress=separateBroadcastAddress,
+            device_display_name=device_display_name,
+            admin_state=admin_state,
+            version_support=version_support,
+            device_mac_address=device_mac_address,
+            is_random=is_random,
+            separate_broadcast_address=separate_broadcast_address,
             irk=irk,
-            pairingMethods=pairingMethods,
-            pairingNull=pairingNull,
-            pairingJustWorksKeys=pairingJustWorksKeys,
-            pairingPassKey=pairingPassKey,
-            pairingOOBKey=pairingOOBKey,
-            pairingOOBRN=pairingOOBRN,
-            endpointApps=endpoint_apps,
-            tCreated=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            pairing_methods=pairing_methods,
+            pairing_null=pairing_null,
+            pairing_just_works_keys=pairing_just_works_key,
+            pairing_pass_key=pairing_pass_key,
+            pairing_oob_key=pairing_oob_key,
+            pairing_oobrn=pairing_oobrn,
+            endpoint_apps=endpoint_apps,
+            created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
         session.add(user)
 
@@ -153,8 +155,6 @@ def scim_addusers():
         return str(e)
 
 
-
-
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
 def get_user(user_id):
@@ -162,8 +162,7 @@ def get_user(user_id):
     SCIM API: Retrieve user data by ID and onboardApp parameters. 
     If not found, a "User not found" response with a status code of 404 is returned.
     """
-    onboarding_app = request.args["onboardApp"]
-    user = User.query.filter_by(user_id=user_id).filter_by(endpointApps=onboarding_app).first()
+    user = User.query.get(user_id)
     if not user:
         return make_response(
             jsonify(
@@ -195,7 +194,7 @@ def get_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        users = User.query.filter_by(deviceMacAddress=filter_value).first()
+        users = User.query.filter_by(device_mac_address=filter_value).first()
 
         if not users:
             users = []
@@ -242,7 +241,7 @@ def update_user(user_id):
             400,
         )
 
-    user = User.query.get(user_id)
+    user: User = User.query.get(user_id)
 
     if not user:
         return make_response(
@@ -255,38 +254,38 @@ def update_user(user_id):
             ),
             404,
         )
-    else:
-        user.id = request.json.get("id")
-        user.deviceDisplayName = request.json.get("deviceDisplayName")
-        user.adminState = request.json.get("adminState")
-        user.versionSupport = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "versionSupport")
-        user.deviceMacAddress = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "deviceMacAddress")
-        user.isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "isRandom")
-        user.pairingMethods = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingNull = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingJustWorksKeys = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"].get("key")
-        user.pairingPassKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
-        user.pairingOOBKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
-        user.pairingOOBRN = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("randNumber")
-        user.modTime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        session.commit()
-        return make_response(jsonify(user.serialize()), 200)
-    
+    user.id = request.json.get("id")
+    user.device_display_name = request.json.get("deviceDisplayName")
+    user.admin_state = request.json.get("adminState")
+    user.version_support = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "versionSupport")
+    user.device_mac_address = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "deviceMacAddress")
+    user.is_random = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "isRandom")
+    user.pairing_methods = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
+    user.pairing_null = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
+    user.pairing_just_works_key = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"].get("key")
+    user.pairing_pass_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
+    user.pairing_oob_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
+    user.pairing_oobrn = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("randNumber")
+    user.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    session.commit()
+    return make_response(jsonify(user.serialize()), 200)
+
 
 @scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
 @authenticate_user
@@ -304,17 +303,18 @@ def delete_user(user_id):
             ),
             404,
         )
-    else:
-        session.delete(user)
-        session.commit()
-        return make_response("", 204)
+
+    session.delete(user)
+    session.commit()
+    return make_response("", 204)
 
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
 @authenticate_user
-def get_endpoint(id):
+def get_endpoint(device_id):
     """Get SCIM Endpoint"""
-    endpoint_app = session.scalar(select(EndpointApp).filter_by(id=id))
+    endpoint_app = session.scalar(
+        select(EndpointApp).filter_by(id=device_id))
     if not endpoint_app:
         return make_response(
             jsonify(
@@ -326,8 +326,8 @@ def get_endpoint(id):
             ),
             404,
         )
-    else:
-        return make_response(jsonify(endpoint_app.serialize()), 200)
+
+    return make_response(jsonify(endpoint_app.serialize()), 200)
 
 
 @scim_app.route("/EndpointApps", methods=["GET"])
@@ -428,9 +428,9 @@ def create_endpoint():
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["DELETE"])
 @authenticate_user
-def delete_endpoint(id):
+def delete_endpoint(device_id):
     """ Deletes SCIM endpoint app by ID, handles not-found case, returns responses. """
-    endpoint_app = EndpointApp.query.get(id)
+    endpoint_app = EndpointApp.query.get(device_id)
     if not endpoint_app:
         return make_response(
             jsonify(
@@ -442,10 +442,10 @@ def delete_endpoint(id):
             ),
             404,
         )
-    else:
-        session.delete(endpoint_app)
-        session.commit()
-        return make_response("", 204)
+
+    session.delete(endpoint_app)
+    session.commit()
+    return make_response("", 204)
 
 
 @scim_app.route("/Bulk", methods=["POST"])
@@ -472,10 +472,14 @@ def bulk_command():
             requestpath = op["path"]
             method = op["method"]
             data = op.get("data")
-            bulkID = op.get("bulkId")
+            bulk_id = op.get("bulkId")
 
             environ = EnvironBuilder(
-                path=requestpath,method=method,json=data,environ_base=request.environ).get_environ()
+                path=requestpath,
+                method=method,
+                json=data,
+                environ_base=request.environ
+            ).get_environ()
 
             with current_app.request_context(environ):
                 try:
@@ -497,8 +501,8 @@ def bulk_command():
             if response.json is not None:
                 json = dict(response.json)
                 json["operation"] = op["operation"]
-                if bulkID is not None:
-                    results.append({bulkID: json})
+                if bulk_id is not None:
+                    results.append({bulk_id: json})
                 results.append(json)
 
                 if json["status"] == "FAILURE":
@@ -506,15 +510,14 @@ def bulk_command():
 
         return make_response(jsonify({"status": "SUCCESS", "operations": results}), 200)
 
-    else:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+    return make_response(
+        jsonify(
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
+                "scimType": "invalidSyntax",
+                "detail": "Request body is not valid JSON.",
+                "status": 400,
+            }
+        ),
+        400,
+    )

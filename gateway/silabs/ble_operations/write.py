@@ -14,10 +14,12 @@ import uuid
 from http import HTTPStatus
 from flask import Response, jsonify
 import bgapi
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
+
 
 class WriteOperation(Operation):
     """ Handles writing a value to a BLE characteristic. """
+
     def __init__(self, lib: bgapi.BGLib, handle: int, char_handle: int, value: str):
         super().__init__(lib)
         self.handle = handle
@@ -28,7 +30,7 @@ class WriteOperation(Operation):
     def run(self):
         """ function run """
         self.log.info(
-            f"writing characteristic {self.char_handle} from {self.handle}")
+            "writing characteristic %d from %d", self.char_handle, self.handle)
         self.lib.bt.gatt.write_characteristic_value(  # type: ignore
             self.handle, self.char_handle, self.value_bytes)
 
@@ -43,7 +45,8 @@ class WriteOperation(Operation):
 
     def response(self) -> tuple[Response, int]:
         """ Generates a response based on the operation's state and outcome. """
-        ret_json = {"status": "SUCCESS", "requestID": uuid.uuid4(), "value": self.value}
+        ret_json = {"status": "SUCCESS", "requestID": uuid.uuid4(),
+                    "value": self.value}
         if self.is_set():
             return jsonify(ret_json), HTTPStatus.OK
 

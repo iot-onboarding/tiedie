@@ -12,7 +12,7 @@ along with an operation for discovering these attributes in BLE devices.
 import uuid
 from http import HTTPStatus
 from flask import Response, jsonify
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
 
 
 class Service:
@@ -21,16 +21,18 @@ class Service:
     with a UUID and a service handle, containing characteristics as a
     dictionary.
     """
-    def __init__(self, uuid: str, service_handle: int):
-        self.uuid = uuid
+
+    def __init__(self, service_id: str, service_handle: int):
+        self.uuid = service_id
         self.service_handle = service_handle
         self.characteristics: dict[str, Characteristic] = {}
 
 
 class Characteristic:
     """ Represents BLE characteristic with UUID, handle, and properties info. """
-    def __init__(self, uuid: str, char_handle: int, properties: int):
-        self.uuid = uuid
+
+    def __init__(self, characteristic_id: str, char_handle: int, properties: int):
+        self.uuid = characteristic_id
         self.char_handle = char_handle
 
         self.properties: list[str] = []
@@ -54,13 +56,19 @@ class Characteristic:
 
 class Descriptor:
     """ Class for BLE descriptor with UUID and handle attributes. """
-    def __init__(self, uuid: str, desc_handle: int):
-        self.uuid = uuid
+
+    def __init__(self, descriptor_id: str, desc_handle: int):
+        self.uuid = descriptor_id
         self.desc_handle = desc_handle
 
 
 class DiscoverOperation(Operation):
     """ This class discovers BLE services, characteristics, and descriptors using callbacks. """
+
+    current_service: Service
+    current_characteristic: Characteristic
+    result: int
+
     def __init__(self, lib, handle: int, retries: int = 3, services=None):
         super().__init__(lib)
         self.handle = handle
@@ -79,7 +87,7 @@ class DiscoverOperation(Operation):
         for _ in range(self.retries + 1):
 
             if self.result != 0:
-                self.log.error(f"failed to discover services: {self.result}")
+                self.log.error("failed to discover services: %d", self.result)
                 continue
 
             for service in self.services.values():
@@ -91,7 +99,7 @@ class DiscoverOperation(Operation):
 
                 if self.result != 0:
                     self.log.error(
-                        f"failed to discover characteristics: {self.result}")
+                        "failed to discover characteristics: %d", self.result)
                     continue
 
                 for characteristic in service.characteristics.values():
@@ -103,7 +111,7 @@ class DiscoverOperation(Operation):
 
                     if self.result != 0:
                         self.log.error(
-                            f"failed to discover descriptors: {self.result}")
+                            "failed to discover descriptors: %d", self.result)
                         continue
 
             self.is_done = True
@@ -114,25 +122,25 @@ class DiscoverOperation(Operation):
     def bt_evt_gatt_service(self, evt):
         """ Processes Bluetooth GATT service discovery event, stores discovered services. """
         if evt.connection == self.handle:
-            uuid = evt.uuid[::-1].hex()
+            service_id = evt.uuid[::-1].hex()
 
-            self.services[uuid] = Service(uuid, evt.service)
+            self.services[service_id] = Service(service_id, evt.service)
 
     def bt_evt_gatt_characteristic(self, evt):
         """ Handles Bluetooth GATT characteristic discovery, storing UUID and properties. """
         if evt.connection == self.handle:
-            uuid = evt.uuid[::-1].hex()
+            characteristic_id = evt.uuid[::-1].hex()
 
-            self.current_service.characteristics[uuid] = Characteristic(
-                uuid, evt.characteristic, evt.properties)
+            self.current_service.characteristics[characteristic_id] = Characteristic(
+                characteristic_id, evt.characteristic, evt.properties)
 
     def bt_evt_gatt_descriptor(self, evt):
         """ Handles Bluetooth GATT descriptor discovery, storing UUID and descriptor handle. """
         if evt.connection == self.handle:
-            uuid = evt.uuid[::-1].hex()
+            descriptor_id = evt.uuid[::-1].hex()
 
-            self.current_characteristic.descriptors[uuid] = Descriptor(
-                uuid, evt.descriptor)
+            self.current_characteristic.descriptors[descriptor_id] = Descriptor(
+                descriptor_id, evt.descriptor)
 
     def bt_evt_gatt_procedure_completed(self, evt):
         """ bt_evt_gatt_procedure_completed function """
@@ -160,8 +168,8 @@ class DiscoverOperation(Operation):
                             ],
                         } for characteristic in service.characteristics.values()
                     ],
-                } for service in self.services.values() \
-                if self.requested_services is None or \
+                } for service in self.services.values()
+                if self.requested_services is None or
                 service.uuid in self.requested_services
             ]
         }), HTTPStatus.OK
