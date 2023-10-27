@@ -1,3 +1,10 @@
+<!--
+Copyright (c) 2023, Cisco and/or its affiliates.
+All rights reserved.
+See LICENSE file in this distribution.
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Getting Started
 
 This is an example of how the TieDie Java SDK can be used to develop an application. 
