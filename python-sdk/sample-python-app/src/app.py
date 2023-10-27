@@ -1,7 +1,8 @@
 #
 # Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
-# See accompanying LICENSE file in this distribution
+# See LICENSE file in this distribution.
+# SPDX-License-Identifier: Apache-2.0
 #
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))

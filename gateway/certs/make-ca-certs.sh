@@ -1,7 +1,8 @@
 #!/bin/sh
 # Copyright (c) 2023 Cisco Systems and/or its affiliates
 # All Rights Reserved.
-# See LICENSE in distribution for licensing information.
+# See LICENSE file in this distribution.
+# SPDX-License-Identifier: Apache-2.0
 
 # Simple script to generate CA certificates
 
