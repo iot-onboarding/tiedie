@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright (c) 2023 Cisco Systems and/or its affiliates
+# All Rights Reserved.
+# See LICENSE file in this distribution.
+# SPDX-License-Identifier: Apache-2.0
 
 name=$1
 
