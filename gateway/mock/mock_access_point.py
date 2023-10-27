@@ -217,7 +217,7 @@ class MockAccessPoint(AccessPoint):
                 address,
                 service_uuid,
                 char_uuid,
-                (0xFFFF0000 + random.randint(0, 0xFFFF)).to_bytes(4)
+                (0xFFFF0000 + random.randint(0, 0xFFFF)).to_bytes(4, byteorder="big")
             )
             time.sleep(1)
 
