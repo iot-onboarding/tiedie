@@ -1,7 +1,8 @@
 
 # Copyright (c) 2023, Cisco and/or its affiliates.
 # All rights reserved.
-# See license in distribution for details.
+# See LICENSE file in this distribution.
+# SPDX-License-Identifier: Apache-2.0
 
 """
 
