@@ -5,7 +5,7 @@
 
 """
 
-Class for reading data from a Bluetooth Low Energy (BLE) characteristic, 
+Class for reading data from a Bluetooth Low Energy (BLE) characteristic,
 handling responses, and generating success or failure messages.
 
 """

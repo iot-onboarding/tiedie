@@ -5,7 +5,7 @@
 
 """
 
-Class for scanning Bluetooth Low Energy (BLE) devices, processing 
+Class for scanning Bluetooth Low Energy (BLE) devices, processing
 their advertisements, and forwarding data using `DataProducer`.
 
 """

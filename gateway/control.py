@@ -11,7 +11,7 @@ registrations with authentication.
 
 """
 
-import uuid
+from uuid import uuid4
 from http import HTTPStatus
 from typing import Any
 from functools import wraps
@@ -21,7 +21,7 @@ from werkzeug.test import EnvironBuilder
 import werkzeug.serving
 import OpenSSL
 from access_point import get_ble_app
-from database import db, session
+from database import session
 from models import AdvTopic, ConnectionTopic, DataAppTopic, EndpointApp, GattTopic, User, AdvFilter
 
 control_app = Blueprint("control", __name__, url_prefix="/control")
@@ -53,10 +53,10 @@ def authenticate_user(func):
 
         client_cert = request.environ['peercert']
         if client_cert:
-            if session.scalar(select(EndpointApp).filter_by(applicationName=client_cert.get_subject().CN)) is not None:
+            if session.scalar(select(EndpointApp).filter_by(
+                    applicationName=client_cert.get_subject().CN)) is not None:
                 return func(*args, **kwargs)
-
-                return make_response(jsonify({"error": "Unauthorized"}), 403)
+            return make_response(jsonify({"error": "Unauthorized"}), 403)
 
         api_key = request.headers.get("X-Api-Key")
         if request.json is None:
@@ -273,9 +273,9 @@ def register_topic():
     data_format = request.json.get("dataFormat", "default")
     ble = request.json["ble"]
 
-    type = ble["type"]
+    msg_type = ble["type"]
 
-    if type == "gatt":
+    if msg_type == "gatt":
         serviceUUID = ble["serviceID"].lower()
         characteristicUUID = ble["characteristicID"].lower()
 
@@ -286,7 +286,7 @@ def register_topic():
             topic, serviceUUID, characteristicUUID, data_format, devices)
         session.merge(gatt_topic)
         session.commit()
-    elif type == "connection":
+    elif msg_type == "connection":
         devices = session.scalars(
             select(User).filter(User.id.in_(uuids))).all()
 
@@ -314,9 +314,9 @@ def register_topic():
 
             if len(filters) > 0:
                 adv_filters: list[AdvFilter] = []
-                for filter in filters:
-                    adv_filter = AdvFilter(topic, filter.get(
-                        "mac", "*"), filter.get("adType", "*"), filter.get("adData", "*"))
+                for f in filters:
+                    adv_filter = AdvFilter(topic, f.get(
+                        "mac", "*"), f.get("adType", "*"), f.get("adData", "*"))
                     adv_filters.append(adv_filter)
 
                 # if adv_topic already exists, delete all filters and add new ones
@@ -332,7 +332,7 @@ def register_topic():
                 adv_topic = AdvTopic(topic, data_format)
                 session.merge(adv_topic)
             session.commit()
-    ret_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    ret_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(ret_json), HTTPStatus.OK
 
 
@@ -383,7 +383,7 @@ def unregister_topic():
 
         session.delete(adv_topic)
         session.commit()
-    arg_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    arg_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(arg_json), HTTPStatus.OK
 
 @control_app.route('/registration/registerDataApp', methods=['POST'])
@@ -402,7 +402,7 @@ def register_data_app():
 
     session.commit()
 
-    ar_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    ar_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(ar_json), HTTPStatus.OK
 
 
@@ -425,7 +425,7 @@ def unregister_data_app():
 
     session.commit()
 
-    json_str = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    json_str = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(json_str), HTTPStatus.OK
 
 
@@ -441,7 +441,7 @@ def bulk():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     uuid = request.json.get("id")
-    control_app = request.json.get("controlApp")
+    control_app_loc = request.json.get("controlApp")
 
     operations = request.json.get("operations", [])
 
@@ -453,7 +453,7 @@ def bulk():
         data = {
             "technology": technology,
             "id": uuid,
-            "controlApp": control_app,
+            "controlApp": control_app_loc,
             "ble": operation["ble"]
         }
 
