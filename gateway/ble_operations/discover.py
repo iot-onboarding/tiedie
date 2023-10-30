@@ -3,6 +3,13 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+
+Classes for modeling BLE services, characteristics, and descriptors,
+along with an operation for discovering these attributes in BLE devices.
+
+"""
+
 import uuid
 from http import HTTPStatus
 from flask import Response, jsonify
@@ -10,6 +17,11 @@ from ble_operations.operation import Operation
 
 
 class Service:
+    """
+    This class represents a service in Bluetooth Low Energy (BLE) 
+    with a UUID and a service handle, containing characteristics as a
+    dictionary.
+    """
     def __init__(self, uuid: str, service_handle: int):
         self.uuid = uuid
         self.service_handle = service_handle
@@ -17,6 +29,7 @@ class Service:
 
 
 class Characteristic:
+    """ Represents BLE characteristic with UUID, handle, and properties info. """
     def __init__(self, uuid: str, char_handle: int, properties: int):
         self.uuid = uuid
         self.char_handle = char_handle
@@ -41,12 +54,14 @@ class Characteristic:
 
 
 class Descriptor:
+    """ Class for BLE descriptor with UUID and handle attributes. """
     def __init__(self, uuid: str, desc_handle: int):
         self.uuid = uuid
         self.desc_handle = desc_handle
 
 
 class DiscoverOperation(Operation):
+    """ This class discovers BLE services, characteristics, and descriptors using callbacks. """
     def __init__(self, lib, handle: int, retries: int = 3, services=[]):
         super().__init__(lib)
         self.handle = handle
@@ -55,6 +70,7 @@ class DiscoverOperation(Operation):
         self.services: dict[str, Service] = {}
 
     def run(self):
+        """ run function """
         self.lib.bt.gatt.discover_primary_services(self.handle)  # type: ignore
 
         self.wait()
@@ -98,12 +114,14 @@ class DiscoverOperation(Operation):
             self.is_done = True
 
     def bt_evt_gatt_service(self, evt):
+        """ Processes Bluetooth GATT service discovery event, stores discovered services. """
         if evt.connection == self.handle:
             uuid = evt.uuid[::-1].hex()
 
             self.services[uuid] = Service(uuid, evt.service)
 
     def bt_evt_gatt_characteristic(self, evt):
+        """ Handles Bluetooth GATT characteristic discovery, storing UUID and properties. """
         if evt.connection == self.handle:
             uuid = evt.uuid[::-1].hex()
 
@@ -111,6 +129,7 @@ class DiscoverOperation(Operation):
                 uuid, evt.characteristic, evt.properties)
 
     def bt_evt_gatt_descriptor(self, evt):
+        """ Handles Bluetooth GATT descriptor discovery, storing UUID and descriptor handle. """
         if evt.connection == self.handle:
             uuid = evt.uuid[::-1].hex()
 
@@ -118,12 +137,14 @@ class DiscoverOperation(Operation):
                 uuid, evt.descriptor)
 
     def bt_evt_gatt_procedure_completed(self, evt):
+        """ bt_evt_gatt_procedure_completed function """
         if evt.connection == self.handle:
             self.result = evt.result
             self.set()
             self.clear()
 
     def response(self) -> tuple[Response, int]:
+        """ response function """
         device_services = [
             {
                 "serviceID": service.uuid,
