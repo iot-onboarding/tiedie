@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
-    private List<String> uuids;
+    private List<String> ids;
     private String topic;
     private DataFormat dataFormat;
 
@@ -47,12 +47,12 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
             if (dataRegistrationOptions.getDataParameter() instanceof BleDataParameter) {
                 BleDataParameter parameter = (BleDataParameter) dataRegistrationOptions.getDataParameter();
                 tiedieRequest.setTechnology(Technology.BLE);
-                tiedieRequest.setUuids(List.of(parameter.getDeviceId()));
+                tiedieRequest.setIds(List.of(parameter.getDeviceId()));
                 tiedieRequest.setBle(new BleGattTopic(parameter.getServiceUUID(), parameter.getCharUUID()));
             } else {
                 ZigbeeDataParameter parameter = (ZigbeeDataParameter) dataRegistrationOptions.getDataParameter();
                 tiedieRequest.setTechnology(Technology.ZIGBEE);
-                tiedieRequest.setUuids(List.of(parameter.getDeviceId()));
+                tiedieRequest.setIds(List.of(parameter.getDeviceId()));
                 tiedieRequest.setZigbee(new ZigbeeRegisterTopicRequest(
                         parameter.getEndpointID(),
                         parameter.getClusterID(),
@@ -71,7 +71,7 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
         }
 
         if (options.getDevices() != null) {
-            tiedieRequest.setUuids(options.getDevices().stream().map(Device::getId).collect(Collectors.toList()));
+            tiedieRequest.setIds(options.getDevices().stream().map(Device::getId).collect(Collectors.toList()));
         }
 
         return tiedieRequest;
@@ -82,8 +82,8 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
         GATT,
         @JsonProperty("advertisements")
         ADVERTISEMENTS,
-        @JsonProperty("connection")
-        CONNECTION
+        @JsonProperty("connection_events")
+        CONNECTION_EVENTS
     }
 
     @Data
@@ -93,7 +93,7 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
     @JsonSubTypes({
             @Type(name = "gatt", value = BleGattTopic.class),
             @Type(name = "advertisements", value = BleAdvertisementTopic.class),
-            @Type(name = "connection", value = BleConnectionTopic.class)
+            @Type(name = "connection_events", value = BleConnectionTopic.class)
     })
     private static class BleRegisterTopicRequest {
         private BleTopicType type;
@@ -103,13 +103,13 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
     @NoArgsConstructor
     @EqualsAndHashCode(callSuper = true)
     private static class BleGattTopic extends BleRegisterTopicRequest {
-        private String serviceUUID;
-        private String characteristicUUID;
+        private String serviceID;
+        private String characteristicID;
 
-        public BleGattTopic(String serviceUUID, String characteristicUUID) {
+        public BleGattTopic(String serviceID, String characteristicID) {
             super(BleTopicType.GATT);
-            this.serviceUUID = serviceUUID;
-            this.characteristicUUID = characteristicUUID;
+            this.serviceID = serviceID;
+            this.characteristicID = characteristicID;
         }
     }
 
@@ -134,7 +134,7 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
     @EqualsAndHashCode(callSuper = true)
     private static class BleConnectionTopic extends BleRegisterTopicRequest {
         public BleConnectionTopic() {
-            super(BleTopicType.CONNECTION);
+            super(BleTopicType.CONNECTION_EVENTS);
         }
     }
 

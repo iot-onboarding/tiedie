@@ -10,7 +10,7 @@ their advertisements, and forwarding data using `DataProducer`.
 
 """
 
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
 
 from data_producer import DataProducer
 
@@ -27,7 +27,7 @@ class ScanOperation(Operation):
             self.lib.bt.scanner.SCAN_PHY_SCAN_PHY_1M,  # type: ignore
             self.lib.bt.scanner.DISCOVER_MODE_DISCOVER_GENERIC)  # type: ignore
 
-    def __stop_scan(self):
+    def stop_scan(self):
         """ Stop scanning """
         self.lib.bt.scanner.stop()  # type: ignore
 

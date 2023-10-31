@@ -11,12 +11,12 @@ import lombok.Data;
 @Data
 public class TiedieBasicRequest {
     private Technology technology;
-    private String uuid;
+    private String id;
     private String controlApp;
 
     public static TiedieBasicRequest createRequest(Device device, String controlAppId) {
         var tiedieRequest = new TiedieBasicRequest();
-        tiedieRequest.setUuid(device.getId());
+        tiedieRequest.setId(device.getId());
         tiedieRequest.setControlApp(controlAppId);
 
         if (device.getBleExtension() != null) {

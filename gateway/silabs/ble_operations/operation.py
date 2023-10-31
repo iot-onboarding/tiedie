@@ -25,10 +25,11 @@ class Operation(threading.Event):
 
     def run(self):
         """ run function """
+        raise NotImplementedError()
 
     def handle_event(self, evt):
         """ handle_event function """
-        event_callback = getattr(self, evt._str, None)
+        event_callback = getattr(self, evt._str, None)  # pylint: disable=protected-access
         if event_callback is not None:
             event_callback(evt)
 

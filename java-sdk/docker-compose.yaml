@@ -13,4 +13,12 @@ services:
     ports:
       - 3000:3000
     volumes:
-      - ./config:/config
+      - ./sample-java-app/config:/config
+    networks:
+      - gateway
+
+networks:
+  gateway:
+    name: gateway_default
+    external: true
+

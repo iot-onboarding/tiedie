@@ -10,24 +10,25 @@ Bluetooth Low Energy device data and MQTT communication in a project.
 
 """
 
-from flask import current_app
+import dataclasses
+from flask import Flask
 import paho.mqtt.client as mqtt
 from sqlalchemy import Column, func, and_, select
-from database import db, session
+from database import session
 from models import AdvTopic, GattTopic, User
 from proto import data_app_pb2
 
 
+@dataclasses.dataclass
 class AdvField:
     """
     Represents an advertising field with length, type, and data properties.
     It provides a method from_bytes for creating AdvField objects from bytes.
     """
 
-    def __init__(self, length: int, type: str, data: str):
-        self.length = length
-        self.type = type
-        self.data = data
+    length: int
+    adtype: str
+    data: str
 
     @staticmethod
     def from_bytes(seq: bytes):
@@ -38,23 +39,23 @@ class AdvField:
             length = seq[0]
             if length == 0:
                 break
-            type = seq[1]
+            adtype = seq[1]
             data = seq[2:length + 1]
-            ads.append(AdvField(length, type.to_bytes(
+            ads.append(AdvField(length, adtype.to_bytes(
                 1, byteorder='big').hex(), data.hex()))
             seq = seq[length + 1:]
 
         return ads
 
 
-def is_filter_match(value: str, filter_string: Column[str] | str) -> bool:
+def is_filter_match(value: str, topic_filter: Column[str] | str) -> bool:
     """ Checks if a value matches a filter (filter can contain wildcards). """
-    if filter_string == "*":
+    if topic_filter == "*":
         return True
 
-    leading_wildcard = filter_string.startswith("*")
-    trailing_wildcard = filter_string.endswith("*")
-    raw_filter = filter_string.replace("*", "")
+    leading_wildcard = topic_filter.startswith("*")
+    trailing_wildcard = topic_filter.endswith("*")
+    raw_filter = topic_filter.replace("*", "")
 
     if leading_wildcard and trailing_wildcard:
         return raw_filter in value
@@ -80,10 +81,10 @@ def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) ->
     mac = address.lower().replace(":", "")
 
     for adv in adv_fields:
-        for f in topic.filters:
-            if is_filter_match(mac, f.mac_filter) and \
-               is_filter_match(adv.type, f.ad_type_filter) and \
-               is_filter_match(adv.data, f.ad_data_filter):
+        for topic_filter in topic.filters:
+            if is_filter_match(mac, topic_filter.mac_filter) and \
+                is_filter_match(adv.type, topic_filter.ad_type_filter) and \
+                    is_filter_match(adv.data, topic_filter.ad_data_filter):
                 if is_default_allow:
                     count += 1
                     break
@@ -103,17 +104,20 @@ class DataProducer:
     """
     mqtt_client: mqtt.Client
 
-    def __init__(self, mqtt_client: mqtt.Client):
+    def __init__(self, mqtt_client: mqtt.Client, app: Flask):
         self.mqtt_client = mqtt_client
+        self.app = app
 
-    def publish_notification(self, mac_address: str, service_uuid: str, 
-                             char_uuid: str, value: bytes):
-        """ publish_notification function """
-        from app import app
-        with app.app_context():
+    def publish_notification(self,
+                             mac_address: str,
+                             service_uuid: str,
+                             char_uuid: str,
+                             value: bytes):
+        """ Publish GATT notifications/indications to registered MQTT topics """
+        with self.app.app_context():
             user = session.scalar(select(User)
                                   .join(GattTopic, User.gatt_topics)
-                                  .where(and_(User.deviceMacAddress == mac_address,
+                                  .where(and_(User.device_mac_address == mac_address,
                                               GattTopic.service_uuid == service_uuid,
                                               GattTopic.characteristic_uuid == char_uuid)))
 
@@ -121,11 +125,12 @@ class DataProducer:
                 return
 
             for topic in user.gatt_topics:
-                ble_sub = data_app_pb2.DataSubscription()
+                ble_sub = data_app_pb2.DataSubscription()  # pylint: disable=no-member
                 ble_sub.data = value
 
                 if topic.data_format == "default":
                     ble_sub.device_id = str(user.id)
+                    # pylint: disable-next=no-member
                     ble_subscription = data_app_pb2.DataSubscription.BLESubscription()
                     ble_subscription.service_uuid = service_uuid
                     ble_subscription.characteristic_uuid = char_uuid
@@ -136,16 +141,16 @@ class DataProducer:
 
     def publish_advertisement(self, evt):
         """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
-        from app import app
-        with app.app_context():
+        with self.app.app_context():
             user = session.scalar(select(User).filter(
-                func.lower(User.deviceMacAddress) == func.lower(evt.address)))
+                func.lower(User.device_mac_address) == func.lower(evt.address)))
 
             adv_topics = list(session.scalars(
                 select(AdvTopic).filter_by(onboarded=False)).all())
 
-            ble_adv = data_app_pb2.DataSubscription()
+            ble_adv = data_app_pb2.DataSubscription()  # pylint: disable=no-member
             ble_adv.data = evt.data
+            # pylint: disable-next=no-member
             ble_advertisement = data_app_pb2.DataSubscription.BLEAdvertisement()
             ble_advertisement.rssi = evt.rssi
             ble_advertisement.mac_address = evt.address
@@ -164,15 +169,16 @@ class DataProducer:
 
     def publish_connection_status(self, evt, address, connected: bool):
         """ Publishes BLE connection status updates to MQTT topics based on conditions. """
-        with app.app_context():
+        with self.app.app_context():
             user = session.scalar(select(User).filter(
-                func.lower(User.deviceMacAddress) == func.lower(address)))
+                func.lower(User.device_mac_address) == func.lower(address)))
 
             if user is None:
                 return
 
-            ble_connection = data_app_pb2.DataSubscription()
+            ble_connection = data_app_pb2.DataSubscription()  # pylint: disable=no-member
             ble_connection.device_id = str(user.id)
+            # pylint: disable-next=no-member
             ble_connection_status = data_app_pb2.DataSubscription.BLEConnectionStatus()
             ble_connection_status.mac_address = address
             ble_connection_status.connected = connected

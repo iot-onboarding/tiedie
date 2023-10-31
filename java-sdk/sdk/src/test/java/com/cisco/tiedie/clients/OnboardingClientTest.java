@@ -103,8 +103,7 @@ class OnboardingClientTest {
 
         return Stream.of(
                 arguments(named("With cert", onboardingClientWithCert)),
-                arguments(named("With key", onboardingClientWithKey))
-        );
+                arguments(named("With key", onboardingClientWithKey)));
     }
 
     @DisplayName("Create Device")
@@ -117,21 +116,22 @@ class OnboardingClientTest {
                 new MockResponse()
                         .setResponseCode(201)
                         .setBody("{\n" +
-                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                                +
                                 "\"id\" : \"" + deviceId + "\",\n" +
                                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                                 "  \"adminState\" : false,\n" +
                                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                                +
                                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
-                                "    \"addressType\" : false,\n" +
+                                "    \"isRandom\" : false,\n" +
                                 "    \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" : {\n" +
                                 "      \"key\" : 123456\n" +
                                 "    }\n" +
                                 "  }\n" +
-                                "}")
-        );
+                                "}"));
 
         var device = Device.builder()
                 .deviceDisplayName("BLE Monitor")
@@ -166,21 +166,22 @@ class OnboardingClientTest {
                 new MockResponse()
                         .setResponseCode(200)
                         .setBody("{\n" +
-                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n" +
+                                "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
+                                +
                                 "\"id\" : \"" + deviceId + "\",\n" +
                                 "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
                                 "  \"adminState\" : false,\n" +
                                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
-                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n" +
+                                "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
+                                +
                                 "    \"versionSupport\" : [ \"4.1\", \"4.2\", \"5.0\", \"5.1\", \"5.2\", \"5.3\" ],\n" +
                                 "    \"deviceMacAddress\" : \"AA:BB:CC:11:22:33\",\n" +
-                                "    \"addressType\" : false,\n" +
+                                "    \"isRandom\" : false,\n" +
                                 "    \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" : {\n" +
                                 "      \"key\" : 123456\n" +
                                 "    }\n" +
                                 "  }\n" +
-                                "}")
-        );
+                                "}"));
         mockWebServer.enqueue(new MockResponse()
                 .setStatus("HTTP/1.1 404 Not Found")
                 .setBody("{\n" +

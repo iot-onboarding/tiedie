@@ -3,20 +3,18 @@
 // See LICENSE file in this distribution.
 // SPDX-License-Identifier: Apache-2.0
 
-package com.cisco.tiedie.dto.control;
+package com.cisco.tiedie.dto.control.ble;
+
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import lombok.Data;
 
-/**
- * Response from Control read/write APIs.
- */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class DataResponse {
-    /**
-     * Data from the device encoded in hex.
-     */
-    private String value;
+public class BleCharacteristic {
+        private String characteristicID;
+        private List<String> flags;
+        private List<BleDescriptors> descriptors;
 }

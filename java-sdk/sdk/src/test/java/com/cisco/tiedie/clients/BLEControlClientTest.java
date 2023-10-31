@@ -8,6 +8,7 @@ package com.cisco.tiedie.clients;
 import com.cisco.tiedie.dto.control.*;
 import com.cisco.tiedie.dto.control.ble.BleConnectRequest;
 import com.cisco.tiedie.dto.control.ble.BleDataParameter;
+import com.cisco.tiedie.dto.control.ble.BleService;
 import com.cisco.tiedie.dto.scim.BleExtension;
 import com.cisco.tiedie.dto.scim.Device;
 import okhttp3.mockwebserver.MockResponse;
@@ -40,41 +41,60 @@ class BLEControlClientTest extends ControlClientTest {
                         "    \"status\" : \"SUCCESS\",\n" +
                         "    \"services\" : [\n" +
                         "        {\n" +
-                        "            \"uuid\" : \"1800\",\n" +
+                        "            \"serviceID\" : \"1800\",\n" +
                         "            \"characteristics\" : [\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a00\",\n" +
+                        "                    \"characteristicID\" : \"2a00\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\",\n" +
                         "                        \"write\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a10\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                },\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a01\",\n" +
+                        "                    \"characteristicID\" : \"2a01\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a11\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                },\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a04\",\n" +
+                        "                    \"characteristicID\" : \"2a04\",\n" +
+                        "                    \"flags\" : [\n" +
+                        "                        \"read\",\n" +
+                        "                        \"notify\"\n" +
+                        "                    ],\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a14\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                    \"characteristicID\" : \"2aa6\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
-                        "                },\n" +
-                        "                {\n" +
-                        "                    \"uuid\" : \"2aa6\",\n" +
-                        "                    \"flags\" : [\n" +
-                        "                        \"read\"\n" +
-                        "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a16\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                }\n" +
                         "            ]\n" +
                         "        }\n" +
                         "    ]\n" +
                         "}");
+        mockWebServer.enqueue(mockResponse);
+        mockWebServer.enqueue(mockResponse);
         mockWebServer.enqueue(mockResponse);
         mockWebServer.enqueue(mockResponse);
         mockWebServer.enqueue(new MockResponse()
@@ -106,17 +126,15 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         var expectedParameters = Arrays.asList(
-                new String[]{"1800", "2a00"},
-                new String[]{"1800", "2a01"},
-                new String[]{"1800", "2a04"},
-                new String[]{"1800", "2aa6"}
-        );
+                new String[] { "1800", "2a00" },
+                new String[] { "1800", "2a01" },
+                new String[] { "1800", "2a04" },
+                new String[] { "1800", "2aa6" });
         var expectedFlags = Arrays.asList(
                 Arrays.asList("read", "write"),
                 List.of("read"),
-                List.of("read"),
-                List.of("read")
-        );
+                List.of("read", "notify"),
+                List.of("read"));
         List<DataParameter> body = response.getBody();
 
         for (int i = 0; i < body.size(); i++) {
@@ -139,7 +157,7 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"retries\" : 3,\n" +
@@ -147,7 +165,11 @@ class BLEControlClientTest extends ControlClientTest {
                 "  }\n" +
                 "}", request.getBody().readUtf8());
 
-        response = controlClient.connect(device, new BleConnectRequest(5, false));
+        response = controlClient.connect(device,
+                BleConnectRequest.builder()
+                        .retries(5)
+                        .retryMultipleAPs(false)
+                        .build());
 
         assertEquals(200, response.getHttpStatusCode());
         assertEquals("OK", response.getHttpMessage());
@@ -158,7 +180,7 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"retries\" : 5,\n" +
@@ -166,7 +188,64 @@ class BLEControlClientTest extends ControlClientTest {
                 "  }\n" +
                 "}", request.getBody().readUtf8());
 
-        response = controlClient.connect(device, new BleConnectRequest(5, false));
+        response = controlClient.connect(device,
+                BleConnectRequest
+                        .builder()
+                        .services(List.of(new BleService("1800")))
+                        .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        request = mockWebServer.takeRequest();
+        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("POST", request.getMethod());
+        assertEquals("{\n" +
+                "  \"technology\" : \"ble\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
+                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
+                "  \"ble\" : {\n" +
+                "    \"services\" : [ {\n" +
+                "      \"serviceID\" : \"1800\"\n" +
+                "    } ],\n" +
+                "    \"retries\" : 3,\n" +
+                "    \"retryMultipleAPs\" : false\n" +
+                "  }\n" +
+                "}", request.getBody().readUtf8());
+
+        response = controlClient.connect(device, BleConnectRequest
+                .builder()
+                .services(List.of(new BleService("1800")))
+                .retries(5)
+                .retryMultipleAPs(true)
+                .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        request = mockWebServer.takeRequest();
+        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("POST", request.getMethod());
+        assertEquals("{\n" +
+                "  \"technology\" : \"ble\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
+                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
+                "  \"ble\" : {\n" +
+                "    \"services\" : [ {\n" +
+                "      \"serviceID\" : \"1800\"\n" +
+                "    } ],\n" +
+                "    \"retries\" : 5,\n" +
+                "    \"retryMultipleAPs\" : true\n" +
+                "  }\n" +
+                "}", request.getBody().readUtf8());
+
+        response = controlClient.connect(device,
+                BleConnectRequest.builder()
+                        .retries(5)
+                        .retryMultipleAPs(false)
+                        .build());
         assertEquals(400, response.getHttpStatusCode());
         assertEquals(TiedieStatus.FAILURE, response.getStatus());
         assertEquals("Connect failed", response.getReason());
@@ -211,7 +290,7 @@ class BLEControlClientTest extends ControlClientTest {
 
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
                 "}", request.getBody().readUtf8());
     }
@@ -226,36 +305,53 @@ class BLEControlClientTest extends ControlClientTest {
                         "    \"status\" : \"SUCCESS\",\n" +
                         "    \"services\" : [\n" +
                         "        {\n" +
-                        "            \"uuid\" : \"1800\",\n" +
+                        "            \"serviceID\" : \"1800\",\n" +
                         "            \"characteristics\" : [\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a00\",\n" +
+                        "                    \"characteristicID\" : \"2a00\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\",\n" +
                         "                        \"write\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a10\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                },\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a01\",\n" +
+                        "                    \"characteristicID\" : \"2a01\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a11\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                },\n" +
                         "                {\n" +
-                        "                    \"uuid\" : \"2a04\",\n" +
+                        "                    \"characteristicID\" : \"2a04\",\n" +
+                        "                    \"flags\" : [\n" +
+                        "                        \"read\",\n" +
+                        "                        \"notify\"\n" +
+                        "                    ],\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a14\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                    \"characteristicID\" : \"2aa6\",\n" +
                         "                    \"flags\" : [\n" +
                         "                        \"read\"\n" +
                         "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
-                        "                },\n" +
-                        "                {\n" +
-                        "                    \"uuid\" : \"2aa6\",\n" +
-                        "                    \"flags\" : [\n" +
-                        "                        \"read\"\n" +
-                        "                    ],\n" +
-                        "                    \"descriptors\" : []\n" +
+                        "                    \"descriptors\" : [\n" +
+                        "                        {\n" +
+                        "                            \"descriptorID\": \"2a16\"\n" +
+                        "                        }\n" +
+                        "                    ]\n" +
                         "                }\n" +
                         "            ]\n" +
                         "        }\n" +
@@ -277,24 +373,22 @@ class BLEControlClientTest extends ControlClientTest {
                         .build())
                 .build();
 
-        TiedieResponse<List<DataParameter>> response = controlClient.discover(device);
+        TiedieResponse<List<DataParameter>> response = controlClient.discover(device, List.of(new BleDataParameter("1800")));
 
         assertEquals(200, response.getHttpStatusCode());
         assertEquals("OK", response.getHttpMessage());
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         var expectedParameters = Arrays.asList(
-                new String[]{"1800", "2a00"},
-                new String[]{"1800", "2a01"},
-                new String[]{"1800", "2a04"},
-                new String[]{"1800", "2aa6"}
-        );
+                new String[] { "1800", "2a00" },
+                new String[] { "1800", "2a01" },
+                new String[] { "1800", "2a04" },
+                new String[] { "1800", "2aa6" });
         var expectedFlags = Arrays.asList(
                 Arrays.asList("read", "write"),
                 List.of("read"),
-                List.of("read"),
-                List.of("read")
-        );
+                List.of("read", "notify"),
+                List.of("read"));
         List<DataParameter> body = response.getBody();
 
         for (int i = 0; i < body.size(); i++) {
@@ -317,8 +411,13 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
+                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
+                "  \"ble\" : {\n" + //
+                "    \"services\" : [ {\n" + //
+                "      \"serviceID\" : \"1800\"\n" + //
+                "    } ]\n" + //
+                "  }\n" +
                 "}", request.getBody().readUtf8());
     }
 
@@ -349,11 +448,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"ble\" : {\n" +
-                "    \"serviceUUID\" : \"1800\",\n" +
-                "    \"characteristicUUID\" : \"2a00\"\n" +
+                "    \"serviceID\" : \"1800\",\n" +
+                "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
     }
@@ -380,22 +479,22 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(200, response.getHttpStatusCode());
         assertEquals("OK", response.getHttpMessage());
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+        assertEquals(value, response.getBody().getValue());
 
         RecordedRequest request = mockWebServer.takeRequest();
         assertEquals("/control/data/write", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
+                "  \"value\" : \"" + value + "\",\n" +
                 "  \"ble\" : {\n" +
-                "    \"serviceUUID\" : \"1800\",\n" +
-                "    \"characteristicUUID\" : \"2a00\",\n" +
-                "    \"value\" : \"" + value + "\"\n" +
+                "    \"serviceID\" : \"1800\",\n" +
+                "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
     }
-
 
     @MethodSource("clientProvider")
     @DisplayName("subscribe")
@@ -424,12 +523,12 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"ble\" : {\n" +
-                "    \"serviceUUID\" : \"1800\",\n" +
-                "    \"characteristicUUID\" : \"2a00\"\n" +
+                "    \"serviceID\" : \"1800\",\n" +
+                "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
 
@@ -448,13 +547,13 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"topic\" : \"enterprise/hospital/pulse_oximeter\",\n" +
                 "  \"dataFormat\" : \"payload\",\n" +
                 "  \"ble\" : {\n" +
-                "    \"serviceUUID\" : \"1800\",\n" +
-                "    \"characteristicUUID\" : \"2a00\"\n" +
+                "    \"serviceID\" : \"1800\",\n" +
+                "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
     }
@@ -485,11 +584,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"ble\" : {\n" +
-                "    \"serviceUUID\" : \"1800\",\n" +
-                "    \"characteristicUUID\" : \"2a00\"\n" +
+                "    \"serviceID\" : \"1800\",\n" +
+                "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
     }

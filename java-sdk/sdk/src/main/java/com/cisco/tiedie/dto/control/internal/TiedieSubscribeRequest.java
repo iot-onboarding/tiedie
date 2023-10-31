@@ -41,7 +41,7 @@ public class TiedieSubscribeRequest extends TiedieBasicRequest {
 
     public static TiedieSubscribeRequest createRequest(BleDataParameter dataParameter, String controlAppId, SubscriptionOptions options) {
         var tiedieRequest = new TiedieSubscribeRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.BLE);
@@ -63,7 +63,7 @@ public class TiedieSubscribeRequest extends TiedieBasicRequest {
 
     private static TiedieSubscribeRequest createRequest(ZigbeeDataParameter dataParameter, String controlAppId, SubscriptionOptions options) {
         var tiedieRequest = new TiedieSubscribeRequest();
-        tiedieRequest.setUuid(dataParameter.getDeviceId());
+        tiedieRequest.setId(dataParameter.getDeviceId());
         tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.ZIGBEE);
@@ -93,8 +93,8 @@ public class TiedieSubscribeRequest extends TiedieBasicRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     private static class BleSubscribeRequest {
-        private String serviceUUID;
-        private String characteristicUUID;
+        private String serviceID;
+        private String characteristicID;
     }
 
     @Data

@@ -14,7 +14,7 @@ provides response data, and is part of a larger system/application.
 from http import HTTPStatus
 from flask import Response, jsonify
 import bgapi
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
 
 from config import CONNECTION_TIMEOUT
 from data_producer import DataProducer

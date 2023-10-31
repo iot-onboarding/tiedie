@@ -13,13 +13,14 @@ provides response data, and is part of a larger system/application.
 from http import HTTPStatus
 from flask import Response, jsonify
 import bgapi
-from ble_operations.operation import Operation
+from silabs.ble_operations.operation import Operation
 
 from config import CONNECTION_TIMEOUT
 
 
 class DisconnectOperation(Operation):
     """ DisconnectOperation class manages disconnections using the BGAPI library. """
+
     def __init__(self, lib: bgapi.BGLib, handle: int):
         super().__init__(lib)
         self.handle = handle
@@ -28,7 +29,7 @@ class DisconnectOperation(Operation):
         """ run """
         self.lib.bt.connection.close(self.handle)  # type: ignore
         if not self.wait(timeout=CONNECTION_TIMEOUT):
-            self.log.warning(f"failed to close connection to {self.handle}")
+            self.log.warning("failed to close connection to %d", self.handle)
 
     def bt_evt_connection_closed(self, evt):
         """

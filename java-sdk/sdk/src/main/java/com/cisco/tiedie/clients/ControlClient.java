@@ -78,7 +78,7 @@ public class ControlClient extends AbstractHttpClient {
      * @see ControlClient#connect(Device, BleConnectRequest)
      */
     public TiedieResponse<List<DataParameter>> connect(Device device) throws IOException {
-        return connect(device, new BleConnectRequest(3, true));
+        return connect(device, new BleConnectRequest(null, 3, true));
     }
 
 
@@ -139,7 +139,25 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<List<DataParameter>> discover(Device device) throws IOException {
-        var tiedieRequest = TiedieBasicRequest.createRequest(device, controlAppId);
+        return discover(device, null);
+    }
+
+    /**
+     * TieDie Discover API - used to discover the parameters of a {@link Device}.
+     * <p>
+     * If the device is a BLE device, this is the GATT table of the device. The response includes the primary services
+     * and characteristics supported by the BLE device.
+     * <p>
+     * If the device is a Zigbee device, this is the supported list of endpoints, clusters and attributes.
+     *
+     * @param device The {@link Device} object.
+     * @param services List of data parameters to be discovered
+     * @return If the device is BLE, the response is a list of {@link BleDataParameter}.
+     * If the device is Zigbee, the response is a list of {@link ZigbeeDataParameter}.
+     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
+     */
+    public TiedieResponse<List<DataParameter>> discover(Device device, List<DataParameter> parameters) throws IOException {
+        var tiedieRequest = TiedieDiscoverRequest.createRequest(device, parameters, controlAppId);
 
         if (tiedieRequest.getTechnology() == Technology.BLE) {
             var bleDiscoverResponse = postWithTiedieResponse("/data/discover", tiedieRequest, BleDiscoverResponse.class);

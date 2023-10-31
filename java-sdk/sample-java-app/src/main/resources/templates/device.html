@@ -166,7 +166,7 @@ SPDX-License-Identifier: Apache-2.0
 
                 const writeButton = document.querySelector('#writeModal .btn-primary');
 
-                writeButton= () => {
+                writeButton.onclick = () => {
                     const value = document.getElementById("writeValue").value;
 
                     console.log("writeValue: " + value);
@@ -211,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
 
             var topic = `data-app/${id}/connection`;
 
-            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+		var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
 
             ws.onopen = () => {
                 ws.send("");

@@ -48,7 +48,6 @@ public class DataAppConfig extends ClientConfig {
     @Value("${client.ca_path}")
     private String caPath;
 
-
     private EndpointApp createEndpointApp(OnboardingClient onboardingClient) throws Exception {
         var dataAppBuilder = EndpointApp.builder()
                 .applicationName(dataAppId)
@@ -99,9 +98,9 @@ public class DataAppConfig extends ClientConfig {
     }
 
     public Authenticator getAuthenticator(EndpointApp endpointApp) throws Exception {
-        try (InputStream caStream = new FileInputStream(caPath);
-                InputStream clientKeystoreStream = new FileInputStream(dataAppCertPath)) {
+        try (InputStream caStream = new FileInputStream(caPath)) {
             if (endpointApp.getCertificateInfo() != null) {
+                InputStream clientKeystoreStream = new FileInputStream(dataAppCertPath);
                 KeyStore keyStore = KeyStore.getInstance("PKCS12");
                 keyStore.load(clientKeystoreStream, "".toCharArray());
 
@@ -115,7 +114,8 @@ public class DataAppConfig extends ClientConfig {
 
     @Autowired
     @Bean
-    public DataReceiverClient getDataReceiverClient(OnboardingClient onboardingClient, @Qualifier("dataApp") EndpointApp endpointApp) throws Exception {
+    public DataReceiverClient getDataReceiverClient(OnboardingClient onboardingClient,
+            @Qualifier("dataApp") EndpointApp endpointApp) throws Exception {
         Authenticator authenticator = getAuthenticator(endpointApp);
 
         return new DataReceiverClient(dataAppBaseUrl, authenticator);
