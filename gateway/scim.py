@@ -5,7 +5,7 @@
 
 """
 
-This module defines a Flask-based SCIM API with user and endpoint 
+This module defines a Flask-based SCIM API with user and endpoint
 app management, authentication, and error handling.
 
 """
@@ -13,10 +13,10 @@ app management, authentication, and error handling.
 import uuid
 import datetime
 from functools import wraps
-from flask import Blueprint, abort, jsonify, make_response, request, current_app
+from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from database import db, session
+from database import session
 from models import EndpointApp, User, OnboardingAppKey
 
 from util import make_hash
@@ -35,7 +35,7 @@ def authenticate_user(func):
         api_key = request.headers.get("X-Api-Key")
         if api_key and bool(OnboardingAppKey.query.filter_by(keyVal=api_key).first()):
             return func(*args, **kwargs)
-            return make_response(jsonify({"error": "Unauthorized"}), 403)
+        return make_response(jsonify({"error": "Unauthorized"}), 403)
 
     return check_apikey
 
@@ -46,7 +46,7 @@ def authenticate_user(func):
 @authenticate_user
 def scim_addusers():
     """
-    This code defines a SCIM API endpoint for creating users, 
+    This code defines a SCIM API endpoint for creating users,
     extracts data from the request JSON, and stores user information in a database.
     """
     # Get the request json and check if it is valid
@@ -159,9 +159,10 @@ def scim_addusers():
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
 def get_user(user_id):
-    """ 
-    SCIM API: Retrieve user data by ID and onboardApp parameters. 
-    If not found, a "User not found" response with a status code of 404 is returned.
+    """
+    SCIM API: Retrieve user data by ID and onboardApp parameters.
+    If not found, a "User not found" response with a status code of 404
+    is returned.
     """
     onboarding_app = request.args["onboardApp"]
     user = User.query.filter_by(user_id=user_id).filter_by(endpointApps=onboarding_app).first()
@@ -227,8 +228,10 @@ def get_devices():
 @authenticate_user
 def update_user(user_id):
     """
-    Function to retrieve SCIM device data based on parameters like start index, count, and filters. 
-    It returns a JSON response with a list of serialized devices.
+    Function to retrieve SCIM device data based on parameters like start
+    index, count, and filters.
+
+    Returns a JSON response with a list of serialized devices.
     """
     if not request.json:
         return make_response(
@@ -256,38 +259,38 @@ def update_user(user_id):
             ),
             404,
         )
-    else:
-        user.id = request.json.get("id")
-        user.deviceDisplayName = request.json.get("deviceDisplayName")
-        user.adminState = request.json.get("adminState")
-        user.versionSupport = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    user.id = request.json.get("id")
+    user.deviceDisplayName = request.json.get("deviceDisplayName")
+    user.adminState = request.json.get("adminState")
+    user.versionSupport = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "versionSupport")
-        user.deviceMacAddress = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    user.deviceMacAddress = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "deviceMacAddress")
-        user.isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
-            "isRandom")
-        user.pairingMethods = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    user.isRandom = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+        "isRandom")
+    user.pairingMethods = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingNull = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    user.pairingNull = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
             "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-        user.pairingJustWorksKeys = request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+    user.pairingJustWorksKeys = request.json[
+        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
             "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"].get("key")
-        user.pairingPassKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
-        user.pairingOOBKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-            "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
-        user.pairingOOBRN = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+    user.pairingPassKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
+    user.pairingOOBKey = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+        "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
+    user.pairingOOBRN = \
+        request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
             "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("randNumber")
-        user.modTime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    user.modTime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        session.commit()
-        return make_response(jsonify(user.serialize()), 200)
-    
+    session.commit()
+    return make_response(jsonify(user.serialize()), 200)
+
 
 @scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
 @authenticate_user
@@ -305,10 +308,9 @@ def delete_user(user_id):
             ),
             404,
         )
-    else:
-        session.delete(user)
-        session.commit()
-        return make_response("", 204)
+    session.delete(user)
+    session.commit()
+    return make_response("", 204)
 
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
@@ -327,8 +329,7 @@ def get_endpoint(id):
             ),
             404,
         )
-    else:
-        return make_response(jsonify(endpoint_app.serialize()), 200)
+    return make_response(jsonify(endpoint_app.serialize()), 200)
 
 
 @scim_app.route("/EndpointApps", methods=["GET"])
@@ -443,10 +444,9 @@ def delete_endpoint(id):
             ),
             404,
         )
-    else:
-        session.delete(endpoint_app)
-        session.commit()
-        return make_response("", 204)
+    session.delete(endpoint_app)
+    session.commit()
+    return make_response("", 204)
 
 
 @scim_app.route("/Bulk", methods=["POST"])

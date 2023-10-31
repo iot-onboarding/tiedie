@@ -3,9 +3,9 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
-""" 
+"""
 
-This module integrates Flask, SQLAlchemy, and Paho MQTT for managing 
+This module integrates Flask, SQLAlchemy, and Paho MQTT for managing
 Bluetooth Low Energy device data and MQTT communication in a project.
 
 """
@@ -19,9 +19,9 @@ from proto import data_app_pb2
 
 
 class AdvField:
-    """ 
-    Represents an advertising field with length, type, and data properties. 
-    It provides a method from_bytes for creating AdvField objects from bytes. 
+    """
+    Represents an advertising field with length, type, and data properties.
+    It provides a method from_bytes for creating AdvField objects from bytes.
     """
 
     def __init__(self, length: int, type: str, data: str):
@@ -47,14 +47,14 @@ class AdvField:
         return ads
 
 
-def is_filter_match(value: str, filter: Column[str] | str) -> bool:
+def is_filter_match(value: str, filter_string: Column[str] | str) -> bool:
     """ Checks if a value matches a filter (filter can contain wildcards). """
-    if filter == "*":
+    if filter_string == "*":
         return True
 
-    leading_wildcard = filter.startswith("*")
-    trailing_wildcard = filter.endswith("*")
-    raw_filter = filter.replace("*", "")
+    leading_wildcard = filter_string.startswith("*")
+    trailing_wildcard = filter_string.endswith("*")
+    raw_filter = filter_string.replace("*", "")
 
     if leading_wildcard and trailing_wildcard:
         return raw_filter in value
@@ -80,8 +80,10 @@ def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) ->
     mac = address.lower().replace(":", "")
 
     for adv in adv_fields:
-        for filter in topic.filters:
-            if is_filter_match(mac, filter.mac_filter) and is_filter_match(adv.type, filter.ad_type_filter) and is_filter_match(adv.data, filter.ad_data_filter):
+        for f in topic.filters:
+            if is_filter_match(mac, f.mac_filter) and \
+               is_filter_match(adv.type, f.ad_type_filter) and \
+               is_filter_match(adv.data, f.ad_data_filter):
                 if is_default_allow:
                     count += 1
                     break
@@ -94,16 +96,18 @@ def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) ->
 
 
 class DataProducer:
-    """ 
-    Handles data production and publishing over MQTT. 
-    It has methods for publishing notifications, advertisements, and connection status. 
+    """
+    Handles data production and publishing over MQTT.
+    It has methods for publishing notifications, advertisements, and
+    connection status.
     """
     mqtt_client: mqtt.Client
 
     def __init__(self, mqtt_client: mqtt.Client):
         self.mqtt_client = mqtt_client
 
-    def publish_notification(self, mac_address: str, service_uuid: str, char_uuid: str, value: bytes):
+    def publish_notification(self, mac_address: str, service_uuid: str, 
+                             char_uuid: str, value: bytes):
         """ publish_notification function """
         from app import app
         with app.app_context():

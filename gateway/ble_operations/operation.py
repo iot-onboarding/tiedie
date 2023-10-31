@@ -25,7 +25,6 @@ class Operation(threading.Event):
 
     def run(self):
         """ run function """
-        pass
 
     def handle_event(self, evt):
         """ handle_event function """

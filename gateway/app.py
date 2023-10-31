@@ -3,7 +3,7 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
-""" 
+"""
 
 This script configures components, like MQTT and PostgreSQL, initializes them,
 and serves a secure Flask web application with MQTT and BLE integration.
@@ -34,7 +34,9 @@ from util import make_hash
 app = Flask(__name__)
 migrate = Migrate(app, db)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+app.config["SQLALCHEMY_DATABASE_URI"] = \
+    f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}' + \
+    f'@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
 app.config['JSON_SORT_KEYS'] = False
 
 db.init_app(app)
