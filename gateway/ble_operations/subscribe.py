@@ -62,8 +62,9 @@ class SubscribeOperation(Operation):
         """ Processes characteristic value notifications/indications. """
         if self.handle == evt.connection and \
                 self.char_handle == evt.characteristic and \
-                evt.att_opcode in (self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_NOTIFICATION, 
-                                   self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):  # type: ignore
+                evt.att_opcode in (self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_NOTIFICATION,
+                                   self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):
+            # type: ignore
             self.log.info(evt)
             if evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION:  #type: ignore
                 try:

@@ -5,7 +5,7 @@
 
 """
 
-DisconnectOperation class manages Bluetooth disconnections, handles events, 
+DisconnectOperation class manages Bluetooth disconnections, handles events,
 provides response data, and is part of a larger system/application.
 
 """
@@ -31,9 +31,9 @@ class DisconnectOperation(Operation):
             self.log.warning(f"failed to close connection to {self.handle}")
 
     def bt_evt_connection_closed(self, evt):
-        """ 
-        This method handles Bluetooth connection closure events by 
-        setting the operation as done and logging event information. 
+        """
+        This method handles Bluetooth connection closure events by
+        setting the operation as done and logging event information.
         """
         if self.handle == evt.connection:
             self.log.info(evt)

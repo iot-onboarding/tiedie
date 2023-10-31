@@ -10,7 +10,7 @@ along with an operation for discovering these attributes in BLE devices.
 
 """
 
-import uuid
+from uuid import uuid4
 from http import HTTPStatus
 from flask import Response, jsonify
 from ble_operations.operation import Operation
@@ -18,7 +18,7 @@ from ble_operations.operation import Operation
 
 class Service:
     """
-    This class represents a service in Bluetooth Low Energy (BLE) 
+    This class represents a service in Bluetooth Low Energy (BLE)
     with a UUID and a service handle, containing characteristics as a
     dictionary.
     """
@@ -146,7 +146,7 @@ class DiscoverOperation(Operation):
         """ response function """
         return jsonify({
             "status": "SUCCESS",
-            "requestID": uuid.uuid4(),
+            "requestID": uuid4(),
             "services": [
                 {
                     "uuid": service.uuid,
