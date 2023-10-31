@@ -3,6 +3,13 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+
+Configures Flask with SQLAlchemy for database
+operations and initializes a session.
+
+"""
+
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import Session
 

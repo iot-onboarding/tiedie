@@ -11,15 +11,10 @@ SALT_LENGTH = 16
 HASH_FUNCTION = 'sha512'
 COST_FACTOR = 100000
 
-
 def make_hash(pwd: str):
+    """ Hashes a password with PBKDF2 and returns a formatted hash. """
     password = pwd.encode('utf-8')
     salt = b64encode(urandom(SALT_LENGTH))
     hash_key = b64encode(hashlib.pbkdf2_hmac(
         HASH_FUNCTION, password, salt, COST_FACTOR))
-    return 'PBKDF2${}${}${}${}'.format(
-        HASH_FUNCTION,
-        COST_FACTOR,
-        str(salt, 'utf-8'),
-        str(hash_key, 'utf-8')
-    )
+    return f"PBKDF2${HASH_FUNCTION}${COST_FACTOR}${str(salt, 'utf-8')}${str(hash_key, 'utf-8')}"
