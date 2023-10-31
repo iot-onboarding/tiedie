@@ -24,7 +24,7 @@ from config import (BOOT_TIMEOUT, MQTT_HOST, MQTT_PORT, POSTGRES_DB,
                     POSTGRES_HOST, POSTGRES_PASSWORD, POSTGRES_PORT,
                     POSTGRES_USER)
 from control import control_app, PeerCertWSGIRequestHandler
-import ap
+import ap_factory
 from data_producer import DataProducer
 from database import db, session
 from scim import scim_app
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     data_producer = DataProducer(mqtt_client, app)
 
-    ble_ap = ap.create_ble_ap(data_producer)
+    ble_ap = ap_factory.create_ble_ap(data_producer)
     ble_ap.start()
 
     if not ble_ap.ready.wait(timeout=BOOT_TIMEOUT):

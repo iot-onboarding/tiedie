@@ -20,7 +20,7 @@ from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 import werkzeug.serving
 import OpenSSL
-from ap import ble_ap
+from ap_factory import ble_ap
 from database import session
 from models import AdvTopic, ConnectionTopic, DataAppTopic, EndpointApp, GattTopic, User, AdvFilter
 
