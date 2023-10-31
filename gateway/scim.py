@@ -5,7 +5,7 @@
 
 """
 
-This module defines a Flask-based SCIM API with user and endpoint 
+This module defines a Flask-based SCIM API with user and endpoint
 app management, authentication, and error handling.
 
 """
@@ -48,7 +48,7 @@ def authenticate_user(func):
 @authenticate_user
 def scim_addusers():
     """
-    This code defines a SCIM API endpoint for creating users, 
+    This code defines a SCIM API endpoint for creating users,
     extracts data from the request JSON, and stores user information in a database.
     """
     # Get the request json and check if it is valid
@@ -159,9 +159,10 @@ def scim_addusers():
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
 def get_user(user_id):
-    """ 
-    SCIM API: Retrieve user data by ID and onboardApp parameters. 
-    If not found, a "User not found" response with a status code of 404 is returned.
+    """
+    SCIM API: Retrieve user data by ID and onboardApp parameters.
+    If not found, a "User not found" response with a status code of 404
+    is returned.
     """
     user = User.query.get(user_id)
     if not user:
@@ -226,8 +227,10 @@ def get_devices():
 @authenticate_user
 def update_user(user_id):
     """
-    Function to retrieve SCIM device data based on parameters like start index, count, and filters. 
-    It returns a JSON response with a list of serialized devices.
+    Function to retrieve SCIM device data based on parameters like start
+    index, count, and filters.
+
+    Returns a JSON response with a list of serialized devices.
     """
     if not request.json:
         return make_response(

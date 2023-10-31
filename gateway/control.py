@@ -11,7 +11,7 @@ registrations with authentication.
 
 """
 
-import uuid
+from uuid import uuid4
 from http import HTTPStatus
 from typing import Any
 from functools import wraps
@@ -320,8 +320,7 @@ def register_topic():
                 adv_topic = AdvTopic(topic, data_format)
                 session.merge(adv_topic)
             session.commit()
-    ret_json = {"status": "SUCCESS", "id": uuid.uuid4(
-    ), "requestID": uuid.uuid4(), "topic": topic}
+    ret_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(ret_json), HTTPStatus.OK
 
 
@@ -372,8 +371,7 @@ def unregister_topic():
 
         session.delete(adv_topic)
         session.commit()
-    arg_json = {"status": "SUCCESS", "id": uuid.uuid4(
-    ), "requestID": uuid.uuid4(), "topic": topic}
+    arg_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(arg_json), HTTPStatus.OK
 
 
@@ -393,8 +391,7 @@ def register_data_app():
 
     session.commit()
 
-    ar_json = {"status": "SUCCESS", "id": uuid.uuid4(
-    ), "requestID": uuid.uuid4(), "topic": topic}
+    ar_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(ar_json), HTTPStatus.OK
 
 
@@ -417,8 +414,7 @@ def unregister_data_app():
 
     session.commit()
 
-    json_str = {"status": "SUCCESS", "id": uuid.uuid4(
-    ), "requestID": uuid.uuid4(), "topic": topic}
+    json_str = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(json_str), HTTPStatus.OK
 
 

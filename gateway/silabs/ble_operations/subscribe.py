@@ -47,14 +47,14 @@ class SubscribeOperation(Operation):
             "subscribe to characteristic %d from %d", self.char_handle, self.handle)
 
         if "notify" in self.properties:
-            flag = self.lib.bt.gatt.CLIENT_CONFIG_FLAG_NOTIFICATION  # type: ignore
+            flag = self.lib.bt.gatt.CLIENT_CONFIG_FLAG_NOTIFICATION
         elif "indicate" in self.properties:
-            flag = self.lib.bt.gatt.CLIENT_CONFIG_FLAG_INDICATION  # type: ignore
+            flag = self.lib.bt.gatt.CLIENT_CONFIG_FLAG_INDICATION
         else:
             self.log.error("No notify or indicate property")
             return
 
-        self.lib.bt.gatt.set_characteristic_notification(  # type: ignore
+        self.lib.bt.gatt.set_characteristic_notification(
             self.handle, self.char_handle, flag)
 
         self.wait()
@@ -64,11 +64,11 @@ class SubscribeOperation(Operation):
         if self.handle == evt.connection and \
                 self.char_handle == evt.characteristic and \
                 evt.att_opcode in (self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_NOTIFICATION,
-                                   self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):  # type: ignore
+                                   self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION):
             self.log.info(evt)
-            if evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION:  # type: ignore
+            if evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_HANDLE_VALUE_INDICATION:
                 try:
-                    self.lib.bt.gatt.send_characteristic_confirmation(   # type: ignore
+                    self.lib.bt.gatt.send_characteristic_confirmation(
                         self.handle)
                 except ImportError as error_exp:
                     self.log.error(error_exp)
@@ -80,8 +80,8 @@ class SubscribeOperation(Operation):
         """ Disables notifications/indications for the characteristic. """
         self.clear()
         self.__disable = True
-        self.lib.bt.gatt.set_characteristic_notification(  # type: ignore
-            self.handle, self.char_handle, self.lib.bt.gatt.CLIENT_CONFIG_FLAG_DISABLE)  # type:ignore
+        self.lib.bt.gatt.set_characteristic_notification(
+            self.handle, self.char_handle, self.lib.bt.gatt.CLIENT_CONFIG_FLAG_DISABLE)
 
         self.wait()
 

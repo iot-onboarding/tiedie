@@ -3,9 +3,9 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
-""" 
+"""
 
-This module integrates Flask, SQLAlchemy, and Paho MQTT for managing 
+This module integrates Flask, SQLAlchemy, and Paho MQTT for managing
 Bluetooth Low Energy device data and MQTT communication in a project.
 
 """
@@ -21,9 +21,9 @@ from proto import data_app_pb2
 
 @dataclasses.dataclass
 class AdvField:
-    """ 
-    Represents an advertising field with length, type, and data properties. 
-    It provides a method from_bytes for creating AdvField objects from bytes. 
+    """
+    Represents an advertising field with length, type, and data properties.
+    It provides a method from_bytes for creating AdvField objects from bytes.
     """
 
     length: int
@@ -97,9 +97,10 @@ def is_adv_allowed(topic: AdvTopic, adv_fields: list[AdvField], address: str) ->
 
 
 class DataProducer:
-    """ 
-    Handles data production and publishing over MQTT. 
-    It has methods for publishing notifications, advertisements, and connection status. 
+    """
+    Handles data production and publishing over MQTT.
+    It has methods for publishing notifications, advertisements, and
+    connection status.
     """
     mqtt_client: mqtt.Client
 

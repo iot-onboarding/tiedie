@@ -5,8 +5,8 @@
 
 """
 
-This script defines BLE communication. Manages device connections, 
-actions like scanning, reading/writing, and subscribing/unsubscribing 
+This script defines BLE communication. Manages device connections,
+actions like scanning, reading/writing, and subscribing/unsubscribing
 to characteristics.
 
 """
