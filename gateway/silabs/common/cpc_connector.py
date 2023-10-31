@@ -1,3 +1,5 @@
+""" cpc connector """
+
 # Copyright 2022 Silicon Laboratories Inc. www.silabs.com
 #
 # SPDX-License-Identifier: Zlib
@@ -71,7 +73,7 @@ class SerialConnectorCPC(Connector):
             try:
                 data = self.endpoint.read()
                 self.read_buff.extend(data)
-            except Exception:
+            except RuntimeError:
                 # Read timeout, return with empty data
                 return bytearray(0)
 

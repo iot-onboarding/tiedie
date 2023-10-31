@@ -3,6 +3,14 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+
+This module creates a Flask Blueprint for controlling Bluetooth Low
+Energy (BLE) devices, handling connections, data operations, and topic
+registrations with authentication.
+
+"""
+
 import uuid
 from http import HTTPStatus
 from typing import Any
@@ -22,6 +30,7 @@ ble_app = get_ble_app()
 
 
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
+    """ Custom WSGI request handler to extract and provide peer certificates. """
     def make_environ(self):
         environ = super(PeerCertWSGIRequestHandler, self).make_environ()
         x509_binary = self.connection.getpeercert(True)
@@ -46,7 +55,7 @@ def authenticate_user(func):
         if client_cert:
             if session.scalar(select(EndpointApp).filter_by(applicationName=client_cert.get_subject().CN)) is not None:
                 return func(*args, **kwargs)
-            else:
+
                 return make_response(jsonify({"error": "Unauthorized"}), 403)
 
         api_key = request.headers.get("X-Api-Key")
@@ -68,6 +77,7 @@ def authenticate_user(func):
 @control_app.route('/connectivity/connect', methods=['POST'])
 @authenticate_user
 def connect():
+    """ Connect with API """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -93,6 +103,7 @@ def connect():
 @control_app.route('/connectivity/disconnect', methods=['POST'])
 @authenticate_user
 def disconnect():
+    """ Disconnect from API """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -108,6 +119,7 @@ def disconnect():
 @control_app.route('/data/discover', methods=['POST'])
 @authenticate_user
 def discover():
+    """ Function Discover """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
     
@@ -130,6 +142,7 @@ def discover():
 @control_app.route('/data/read', methods=['POST'])
 @authenticate_user
 def read():
+    """ Function Read """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -155,6 +168,7 @@ def read():
 @control_app.route('/data/write', methods=['POST'])
 @authenticate_user
 def write():
+    """ Function Write """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -185,6 +199,7 @@ def write():
 @control_app.route('/data/subscribe', methods=['POST'])
 @authenticate_user
 def subscribe():
+    """ This function subscribes a user device from a BLE service. """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -214,6 +229,7 @@ def subscribe():
 @control_app.route('/data/unsubscribe', methods=['POST'])
 @authenticate_user
 def unsubscribe():
+    """ This function unsubscribes a user device from a BLE service. """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -243,6 +259,7 @@ def unsubscribe():
 @control_app.route('/registration/registerTopic', methods=['POST'])
 @authenticate_user
 def register_topic():
+    """ Function to register topic """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -302,13 +319,14 @@ def register_topic():
                 adv_topic = AdvTopic(topic, data_format)
                 session.merge(adv_topic)
             session.commit()
-
-    return jsonify({"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}), HTTPStatus.OK
+    ret_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    return jsonify(ret_json), HTTPStatus.OK
 
 
 @control_app.route('/registration/unregisterTopic', methods=['POST'])
 @authenticate_user
 def unregister_topic():
+    """ Function to unregister topic """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -352,12 +370,13 @@ def unregister_topic():
 
         session.delete(adv_topic)
         session.commit()
-
-    return jsonify({"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}), HTTPStatus.OK
+    arg_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    return jsonify(arg_json), HTTPStatus.OK
 
 @control_app.route('/registration/registerDataApp', methods=['POST'])
 @authenticate_user
 def register_data_app():
+    """ Function to register the data app """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -370,12 +389,14 @@ def register_data_app():
 
     session.commit()
 
-    return jsonify({"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}), HTTPStatus.OK
+    ar_json = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    return jsonify(ar_json), HTTPStatus.OK
 
 
 @control_app.route('/registration/unregisterDataApp', methods=['POST'])
 @authenticate_user
 def unregister_data_app():
+    """ Function to unregister the data app """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
@@ -391,12 +412,14 @@ def unregister_data_app():
 
     session.commit()
 
-    return jsonify({"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}), HTTPStatus.OK
+    json_str = {"status": "SUCCESS", "id": uuid.uuid4(), "requestID": uuid.uuid4(), "topic": topic}
+    return jsonify(json_str), HTTPStatus.OK
 
 
 @control_app.route('/bulk', methods=['POST'])
 @authenticate_user
 def bulk():
+    """ Function bulk """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
