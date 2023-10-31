@@ -18,6 +18,7 @@ public class TiedieResponse<T> {
     private TiedieStatus status;
     private String reason;
     private int errorCode;
+    private String requestID;
 
     @JsonIgnore
     private T body;

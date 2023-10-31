@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
                 return `data-app/${device.id}/connection`;
             });
 
-            var ws = new WebSocket("ws://localhost:3000/connection-status");
+		var ws = new WebSocket(`ws://${window.location.host}/connection-status`);
 
             ws.onopen = () => {
                 ws.send(JSON.stringify(topics));

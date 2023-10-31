@@ -67,23 +67,23 @@ class User(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     schemas = db.Column(db.String())
-    deviceDisplayName = db.Column(db.String())
-    adminState = db.Column(db.Boolean())
-    versionSupport = db.Column(db.ARRAY(db.String()))
-    deviceMacAddress = db.Column(db.String())
-    isRandom = db.Column(db.Boolean())
-    separateBroadcastAddress = db.Column(db.ARRAY(db.String()))
+    device_display_name = db.Column(db.String())
+    admin_state = db.Column(db.Boolean())
+    version_support = db.Column(db.ARRAY(db.String()))
+    device_mac_address = db.Column(db.String())
+    is_random = db.Column(db.Boolean())
+    separate_broadcast_address = db.Column(db.ARRAY(db.String()))
     irk = db.Column(db.String())
-    pairingMethods = db.Column(db.ARRAY(db.String()))
-    pairingNull = db.Column(db.String())
-    pairingJustWorksKeys = db.Column(db.Integer())
-    pairingPassKey = db.Column(db.Integer())
-    pairingOOBKey = db.Column(db.String())
-    pairingOOBRN = db.Column(db.BigInteger())
-    creTime = db.Column(db.String())
-    modTime = db.Column(db.String())
+    pairing_methods = db.Column(db.ARRAY(db.String()))
+    pairing_null = db.Column(db.String())
+    pairing_just_works_key = db.Column(db.Integer())
+    pairing_pass_key = db.Column(db.Integer())
+    pairing_oob_key = db.Column(db.String())
+    pairing_oobrn = db.Column(db.BigInteger())
+    created_time = db.Column(db.String())
+    modified_time = db.Column(db.String())
 
-    endpointApps: Mapped[List["EndpointApp"]] = relationship(
+    endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
         "EndpointApp", secondary=devices_endpoint_apps)
 
     gatt_topics = relationship("GattTopic",
@@ -98,43 +98,43 @@ class User(db.Model):
 
     def __init__(
         self,
-        id,
+        device_id,
         schemas,
-        deviceDisplayName,
-        adminState,
-        versionSupport,
-        deviceMacAddress,
-        isRandom,
-        separateBroadcastAddress,
+        device_display_name,
+        admin_state,
+        version_support,
+        device_mac_address,
+        is_random,
+        separate_broadcast_address,
         irk,
-        pairingMethods,
-        pairingNull,
-        pairingJustWorksKeys,
-        pairingPassKey,
-        pairingOOBKey,
-        pairingOOBRN,
-        endpointApps,
-        tCreated,
+        pairing_methods,
+        pairing_null,
+        pairing_just_works_keys,
+        pairing_pass_key,
+        pairing_oob_key,
+        pairing_oobrn,
+        endpoint_apps,
+        created_time,
     ):
-        self.id = id
+        self.id = device_id
         self.schemas = schemas
-        self.deviceDisplayName = deviceDisplayName
-        self.adminState = adminState
-        self.versionSupport = versionSupport
-        self.deviceMacAddress = deviceMacAddress
-        self.isRandom = isRandom
-        self.separateBroadcastAddress = separateBroadcastAddress
+        self.device_display_name = device_display_name
+        self.admin_state = admin_state
+        self.version_support = version_support
+        self.device_mac_address = device_mac_address
+        self.is_random = is_random
+        self.separate_broadcast_address = separate_broadcast_address
         self.irk = irk
-        self.pairingMethods = pairingMethods
-        self.pairingNull = pairingNull
-        self.pairingJustWorksKeys = pairingJustWorksKeys
-        self.pairingPassKey = pairingPassKey
-        self.pairingOOBKey = pairingOOBKey
-        self.pairingOOBRN = pairingOOBRN
-        if endpointApps:
-            self.endpointApps.extend(endpointApps)
-        self.creTime = tCreated
-        self.modTime = tCreated
+        self.pairing_methods = pairing_methods
+        self.pairing_null = pairing_null
+        self.pairing_just_works_key = pairing_just_works_keys
+        self.pairing_pass_key = pairing_pass_key
+        self.pairing_oob_key = pairing_oob_key
+        self.pairing_oobrn = pairing_oobrn
+        if endpoint_apps:
+            self.endpoint_apps.extend(endpoint_apps)
+        self.created_time = created_time
+        self.modified_time = created_time
 
     def __repr__(self):
         return f"<id {self.id}>"
@@ -146,47 +146,47 @@ class User(db.Model):
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"],
             "id": self.id,
-            "deviceDisplayName": self.deviceDisplayName,
-            "adminState": self.adminState,
+            "deviceDisplayName": self.device_display_name,
+            "adminState": self.admin_state,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
-                "versionSupport": self.versionSupport,
-                "deviceMacAddress": self.deviceMacAddress,
-                "isRandom": self.isRandom,
-                "pairingMethods": self.pairingMethods,
+                "versionSupport": self.version_support,
+                "deviceMacAddress": self.device_mac_address,
+                "isRandom": self.is_random,
+                "pairingMethods": self.pairing_methods,
             },
             "meta": {"resourceType": "Device",
-                     "created": self.creTime,
-                     "lastModified": self.modTime},
+                     "created": self.created_time,
+                     "lastModified": self.modified_time},
         }
 
         if self.irk:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "irk"] = self.irk
-        if self.separateBroadcastAddress:
+        if self.separate_broadcast_address:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-                "separateBroadcastAddress"] = self.separateBroadcastAddress
+                "separateBroadcastAddress"] = self.separate_broadcast_address
 
-        if self.pairingNull:
+        if self.pairing_null:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
-                "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"] = self.pairingNull
-        if self.pairingJustWorksKeys:
+                "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"] = self.pairing_null
+        if self.pairing_just_works_key:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"] = {
-                    "key": self.pairingJustWorksKeys
+                    "key": self.pairing_just_works_key
             }
-        if self.pairingPassKey:
+        if self.pairing_pass_key is not None:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"] = {
-                    "key": self.pairingPassKey
+                    "key": self.pairing_pass_key
             }
-        if self.pairingOOBKey:
+        if self.pairing_oob_key:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"] = {
-                    "key": self.pairingOOBKey,
-                    "randNumber": self.pairingOOBRN
+                    "key": self.pairing_oob_key,
+                    "randNumber": self.pairing_oobrn
             }
 
-        if self.endpointApps is not None:
+        if self.endpoint_apps is not None:
             response["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
@@ -195,7 +195,7 @@ class User(db.Model):
                                   "$ref":  f"https://{EXTERNAL_HOST}:" +
                                   f"{EXTERNAL_PORT}/scim/v2/EndpointApps/" +
                                   f"{app.id}"
-                                  } for app in self.endpointApps],
+                                  } for app in self.endpoint_apps],
                 "deviceControlEnterpriseEndpoint":
                     f"https://{EXTERNAL_HOST}:" +
                     "{EXTERNAL_PORT}/control",
@@ -203,6 +203,7 @@ class User(db.Model):
                     f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
         return response
+
 
 class EndpointApp(db.Model):
     """ Store information about applications linked to BLE devices. """
@@ -246,12 +247,12 @@ class OnboardingAppKey(db.Model):
     """ Store keys for onboarding applications. """
     __tablename__ = "onboardingapi_key"
 
-    keyType = Column(String(), primary_key=True, unique=True)
-    keyVal = Column(String(), primary_key=True, unique=True)
+    key_type = Column(String(), primary_key=True, unique=True)
+    key_val = Column(String(), primary_key=True, unique=True)
 
-    def __init__(self, keyType, keyVal):
-        self.keyType = keyType
-        self.keyVal = keyVal
+    def __init__(self, key_type, key_val):
+        self.key_type = key_type
+        self.key_val = key_val
 
 
 class GattTopic(db.Model):

@@ -6,12 +6,15 @@
 package com.cisco.tiedie.dto.control.ble;
 
 import com.cisco.tiedie.dto.control.DataParameter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BleDiscoverResponse {
     private List<BleService> services;
 
@@ -19,34 +22,16 @@ public class BleDiscoverResponse {
         List<DataParameter> parameters = new ArrayList<>();
 
         for (BleService service : services) {
-            for (BleCharacteristic characteristic : service.characteristics) {
+            for (BleCharacteristic characteristic : service.getCharacteristics()) {
                 var parameter = new BleDataParameter();
                 parameter.setDeviceId(deviceId);
-                parameter.setServiceUUID(service.uuid);
-                parameter.setCharUUID(characteristic.uuid);
-                parameter.setFlags(characteristic.flags);
+                parameter.setServiceUUID(service.getServiceID());
+                parameter.setCharUUID(characteristic.getCharacteristicID());
+                parameter.setFlags(characteristic.getFlags());
                 parameters.add(parameter);
             }
         }
 
         return parameters;
-    }
-
-    @Data
-    private static class BleService {
-        private String uuid;
-        private List<BleCharacteristic> characteristics;
-    }
-
-    @Data
-    private static class BleCharacteristic {
-        private String uuid;
-        private List<String> flags;
-        private List<BleDescriptors> descriptors;
-    }
-
-    @Data
-    private static class BleDescriptors {
-        private String uuid;
     }
 }

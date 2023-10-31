@@ -20,11 +20,11 @@ from flask import Flask
 from flask_migrate import Migrate
 from sqlalchemy import select
 
-import access_point
 from config import (BOOT_TIMEOUT, MQTT_HOST, MQTT_PORT, POSTGRES_DB,
                     POSTGRES_HOST, POSTGRES_PASSWORD, POSTGRES_PORT,
                     POSTGRES_USER)
 from control import control_app, PeerCertWSGIRequestHandler
+import ap_factory
 from data_producer import DataProducer
 from database import db, session
 from scim import scim_app
@@ -34,9 +34,10 @@ from util import make_hash
 app = Flask(__name__)
 migrate = Migrate(app, db)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = \
-    f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}' + \
-    f'@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    'postgresql+psycopg2://'
+    f'{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
+)
 app.config['JSON_SORT_KEYS'] = False
 
 db.init_app(app)
@@ -71,7 +72,7 @@ def mqtt_connect() -> mqtt.Client:
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-        # if endpointApp doesnt exist, create it
+        # if endpointApp doesn't exist, create it
         if not session.scalar(select(EndpointApp).filter_by(applicationName="admin")):
             endpoint_app = EndpointApp()
             endpoint_app.applicationType = "telemetry"
@@ -87,17 +88,17 @@ if __name__ == "__main__":
     mqtt_client = mqtt_connect()
     mqtt_client.loop_start()
 
-    data_producer = DataProducer(mqtt_client)
+    data_producer = DataProducer(mqtt_client, app)
 
-    access_point.ble_app = access_point.create_ble_app(data_producer)
-    access_point.ble_app.start()
+    ble_ap = ap_factory.create_ble_ap(data_producer)
+    ble_ap.start()
 
-    if not access_point.ble_app.ready.wait(timeout=BOOT_TIMEOUT):
-        access_point.ble_app.stop()
+    if not ble_ap.ready.wait(timeout=BOOT_TIMEOUT):
+        ble_ap.stop()
         mqtt_client.loop_stop()
         raise RuntimeError("Failed to boot")
 
-    access_point.ble_app.start_scan()
+    ble_ap.start_scan()
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
     context.verify_mode = ssl.CERT_OPTIONAL
@@ -107,5 +108,5 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8081, ssl_context=context,
             request_handler=PeerCertWSGIRequestHandler)
 
-    access_point.ble_app.stop()
+    ble_ap.stop()
     mqtt_client.loop_stop()

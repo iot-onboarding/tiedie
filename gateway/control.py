@@ -20,19 +20,18 @@ from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 import werkzeug.serving
 import OpenSSL
-from access_point import get_ble_app
+from ap_factory import ble_ap
 from database import session
 from models import AdvTopic, ConnectionTopic, DataAppTopic, EndpointApp, GattTopic, User, AdvFilter
 
 control_app = Blueprint("control", __name__, url_prefix="/control")
 
-ble_app = get_ble_app()
-
 
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
     """ Custom WSGI request handler to extract and provide peer certificates. """
+
     def make_environ(self):
-        environ = super(PeerCertWSGIRequestHandler, self).make_environ()
+        environ = super().make_environ()
         x509_binary = self.connection.getpeercert(True)
         if x509_binary is None:
             environ['peercert'] = None
@@ -48,23 +47,23 @@ def authenticate_user(func):
 
     @wraps(func)
     def check_apikey(*args, **kwargs):
-        global ble_app
-        ble_app = get_ble_app()
-
         client_cert = request.environ['peercert']
         if client_cert:
-            if session.scalar(select(EndpointApp).filter_by(
-                    applicationName=client_cert.get_subject().CN)) is not None:
+            if session.scalar(
+                select(EndpointApp)
+                .filter_by(applicationName=client_cert.get_subject().CN)
+            ) is not None:
                 return func(*args, **kwargs)
+
             return make_response(jsonify({"error": "Unauthorized"}), 403)
 
         api_key = request.headers.get("X-Api-Key")
         if request.json is None:
             return make_response(jsonify({"error": "Unauthorized"}), 403)
 
-        control_app = request.json.get("controlApp")
+        control_app_id = request.json.get("controlApp")
         endpoint_app = session.scalar(select(EndpointApp).
-                                      filter_by(applicationName=control_app))
+                                      filter_by(applicationName=control_app_id))
 
         if endpoint_app is None or api_key is None or api_key != endpoint_app.clientToken:
             return make_response(jsonify({"error": "Unauthorized"}), 403)
@@ -81,21 +80,18 @@ def connect():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
     retries = ble["retries"]
-    services = ble["services"]
+    # services = ble["services"]
 
-    device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
+    device = session.execute(select(User).filter_by(id=device_id)).scalar_one()
 
-    resp, respcode = ble_app.connect(device.deviceMacAddress, retries)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().connect(device.device_mac_address, retries)
 
     return resp, respcode
 
@@ -107,15 +103,14 @@ def disconnect():
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
-    device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
+    device = session.execute(select(User).filter_by(id=device_id)).scalar_one()
 
-    resp, respcode =  ble_app.disconnect(device.deviceMacAddress)
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().disconnect(device.device_mac_address)
 
     return resp, respcode
+
 
 @control_app.route('/data/discover', methods=['POST'])
 @authenticate_user
@@ -124,17 +119,14 @@ def discover():
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
-    device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
+    device = session.execute(select(User).filter_by(id=device_id)).scalar_one()
 
     ble = request.json.get("ble")
-    retries = ble["retries"]
+    retries = ble.get("retries", 3)
 
-    resp, respcode = ble_app.discover(device.deviceMacAddress, retries)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().discover(device.device_mac_address, retries)
 
     return resp, respcode
 
@@ -147,23 +139,22 @@ def read():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
-    serviceUUID = ble["serviceID"].lower()
-    characteristicUUID = ble["characteristicID"].lower()
+    service_id = ble["serviceID"].lower()
+    characteristic_id = ble["characteristicID"].lower()
 
-    device = session.execute(select(User).filter_by(id=uuid)).scalar_one()
+    device = session.execute(select(User).filter_by(id=device_id)).scalar_one()
 
-    resp, respcode = ble_app.read(device.deviceMacAddress, serviceUUID, characteristicUUID)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().read(
+        device.device_mac_address, service_id, characteristic_id)
 
     return resp, respcode
+
 
 @control_app.route('/data/write', methods=['POST'])
 @authenticate_user
@@ -173,25 +164,23 @@ def write():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
-    serviceUUID = ble["serviceID"].lower()
-    characteristicUUID = ble["characteristicID"].lower()
-    value = ble["value"].lower()
+    service_id = ble["serviceID"].lower()
+    characteristic_id = ble["characteristicID"].lower()
+    value = request.json["value"].lower()
 
-    device = session.scalar(select(User).filter_by(id=uuid))
+    device = session.scalar(select(User).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    resp, respcode =  ble_app.write(device.deviceMacAddress, serviceUUID, characteristicUUID, value)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().write(
+        device.device_mac_address, service_id, characteristic_id, value)
 
     return resp, respcode
 
@@ -204,24 +193,22 @@ def subscribe():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
-    serviceUUID = ble["serviceID"].lower()
-    characteristicUUID = ble["characteristicID"].lower()
+    service_id = ble["serviceID"].lower()
+    characteristic_id = ble["characteristicID"].lower()
 
-    device = session.scalar(select(User).filter_by(id=uuid))
+    device = session.scalar(select(User).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    resp, respcode = ble_app.subscribe(device.deviceMacAddress, serviceUUID, characteristicUUID)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().subscribe(
+        device.device_mac_address, service_id, characteristic_id)
 
     return resp, respcode
 
@@ -234,24 +221,22 @@ def unsubscribe():
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     technology = request.json.get("technology")
-    uuid = request.json.get("id")
+    device_id = request.json.get("id")
 
     if technology != "ble" or "ble" not in request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     ble = request.json.get("ble")
-    serviceUUID = ble["serviceID"].lower()
-    characteristicUUID = ble["characteristicID"].lower()
+    service_id = ble["serviceID"].lower()
+    characteristic_id = ble["characteristicID"].lower()
 
-    device = session.scalar(select(User).filter_by(id=uuid))
+    device = session.scalar(select(User).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    resp, respcode =  ble_app.unsubscribe(device.deviceMacAddress, serviceUUID, characteristicUUID)
-
-    if uuid is not None:
-        resp.set_data({"id":  uuid})
+    resp, respcode = ble_ap().unsubscribe(
+        device.device_mac_address, service_id, characteristic_id)
 
     return resp, respcode
 
@@ -273,20 +258,20 @@ def register_topic():
     data_format = request.json.get("dataFormat", "default")
     ble = request.json["ble"]
 
-    msg_type = ble["type"]
+    ad_type = ble["type"]
 
-    if msg_type == "gatt":
-        serviceUUID = ble["serviceID"].lower()
-        characteristicUUID = ble["characteristicID"].lower()
+    if ad_type == "gatt":
+        service_id = ble["serviceID"].lower()
+        characteristic_id = ble["characteristicID"].lower()
 
         devices = session.scalars(
             select(User).filter(User.id.in_(uuids))).all()
 
         gatt_topic = GattTopic(
-            topic, serviceUUID, characteristicUUID, data_format, devices)
+            topic, service_id, characteristic_id, data_format, devices)
         session.merge(gatt_topic)
         session.commit()
-    elif msg_type == "connection":
+    elif ad_type == "connection_events":
         devices = session.scalars(
             select(User).filter(User.id.in_(uuids))).all()
 
@@ -314,9 +299,12 @@ def register_topic():
 
             if len(filters) > 0:
                 adv_filters: list[AdvFilter] = []
-                for f in filters:
-                    adv_filter = AdvFilter(topic, f.get(
-                        "mac", "*"), f.get("adType", "*"), f.get("adData", "*"))
+                for topic_filter in filters:
+                    adv_filter = AdvFilter(topic, topic_filter.get(
+                        "mac", "*"),
+                        topic_filter.get("adType", "*"),
+                        topic_filter.get("adData", "*")
+                    )
                     adv_filters.append(adv_filter)
 
                 # if adv_topic already exists, delete all filters and add new ones
@@ -386,6 +374,7 @@ def unregister_topic():
     arg_json = {"status": "SUCCESS", "id": uuid4(), "requestID": uuid4(), "topic": topic}
     return jsonify(arg_json), HTTPStatus.OK
 
+
 @control_app.route('/registration/registerDataApp', methods=['POST'])
 @authenticate_user
 def register_data_app():
@@ -440,8 +429,8 @@ def bulk():
     if technology != "ble":
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    uuid = request.json.get("id")
-    control_app_loc = request.json.get("controlApp")
+    device_id = request.json.get("id")
+    control_app_id = request.json.get("controlApp")
 
     operations = request.json.get("operations", [])
 
@@ -452,8 +441,8 @@ def bulk():
         method = "POST"
         data = {
             "technology": technology,
-            "id": uuid,
-            "controlApp": control_app_loc,
+            "id": device_id,
+            "controlApp": control_app_id,
             "ble": operation["ble"]
         }
 

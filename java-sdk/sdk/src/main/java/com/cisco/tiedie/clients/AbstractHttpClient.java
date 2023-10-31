@@ -71,6 +71,7 @@ abstract class AbstractHttpClient {
                 tiedieResponse.setHttpMessage(response.message());
                 tiedieResponse.setBody(mapper.convertValue(tiedieResponse.getMap(), returnClass));
             } catch (IOException e) {
+                e.printStackTrace();
                 return tiedieResponse;
             }
             return tiedieResponse;

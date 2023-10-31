@@ -30,10 +30,10 @@ class Option(Enum):
 
 class EndpointEventOption(Enum):
     """ EndpointEventOption Class """
-
-  CPC_ENDPOINT_EVENT_OPTION_NONE = 0
-  CPC_ENDPOINT_EVENT_OPTION_BLOCKING = 1
-  CPC_ENDPOINT_EVENT_OPTION_READ_TIMEOUT = 2
+    
+    CPC_ENDPOINT_EVENT_OPTION_NONE = 0
+    CPC_ENDPOINT_EVENT_OPTION_BLOCKING = 1
+    CPC_ENDPOINT_EVENT_OPTION_READ_TIMEOUT = 2
 #end class
 
 class CPCTimeval(Structure):

@@ -35,8 +35,8 @@ SPDX-License-Identifier: Apache-2.0
         <script th:inline="javascript">
             var tbody = document.getElementById("tbody");
             var topic = new URLSearchParams(window.location.search).get('topic');
-
-            var ws = new WebSocket("ws://localhost:3000/subscription/" + topic);
+		
+	    var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
 
             ws.onopen = () => {
                 ws.send("");

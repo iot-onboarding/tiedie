@@ -61,7 +61,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
                 "}", request.getBody().readUtf8());
     }
@@ -164,7 +164,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
                 "}", request.getBody().readUtf8());
     }
@@ -196,7 +196,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
@@ -234,7 +234,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
@@ -274,7 +274,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"zigbee\" : {\n" +
@@ -301,7 +301,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"zigbee\" : {\n" +
@@ -343,7 +343,7 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"uuid\" : \"" + deviceId + "\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
                 "  \"controlApp\" : \"control-app\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
