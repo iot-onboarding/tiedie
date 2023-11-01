@@ -83,42 +83,35 @@ class DiscoverOperation(Operation):
 
         self.wait()
 
-        retries = 0
+        if self.result != 0:
+            self.log.error("failed to discover services: %d", self.result)
+            return
 
-        for _ in range(self.retries + 1):
+        for service in self.services.values():
+            self.lib.bt.gatt.discover_characteristics(  # type: ignore
+                self.handle, service.service_handle)
+            self.current_service = service
+
+            self.wait()
 
             if self.result != 0:
-                self.log.error("failed to discover services: %d", self.result)
-                continue
+                self.log.error(
+                    "failed to discover characteristics: %d", self.result)
+                return
 
-            for service in self.services.values():
-                self.lib.bt.gatt.discover_characteristics(  # type: ignore
-                    self.handle, service.service_handle)
-                self.current_service = service
+            for characteristic in service.characteristics.values():
+                self.current_characteristic = characteristic
+                self.lib.bt.gatt.discover_descriptors(  # type: ignore
+                    self.handle, characteristic.char_handle)
 
                 self.wait()
 
                 if self.result != 0:
                     self.log.error(
-                        "failed to discover characteristics: %d", self.result)
-                    continue
+                        "failed to discover descriptors: %d", self.result)
+                    return
 
-                for characteristic in service.characteristics.values():
-                    self.current_characteristic = characteristic
-                    self.lib.bt.gatt.discover_descriptors(  # type: ignore
-                        self.handle, characteristic.char_handle)
-
-                    self.wait()
-
-                    if self.result != 0:
-                        self.log.error(
-                            "failed to discover descriptors: %d", self.result)
-                        continue
-
-            self.is_done = True
-
-        if retries == self.retries + 1:
-            self.is_done = True
+        self.is_done = True
 
     def bt_evt_gatt_service(self, evt):
         """ Processes Bluetooth GATT service discovery event, stores discovered services. """
@@ -157,14 +150,14 @@ class DiscoverOperation(Operation):
             "requestID": uuid4(),
             "services": [
                 {
-                    "uuid": service.uuid,
+                    "serviceID": service.uuid,
                     "characteristics": [
                         {
-                            "serviceID": characteristic.uuid,
+                            "characteristicID": characteristic.uuid,
                             "flags": characteristic.properties,
                             "descriptors": [
                                 {
-                                    "characteristicID": descriptor.uuid,
+                                    "descriptorID": descriptor.uuid,
                                 } for descriptor in characteristic.descriptors.values()
                             ],
                         } for characteristic in service.characteristics.values()
