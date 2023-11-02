@@ -19,13 +19,17 @@ from silabs.ble_operations.operation import Operation
 from config import CONNECTION_TIMEOUT
 from data_producer import DataProducer
 
+
 class ConnectOperation(Operation):
     """ Connects to a device and manages connection status. """
-    def __init__(self,lib:bgapi.BGLib,data_producer:DataProducer,address:str,services,retries:int):
+
+    def __init__(self, lib: bgapi.BGLib,
+                 data_producer: DataProducer,
+                 address: str,
+                 retries: int):
         super().__init__(lib)
         self.handle = 0
         self.address = address.lower()
-        self.services = services
         self.retries = retries
         self.data_producer = data_producer
 
@@ -57,15 +61,17 @@ class ConnectOperation(Operation):
     def bt_evt_connection_opened(self, evt):
         """ Handles connection opened event, logs it, and sets the status. """
         if self.handle == evt.connection:
-            self.log.info("Connection opened: %s",evt.address)
-            self.data_producer.publish_connection_status(evt, self.address, True)
+            self.log.info("Connection opened: %s", evt.address)
+            self.data_producer.publish_connection_status(
+                evt, self.address, True)
             self.set()
 
     def bt_evt_connection_closed(self, evt):
         """ Handles connection closed event, logs it, and sets status if needed. """
         if self.handle == evt.connection:
             self.log.info(evt)
-            self.data_producer.publish_connection_status(evt, self.address, False)
+            self.data_producer.publish_connection_status(
+                evt, self.address, False)
             # is true if connection was opened before
             if self.is_set():
                 self.is_done = True
