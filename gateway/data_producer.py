@@ -15,7 +15,7 @@ from flask import Flask
 import paho.mqtt.client as mqtt
 from sqlalchemy import Column, func, and_, select
 from database import session
-from models import AdvTopic, GattTopic, User
+from models import AdvTopic, GattTopic, Device
 from proto import data_app_pb2
 
 
@@ -115,9 +115,9 @@ class DataProducer:
                              value: bytes):
         """ Publish GATT notifications/indications to registered MQTT topics """
         with self.app.app_context():
-            user = session.scalar(select(User)
-                                  .join(GattTopic, User.gatt_topics)
-                                  .where(and_(User.device_mac_address == mac_address,
+            user = session.scalar(select(Device)
+                                  .join(GattTopic, Device.gatt_topics)
+                                  .where(and_(Device.device_mac_address == mac_address,
                                               GattTopic.service_uuid == service_uuid,
                                               GattTopic.characteristic_uuid == char_uuid)))
 
@@ -142,8 +142,8 @@ class DataProducer:
     def publish_advertisement(self, evt):
         """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
         with self.app.app_context():
-            user = session.scalar(select(User).filter(
-                func.lower(User.device_mac_address) == func.lower(evt.address)))
+            user = session.scalar(select(Device).filter(
+                func.lower(Device.device_mac_address) == func.lower(evt.address)))
 
             adv_topics = list(session.scalars(
                 select(AdvTopic).filter_by(onboarded=False)).all())
@@ -170,8 +170,8 @@ class DataProducer:
     def publish_connection_status(self, evt, address, connected: bool):
         """ Publishes BLE connection status updates to MQTT topics based on conditions. """
         with self.app.app_context():
-            user = session.scalar(select(User).filter(
-                func.lower(User.device_mac_address) == func.lower(address)))
+            user = session.scalar(select(Device).filter(
+                func.lower(Device.device_mac_address) == func.lower(address)))
 
             if user is None:
                 return
