@@ -61,7 +61,7 @@ devices_endpoint_apps = db.Table(
 )
 
 
-class Device(db.Model):
+class User(db.Model):
     """ Represent BLE device information and associated data fields. """
     __tablename__ = "bledevices"
 
@@ -264,7 +264,7 @@ class GattTopic(db.Model):
     characteristic_uuid = Column(String())
     data_format = Column(Enum("default", "payload", name="data_format"))
 
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[User]] = relationship(
         secondary=gatt_topic_devices, back_populates="gatt_topics")
 
     def __init__(self, topic, service_uuid, characteristic_uuid, data_format, devices):
@@ -304,7 +304,7 @@ class AdvTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[User]] = relationship(
         secondary=adv_topic_devices, back_populates="adv_topics")
     onboarded = Column(Boolean, default=False)
     filter_type = Column(String())
@@ -332,7 +332,7 @@ class ConnectionTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[User]] = relationship(
         secondary=connection_topic_devices, back_populates="connection_topics")
 
     def __init__(self, topic: str, data_format, devices: Any):

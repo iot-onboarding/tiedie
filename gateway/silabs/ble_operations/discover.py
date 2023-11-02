@@ -10,32 +10,30 @@ along with an operation for discovering these attributes in BLE devices.
 
 """
 
-import dataclasses
 from uuid import uuid4
 from http import HTTPStatus
 from flask import Response, jsonify
 from silabs.ble_operations.operation import Operation
 
 
-@dataclasses.dataclass
 class Service:
     """
     This class represents a service in Bluetooth Low Energy (BLE)
     with a UUID and a service handle, containing characteristics as a
     dictionary.
     """
-    service_id: str
-    service_handle: int
-    characteristics: dict[str, "Characteristic"] = dataclasses.field(
-        default_factory=dict)
+
+    def __init__(self, service_id: str, service_handle: int):
+        self.uuid = service_id
+        self.service_handle = service_handle
+        self.characteristics: dict[str, Characteristic] = {}
 
 
-@dataclasses.dataclass
 class Characteristic:
     """ Represents BLE characteristic with UUID, handle, and properties info. """
 
     def __init__(self, characteristic_id: str, char_handle: int, properties: int):
-        self.characteristic_id = characteristic_id
+        self.uuid = characteristic_id
         self.char_handle = char_handle
 
         self.properties: list[str] = []
@@ -57,11 +55,12 @@ class Characteristic:
             self.properties.append("reliable_write")
 
 
-@dataclasses.dataclass
 class Descriptor:
     """ Class for BLE descriptor with UUID and handle attributes. """
-    descriptor_id: str
-    desc_handle: int
+
+    def __init__(self, descriptor_id: str, desc_handle: int):
+        self.uuid = descriptor_id
+        self.desc_handle = desc_handle
 
 
 class DiscoverOperation(Operation):
@@ -71,7 +70,7 @@ class DiscoverOperation(Operation):
     current_characteristic: Characteristic
     result: int
 
-    def __init__(self, lib, handle: int, retries: int = 3, services: list[dict[str, str]] = None):
+    def __init__(self, lib, handle: int, retries: int = 3, services=None):
         super().__init__(lib)
         self.handle = handle
         self.requested_services = services
@@ -165,8 +164,7 @@ class DiscoverOperation(Operation):
                     ],
                 } for service in self.services.values()
                 if self.requested_services is None or
-                len(self.requested_services) == 0 or
-                service.service_id in self.requested_services
+                service.uuid in self.requested_services
             ]
         }), HTTPStatus.OK
 
