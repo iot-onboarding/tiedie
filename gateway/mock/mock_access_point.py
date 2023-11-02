@@ -15,7 +15,7 @@ import time
 import uuid
 from flask import Response, jsonify
 from mock.mock_data import mock_advertisements
-from access_point import AccessPoint, ConnectionRequest
+from access_point import AccessPoint, BleConnectOptions, ConnectionRequest
 from data_producer import DataProducer
 
 
@@ -75,7 +75,10 @@ class MockAccessPoint(AccessPoint):
                 )
                 i += 1
 
-    def connect(self, address, services, retries=3) -> tuple[Response, int]:
+    def connect(self,
+                address,
+                ble_connect_options: BleConnectOptions,
+                retries=3) -> tuple[Response, int]:
         if not self.connectable():
             return jsonify({
                 "status": "FAILURE",
@@ -123,7 +126,10 @@ class MockAccessPoint(AccessPoint):
             ]
         }), HTTPStatus.OK
 
-    def discover(self, address, retries) -> tuple[Response, int]:
+    def discover(self,
+                 address,
+                 ble_connect_options: BleConnectOptions,
+                 retries=3) -> tuple[Response, int]:
         if address not in self.conn_reqs:
             return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
 
