@@ -12,12 +12,9 @@ import lombok.Data;
 public class TiedieBasicRequest {
     private Technology technology;
     private String id;
-    private String controlApp;
-
-    public static TiedieBasicRequest createRequest(Device device, String controlAppId) {
+    public static TiedieBasicRequest createRequest(Device device) {
         var tiedieRequest = new TiedieBasicRequest();
         tiedieRequest.setId(device.getId());
-        tiedieRequest.setControlApp(controlAppId);
 
         if (device.getBleExtension() != null) {
             tiedieRequest.setTechnology(Technology.BLE);

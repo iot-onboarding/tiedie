@@ -23,26 +23,25 @@ public class TiedieSubscribeRequest extends TiedieBasicRequest {
     private BleSubscribeRequest ble;
     private ZigbeeSubscribeRequest zigbee;
 
-    public static TiedieSubscribeRequest createRequest(DataParameter dataParameter, String controlAppId, SubscriptionOptions options) {
+    public static TiedieSubscribeRequest createRequest(DataParameter dataParameter, SubscriptionOptions options) {
         if (dataParameter instanceof BleDataParameter) {
             BleDataParameter bleDataParameter = (BleDataParameter) dataParameter;
 
-            return createRequest(bleDataParameter, controlAppId, options);
+            return createRequest(bleDataParameter, options);
         }
 
         if (dataParameter instanceof ZigbeeDataParameter) {
             ZigbeeDataParameter zigbeeDataParameter = (ZigbeeDataParameter) dataParameter;
 
-            return createRequest(zigbeeDataParameter, controlAppId, options);
+            return createRequest(zigbeeDataParameter, options);
         }
 
         throw new UnsupportedOperationException("Operation not supported for this device");
     }
 
-    public static TiedieSubscribeRequest createRequest(BleDataParameter dataParameter, String controlAppId, SubscriptionOptions options) {
+    public static TiedieSubscribeRequest createRequest(BleDataParameter dataParameter, SubscriptionOptions options) {
         var tiedieRequest = new TiedieSubscribeRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.BLE);
 
@@ -61,10 +60,9 @@ public class TiedieSubscribeRequest extends TiedieBasicRequest {
         return tiedieRequest;
     }
 
-    private static TiedieSubscribeRequest createRequest(ZigbeeDataParameter dataParameter, String controlAppId, SubscriptionOptions options) {
+    private static TiedieSubscribeRequest createRequest(ZigbeeDataParameter dataParameter, SubscriptionOptions options) {
         var tiedieRequest = new TiedieSubscribeRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.ZIGBEE);
 
