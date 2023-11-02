@@ -14,6 +14,7 @@ to characteristics.
 import dataclasses
 import threading
 import logging
+from typing import Optional
 from flask import Response
 
 from data_producer import DataProducer
@@ -28,6 +29,14 @@ class ConnectionRequest:
     services: dict[str, Service]
 
 
+@dataclasses.dataclass
+class BleConnectOptions:
+    """ class containing attributes for a connection request """
+    services: list[dict[str, str]] = dataclasses.field(default_factory=list)
+    cached: bool = False
+    cache_idle_purge: int = 3600
+
+
 class AccessPoint:
     """ AccessPoint base class """
 
@@ -38,6 +47,10 @@ class AccessPoint:
         self.data_producer = data_producer
         self.ready = threading.Event()
         self.log = logging.getLogger()
+
+    def get_connection(self, address: str) -> Optional[ConnectionRequest]:
+        """ Get a connection request by address """
+        return self.conn_reqs.get(address, None)
 
     def start(self):
         """ Start the access point """
@@ -55,11 +68,17 @@ class AccessPoint:
         """ Start scanning for devices """
         raise NotImplementedError()
 
-    def connect(self, address, services, retries=3) -> tuple[Response, int]:
+    def connect(self,
+                address,
+                ble_connect_options: BleConnectOptions,
+                retries=3) -> tuple[Response, int]:
         """ Connect to a device """
         raise NotImplementedError()
 
-    def discover(self, address, retries) -> tuple[Response, int]:
+    def discover(self,
+                 address,
+                 ble_connect_options: BleConnectOptions,
+                 retries=3) -> tuple[Response, int]:
         """ Discover services of a device """
         raise NotImplementedError()
 
