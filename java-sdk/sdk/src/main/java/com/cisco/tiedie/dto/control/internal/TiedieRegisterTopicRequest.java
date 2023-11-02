@@ -10,7 +10,6 @@ import com.cisco.tiedie.dto.control.ble.BleAdvertisementFilter;
 import com.cisco.tiedie.dto.control.ble.BleAdvertisementFilterType;
 import com.cisco.tiedie.dto.control.ble.BleDataParameter;
 import com.cisco.tiedie.dto.control.zigbee.ZigbeeDataParameter;
-import com.cisco.tiedie.dto.scim.Device;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
@@ -26,20 +25,20 @@ import java.util.stream.Collectors;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
-    private List<String> ids;
+    private String id;
     private String topic;
+    private List<DataApp> dataApps;
     private DataFormat dataFormat;
 
     private BleRegisterTopicRequest ble;
     private ZigbeeRegisterTopicRequest zigbee;
 
-    public static TiedieRegisterTopicRequest createRequest(String topic, RegistrationOptions options,
-                                                           String controlAppId) {
+    public static TiedieRegisterTopicRequest createRequest(String topic, RegistrationOptions options) {
         var tiedieRequest = new TiedieRegisterTopicRequest();
 
-        tiedieRequest.setControlApp(controlAppId);
         tiedieRequest.setTopic(topic);
         tiedieRequest.setDataFormat(options.getDataFormat());
+        tiedieRequest.setDataApps(options.getDataAppIds().stream().map(DataApp::new).collect(Collectors.toList()));
 
         if (options instanceof DataRegistrationOptions) {
             DataRegistrationOptions dataRegistrationOptions = (DataRegistrationOptions) options;
@@ -47,12 +46,12 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
             if (dataRegistrationOptions.getDataParameter() instanceof BleDataParameter) {
                 BleDataParameter parameter = (BleDataParameter) dataRegistrationOptions.getDataParameter();
                 tiedieRequest.setTechnology(Technology.BLE);
-                tiedieRequest.setIds(List.of(parameter.getDeviceId()));
+                tiedieRequest.setId(parameter.getDeviceId());
                 tiedieRequest.setBle(new BleGattTopic(parameter.getServiceUUID(), parameter.getCharUUID()));
             } else {
                 ZigbeeDataParameter parameter = (ZigbeeDataParameter) dataRegistrationOptions.getDataParameter();
                 tiedieRequest.setTechnology(Technology.ZIGBEE);
-                tiedieRequest.setIds(List.of(parameter.getDeviceId()));
+                tiedieRequest.setId(parameter.getDeviceId());
                 tiedieRequest.setZigbee(new ZigbeeRegisterTopicRequest(
                         parameter.getEndpointID(),
                         parameter.getClusterID(),
@@ -70,8 +69,8 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
             tiedieRequest.setBle(new BleConnectionTopic());
         }
 
-        if (options.getDevices() != null) {
-            tiedieRequest.setIds(options.getDevices().stream().map(Device::getId).collect(Collectors.toList()));
+        if (options.getDevice() != null) {
+            tiedieRequest.setId(options.getDevice().getId());
         }
 
         return tiedieRequest;
@@ -89,7 +88,7 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type", visible = true)
+    @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
     @JsonSubTypes({
             @Type(name = "gatt", value = BleGattTopic.class),
             @Type(name = "advertisements", value = BleAdvertisementTopic.class),
@@ -119,6 +118,7 @@ public class TiedieRegisterTopicRequest extends TiedieBasicRequest {
         private BleAdvertisementFilterType filterType;
         private List<BleAdvertisementFilter> filters;
 
+        @SuppressWarnings("unused")
         public BleAdvertisementTopic() {
             super(BleTopicType.ADVERTISEMENTS);
         }

@@ -6,11 +6,10 @@
 package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.dto.control.*;
-import com.cisco.tiedie.dto.control.ble.BleConnectRequest;
-import com.cisco.tiedie.dto.control.ble.BleDataParameter;
-import com.cisco.tiedie.dto.control.ble.BleService;
+import com.cisco.tiedie.dto.control.ble.*;
 import com.cisco.tiedie.dto.scim.BleExtension;
 import com.cisco.tiedie.dto.scim.Device;
+import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.Disabled;
@@ -22,8 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.*;
 
 class BLEControlClientTest extends ControlClientTest {
     @Disabled("Operation not supported in BLE")
@@ -126,10 +124,10 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         var expectedParameters = Arrays.asList(
-                new String[] { "1800", "2a00" },
-                new String[] { "1800", "2a01" },
-                new String[] { "1800", "2a04" },
-                new String[] { "1800", "2aa6" });
+                new String[]{"1800", "2a00"},
+                new String[]{"1800", "2a01"},
+                new String[]{"1800", "2a04"},
+                new String[]{"1800", "2aa6"});
         var expectedFlags = Arrays.asList(
                 Arrays.asList("read", "write"),
                 List.of("read"),
@@ -153,12 +151,11 @@ class BLEControlClientTest extends ControlClientTest {
         }
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("/nipc/connectivity/connection", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"retries\" : 3,\n" +
                 "    \"retryMultipleAPs\" : true\n" +
@@ -176,12 +173,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("/nipc/connectivity/connection", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"retries\" : 5,\n" +
                 "    \"retryMultipleAPs\" : false\n" +
@@ -199,12 +195,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("/nipc/connectivity/connection", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"services\" : [ {\n" +
                 "      \"serviceID\" : \"1800\"\n" +
@@ -226,12 +221,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("/nipc/connectivity/connection", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"services\" : [ {\n" +
                 "      \"serviceID\" : \"1800\"\n" +
@@ -252,7 +246,7 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(1, response.getErrorCode());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/connect", request.getPath());
+        assertEquals("/nipc/connectivity/connection", request.getPath());
         assertEquals("POST", request.getMethod());
     }
 
@@ -285,14 +279,8 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         var request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/disconnect", request.getPath());
-        assertEquals("POST", request.getMethod());
-
-        assertEquals("{\n" +
-                "  \"technology\" : \"ble\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
-                "}", request.getBody().readUtf8());
+        assertEquals("/nipc/connectivity/connection?id=" + deviceId, request.getPath());
+        assertEquals("DELETE", request.getMethod());
     }
 
     @MethodSource("clientProvider")
@@ -373,17 +361,22 @@ class BLEControlClientTest extends ControlClientTest {
                         .build())
                 .build();
 
-        TiedieResponse<List<DataParameter>> response = controlClient.discover(device, List.of(new BleDataParameter("1800")));
+        TiedieResponse<List<DataParameter>> response = controlClient.discover(device, List.of(
+                        new BleDataParameter("1800"),
+                        new BleDataParameter("1801"),
+                        new BleDataParameter("180F")
+                )
+        );
 
         assertEquals(200, response.getHttpStatusCode());
         assertEquals("OK", response.getHttpMessage());
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         var expectedParameters = Arrays.asList(
-                new String[] { "1800", "2a00" },
-                new String[] { "1800", "2a01" },
-                new String[] { "1800", "2a04" },
-                new String[] { "1800", "2aa6" });
+                new String[]{"1800", "2a00"},
+                new String[]{"1800", "2a01"},
+                new String[]{"1800", "2a04"},
+                new String[]{"1800", "2aa6"});
         var expectedFlags = Arrays.asList(
                 Arrays.asList("read", "write"),
                 List.of("read"),
@@ -407,18 +400,12 @@ class BLEControlClientTest extends ControlClientTest {
         }
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/discover", request.getPath());
-        assertEquals("POST", request.getMethod());
-        assertEquals("{\n" +
-                "  \"technology\" : \"ble\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\",\n" +
-                "  \"ble\" : {\n" + //
-                "    \"services\" : [ {\n" + //
-                "      \"serviceID\" : \"1800\"\n" + //
-                "    } ]\n" + //
-                "  }\n" +
-                "}", request.getBody().readUtf8());
+        var url = request.getRequestUrl();
+        assert url != null;
+        assertEquals("/nipc/connectivity/services", url.encodedPath());
+        assertEquals(deviceId, url.queryParameter("id"));
+        assertIterableEquals(List.of("1800", "1801", "180F"), url.queryParameterValues("ble[services][serviceID]"));
+        assertEquals("GET", request.getMethod());
     }
 
     @MethodSource("clientProvider")
@@ -444,17 +431,13 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/read", request.getPath());
-        assertEquals("POST", request.getMethod());
-        assertEquals("{\n" +
-                "  \"technology\" : \"ble\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
-                "  \"ble\" : {\n" +
-                "    \"serviceID\" : \"1800\",\n" +
-                "    \"characteristicID\" : \"2a00\"\n" +
-                "  }\n" +
-                "}", request.getBody().readUtf8());
+        HttpUrl url = request.getRequestUrl();
+        assert url != null;
+        assertEquals("/nipc/data/attribute", url.encodedPath());
+        assertEquals(deviceId, url.queryParameter("id"));
+        assertEquals("1800", url.queryParameter("ble[serviceID]"));
+        assertEquals("2a00", url.queryParameter("ble[characteristicID]"));
+        assertEquals("GET", request.getMethod());
     }
 
     @MethodSource("clientProvider")
@@ -482,12 +465,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(value, response.getBody().getValue());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/write", request.getPath());
+        assertEquals("/nipc/data/attribute", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
                 "  \"value\" : \"" + value + "\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"serviceID\" : \"1800\",\n" +
@@ -519,12 +501,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/subscribe", request.getPath());
+        assertEquals("/nipc/data/subscription", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"ble\" : {\n" +
                 "    \"serviceID\" : \"1800\",\n" +
@@ -543,12 +524,11 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/data/subscribe", request.getPath());
+        assertEquals("/nipc/data/subscription", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
                 "  \"topic\" : \"enterprise/hospital/pulse_oximeter\",\n" +
                 "  \"dataFormat\" : \"payload\",\n" +
                 "  \"ble\" : {\n" +
@@ -580,16 +560,168 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/unsubscribe", request.getPath());
+        assertEquals("/nipc/data/subscription", request.getPath());
+        assertEquals("DELETE", request.getMethod());
+    }
+
+    // write a test to test the registerTopic method
+    @MethodSource("clientProvider")
+    @DisplayName("registerTopic")
+    @ParameterizedTest(name = "{0}")
+    public void registerTopic(ControlClient controlClient) throws Exception {
+        var mockResponse = new MockResponse()
+                .setResponseCode(200)
+                .setBody("{\n" +
+                        "  \"status\": \"SUCCESS\",\n" +
+                        "  \"topic\": \"enterprise/hospital/pulse_oximeter\"\n" +
+                        "}");
+        mockWebServer.enqueue(mockResponse);
+        mockWebServer.enqueue(mockResponse);
+        mockWebServer.enqueue(mockResponse);
+        mockWebServer.enqueue(mockResponse);
+
+        var deviceId = UUID.randomUUID().toString();
+
+        var device = Device.builder()
+                .id(deviceId)
+                .deviceDisplayName("BLE Monitor")
+                .adminState(false)
+                .bleExtension(BleExtension.builder()
+                        .deviceMacAddress("AA:BB:CC:11:22:33")
+                        .isRandom(false)
+                        .versionSupport(Arrays.asList("4.1", "4.2", "5.0", "5.1", "5.2", "5.3"))
+                        .pairingPassKey(new BleExtension.PairingPassKey(123456))
+                        .build())
+                .build();
+
+        var bleDataParameter = new BleDataParameter(deviceId, "1800", "2a00");
+
+        String topic = "enterprise/hospital/pulse_oximeter";
+
+        TiedieResponse<Void> response = controlClient.registerTopic(topic, DataRegistrationOptions
+                .builder()
+                .device(device)
+                .dataAppIds(List.of("app1", "app2"))
+                .dataParameter(bleDataParameter)
+                .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        RecordedRequest request = mockWebServer.takeRequest();
+        assertEquals("/nipc/registration/topic", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"ble\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
+                "  \"topic\" : \"" + topic + "\",\n" +
+                "  \"dataApps\" : [ {\n" +
+                "    \"dataAppID\" : \"app1\"\n" +
+                "  }, {\n" +
+                "    \"dataAppID\" : \"app2\"\n" +
+                "  } ],\n" +
                 "  \"ble\" : {\n" +
+                "    \"type\" : \"gatt\",\n" +
                 "    \"serviceID\" : \"1800\",\n" +
                 "    \"characteristicID\" : \"2a00\"\n" +
                 "  }\n" +
                 "}", request.getBody().readUtf8());
+
+        response = controlClient.registerTopic(topic, AdvertisementRegistrationOptions
+                .builder()
+                .device(device)
+                .dataAppIds(List.of("app1", "app2"))
+                .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        request = mockWebServer.takeRequest();
+        assertEquals("/nipc/registration/topic", request.getPath());
+        assertEquals("POST", request.getMethod());
+        assertEquals("{\n" +
+                "  \"technology\" : \"ble\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
+                "  \"topic\" : \"" + topic + "\",\n" +
+                "  \"dataApps\" : [ {\n" +
+                "    \"dataAppID\" : \"app1\"\n" +
+                "  }, {\n" +
+                "    \"dataAppID\" : \"app2\"\n" +
+                "  } ],\n" +
+                "  \"ble\" : {\n" +
+                "    \"type\" : \"advertisements\"\n" +
+                "  }\n" +
+                "}", request.getBody().readUtf8());
+
+        response = controlClient.registerTopic(topic, AdvertisementRegistrationOptions
+                .builder()
+                .dataAppIds(List.of("app1", "app2"))
+                .advertisementFilterType(BleAdvertisementFilterType.ALLOW)
+                .advertisementFilters(List.of(
+                        new BleAdvertisementFilter("1800", "2a00", "0001"),
+                        new BleAdvertisementFilter("1800", "2a01", "0002")
+                ))
+                .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        request = mockWebServer.takeRequest();
+        assertEquals("/nipc/registration/topic", request.getPath());
+        assertEquals("POST", request.getMethod());
+        assertEquals("{\n" +
+                "  \"technology\" : \"ble\",\n" +
+                "  \"topic\" : \"" + topic + "\",\n" +
+                "  \"dataApps\" : [ {\n" +
+                "    \"dataAppID\" : \"app1\"\n" +
+                "  }, {\n" +
+                "    \"dataAppID\" : \"app2\"\n" +
+                "  } ],\n" +
+                "  \"ble\" : {\n" +
+                "    \"type\" : \"advertisements\",\n" +
+                "    \"filterType\" : \"allow\",\n" +
+                "    \"filters\" : [ {\n" +
+                "      \"mac\" : \"1800\",\n" +
+                "      \"adType\" : \"2a00\",\n" +
+                "      \"adData\" : \"0001\"\n" +
+                "    }, {\n" +
+                "      \"mac\" : \"1800\",\n" +
+                "      \"adType\" : \"2a01\",\n" +
+                "      \"adData\" : \"0002\"\n" +
+                "    } ]\n" +
+                "  }\n" +
+                "}", request.getBody().readUtf8());
+
+        response = controlClient.registerTopic(topic, ConnectionRegistrationOptions
+                .builder()
+                .device(device)
+                .dataAppIds(List.of("app1", "app2"))
+                .build());
+
+        assertEquals(200, response.getHttpStatusCode());
+        assertEquals("OK", response.getHttpMessage());
+        assertEquals(TiedieStatus.SUCCESS, response.getStatus());
+
+        request = mockWebServer.takeRequest();
+        assertEquals("/nipc/registration/topic", request.getPath());
+        assertEquals("POST", request.getMethod());
+        assertEquals("{\n" +
+                "  \"technology\" : \"ble\",\n" +
+                "  \"id\" : \"" + deviceId + "\",\n" +
+                "  \"topic\" : \"" + topic + "\",\n" +
+                "  \"dataApps\" : [ {\n" +
+                "    \"dataAppID\" : \"app1\"\n" +
+                "  }, {\n" +
+                "    \"dataAppID\" : \"app2\"\n" +
+                "  } ],\n" +
+                "  \"ble\" : {\n" +
+                "    \"type\" : \"connection_events\"\n" +
+                "  }\n" +
+                "}", request.getBody().readUtf8());
     }
+
+
 }

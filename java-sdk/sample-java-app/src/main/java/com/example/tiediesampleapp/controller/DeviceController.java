@@ -61,9 +61,9 @@ public class DeviceController {
     @Value("${data-app.id}")
     private String dataAppId;
 
-    private Set<String> subscriptionTopics = new HashSet<>();
+    private final Set<String> subscriptionTopics = new HashSet<>();
 
-    private Set<String> advertisementTopics = new HashSet<>();
+    private final Set<String> advertisementTopics = new HashSet<>();
 
     @GetMapping("/")
     public String index() throws Exception {
@@ -117,16 +117,10 @@ public class DeviceController {
 
         String topic = "data-app/" + response.getBody().getId() + "/connection";
 
-        TiedieResponse<Void> dataAppResponse = controlClient.registerDataApp(dataAppId, topic);
-
-        if (dataAppResponse.getHttpStatusCode() != 200) {
-            model.addAttribute("error", dataAppResponse.getHttpMessage());
-            return "error";
-        }
-
         controlClient.registerTopic(topic, ConnectionRegistrationOptions.builder()
                 .dataFormat(DataFormat.DEFAULT)
-                .devices(List.of(response.getBody()))
+                .device(response.getBody())
+                .dataAppIds(List.of(dataAppId))
                 .build());
 
         return "redirect:/devices";
@@ -205,17 +199,12 @@ public class DeviceController {
         }
 
         String topic = "data-app/" + id + "/advertisements";
-        TiedieResponse<Void> dataAppResponse = controlClient.registerDataApp(dataAppId, topic);
-
-        if (dataAppResponse.getHttpStatusCode() != 200) {
-            model.addAttribute("error", dataAppResponse.getHttpMessage());
-            return "error";
-        }
 
         TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic,
                 AdvertisementRegistrationOptions.builder()
-                        .devices(List.of(response.getBody()))
+                        .device(response.getBody())
                         .dataFormat(DataFormat.DEFAULT)
+                        .dataAppIds(List.of(dataAppId))
                         .build());
 
         if (topicResponse.getHttpStatusCode() != 200) {
@@ -230,16 +219,7 @@ public class DeviceController {
 
     @PostMapping("/unsubscribe")
     public String unsubscribe(@RequestParam("topic") String topic, Model model) throws Exception {
-        String[] parts = topic.split("/");
-        String id = parts[1];
-
-        List<String> ids = null;
-
-        if (!id.equals("advertisements")) {
-            ids = List.of(id);
-        }
-
-        TiedieResponse<Void> response = controlClient.unregisterTopic(topic, ids);
+        TiedieResponse<Void> response = controlClient.unregisterTopic(topic);
 
         if (response.getHttpStatusCode() != 200) {
             model.addAttribute("error", response.getHttpMessage());
@@ -255,9 +235,9 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/read", produces = "application/json")
     @ResponseBody
     public DataResponse readCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            Model model) throws Exception {
+                                           @PathVariable("svcUUID") String svcUUID,
+                                           @PathVariable("charUUID") String charUUID,
+                                           Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         TiedieResponse<DataResponse> response = controlClient.read(parameter);
@@ -268,10 +248,10 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/write", produces = "application/json")
     @ResponseBody
     public DataResponse writeCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            @RequestBody String value,
-            Model model) throws Exception {
+                                            @PathVariable("svcUUID") String svcUUID,
+                                            @PathVariable("charUUID") String charUUID,
+                                            @RequestBody String value,
+                                            Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         TiedieResponse<DataResponse> response = controlClient.write(parameter, value);
@@ -282,36 +262,30 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/subscribe", produces = "application/json")
     @ResponseBody
     public Map<String, String> subscribeCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            Model model) throws Exception {
+                                                       @PathVariable("svcUUID") String svcUUID,
+                                                       @PathVariable("charUUID") String charUUID,
+                                                       Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         String topic = "data-app/" + id + "/" + svcUUID + "/" + charUUID;
 
-        TiedieResponse<Void> dataAppResponse = controlClient.registerDataApp(dataAppId, topic);
-
         Map<String, String> map = new HashMap<>();
-
-        if (dataAppResponse.getHttpStatusCode() != 200) {
-            map.put("error", dataAppResponse.getHttpMessage());
-            return map;
-        }
 
         TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic, DataRegistrationOptions.builder()
                 .dataFormat(DataFormat.DEFAULT)
                 .dataParameter(parameter)
+                .dataAppIds(List.of(dataAppId))
                 .build());
 
         if (topicResponse.getHttpStatusCode() != 200) {
-            map.put("error", dataAppResponse.getHttpMessage());
+            map.put("error", topicResponse.getHttpMessage());
             return map;
         }
 
         TiedieResponse<Void> subscribe = controlClient.subscribe(parameter);
 
         if (subscribe.getHttpStatusCode() != 200) {
-            map.put("error", dataAppResponse.getHttpMessage());
+            map.put("error", subscribe.getHttpMessage());
             return map;
         }
 
@@ -328,24 +302,18 @@ public class DeviceController {
             throws Exception {
         String topic = "data-app/advertisements/" + request.getTopic();
 
-        TiedieResponse<Void> dataAppResponse = controlClient.registerDataApp(dataAppId, topic);
-
         Map<String, String> map = new HashMap<>();
-
-        if (dataAppResponse.getHttpStatusCode() != 200) {
-            map.put("error", dataAppResponse.getHttpMessage());
-            return map;
-        }
 
         TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic,
                 AdvertisementRegistrationOptions.builder()
                         .dataFormat(DataFormat.DEFAULT)
                         .advertisementFilterType(request.getFilterType())
                         .advertisementFilters(request.getFilters())
+                        .dataAppIds(List.of(dataAppId))
                         .build());
 
         if (topicResponse.getHttpStatusCode() != 200) {
-            map.put("error", dataAppResponse.getHttpMessage());
+            map.put("error", topicResponse.getHttpMessage());
             return map;
         }
 

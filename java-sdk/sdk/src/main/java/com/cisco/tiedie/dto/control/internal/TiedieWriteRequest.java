@@ -23,10 +23,9 @@ public class TiedieWriteRequest extends TiedieBasicRequest {
     private BleWriteRequest ble;
     private ZigbeeWriteRequest zigbee;
 
-    public static TiedieWriteRequest createRequest(DataParameter dataParameter, String value, String controlAppId) {
+    public static TiedieWriteRequest createRequest(DataParameter dataParameter, String value) {
         var tiedieRequest = new TiedieWriteRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         if (dataParameter instanceof BleDataParameter) {
             BleDataParameter bleDataParameter = (BleDataParameter) dataParameter;
