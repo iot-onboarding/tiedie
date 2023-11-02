@@ -17,7 +17,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from database import session
-from models import EndpointApp, Device, OnboardingAppKey
+from models import EndpointApp, User, OnboardingAppKey
 
 from util import make_hash
 
@@ -113,7 +113,7 @@ def scim_addusers():
         pairing_oobrn = pairing.get("randNumber")
     device_id = request.json.get("id")
 
-    existing_device = Device.query.filter_by(
+    existing_device = User.query.filter_by(
         device_mac_address=device_mac_address).first()
 
     if existing_device:
@@ -129,7 +129,7 @@ def scim_addusers():
         )
 
     try:
-        user = Device(
+        user = User(
             device_id=device_id,
             schemas=schemas,
             device_display_name=device_display_name,
@@ -164,7 +164,7 @@ def get_user(user_id):
     If not found, a "User not found" response with a status code of 404
     is returned.
     """
-    user = Device.query.get(user_id)
+    user = User.query.get(user_id)
     if not user:
         return make_response(
             jsonify(
@@ -196,7 +196,7 @@ def get_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        users = Device.query.filter_by(device_mac_address=filter_value).first()
+        users = User.query.filter_by(device_mac_address=filter_value).first()
 
         if not users:
             users = []
@@ -204,7 +204,7 @@ def get_devices():
             users = [users]
 
     else:
-        users = Device.query.paginate(
+        users = User.query.paginate(
             page=start_index, per_page=count, error_out=False).items
 
     serialized_users = [e.serialize() for e in users]
@@ -245,7 +245,7 @@ def update_user(user_id):
             400,
         )
 
-    user: Device = Device.query.get(user_id)
+    user: User = User.query.get(user_id)
 
     if not user:
         return make_response(
@@ -295,7 +295,7 @@ def update_user(user_id):
 @authenticate_user
 def delete_user(user_id):
     """Delete SCIM User"""
-    user = Device.query.get(user_id)
+    user = User.query.get(user_id)
     if not user:
         return make_response(
             jsonify(
