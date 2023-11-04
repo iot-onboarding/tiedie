@@ -12,7 +12,7 @@ jobs:
         sudo apt-get -y install python3-apt
         python -m pip install --upgrade pip
         pip install -r gateway/requirements.txt
-        pip install -r python-sdk/sample-ptyhon-app/requirements.txt
+        pip install -r python-sdk/sample-python-app/requirements.txt
     - name: Analysing python api with pylint
       run: |
         cd gateway
