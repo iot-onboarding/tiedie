@@ -4,6 +4,9 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+""" this module defines onboarding a client """
+
+
 from typing import List
 from .auth import Authenticator
 from .httpclient import AbstractHttpClient, HttpResponse
