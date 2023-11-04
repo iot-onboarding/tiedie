@@ -9,12 +9,10 @@
 
 from flask import Flask
 
-from tiedie_pylib.api.onboardingclient import OnboardingClient
-from tiedie_pylib.api.controlclient import ControlClient
-from tiedie_pylib.api.datareceiverclient import DataReceiverClient 
-from tiedie_pylib.api.auth import ApiKeyAuthenticator
-from tiedie_pylib.models.scim import EndpointApp
-
+from tiedie.api.onboardingclient import OnboardingClient
+from tiedie.api.controlclient import ControlClient
+from tiedie.api.datareceiverclient import DataReceiverClient 
+from tiedie.api.auth import ApiKeyAuthenticator
 
 class ClientConfig:
     
