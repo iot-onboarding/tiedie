@@ -14,7 +14,11 @@ from flask_socketio import SocketIO, Namespace
 from google.protobuf.json_format import MessageToJson
 
 from configuration import ClientConfig 
-from tiedie_pylib.models import Device, DataFormat, BleDataParameter, AdvertisementRegistrationOptions, ConnectionRegistrationOptions,  DataRegistrationOptions, BleExtension, EndpointAppsExtension
+from tiedie.models import ( Device, DataFormat, BleDataParameter, 
+                            AdvertisementRegistrationOptions,
+                            ConnectionRegistrationOptions, 
+                            DataRegistrationOptions, BleExtension,
+                            EndpointAppsExtension )
 
 app = Flask(__name__)
 socketio = SocketIO(app, websocket=True, cors_allowed_origins="*")
