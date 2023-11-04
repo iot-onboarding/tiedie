@@ -7,7 +7,7 @@
 from typing import List
 from .auth import Authenticator
 from .httpclient import AbstractHttpClient, HttpResponse
-from tiedie_pylib.models import *
+from tiedie.models import *
 
 
 class OnboardingClient(AbstractHttpClient):
