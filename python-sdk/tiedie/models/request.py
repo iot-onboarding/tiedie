@@ -3,6 +3,12 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+"""
+These classes are designed for structured communication with the
+Tiedie IoT platform.  They enable the creation of requests for
+reading, subscribing, writing, and managing topics for IoT devices
+using BLE and Zigbee technologies.
+"""
 
 from typing import Union, List
 from typing import Type
@@ -12,6 +18,10 @@ from .common import *
 
 
 class TiedieBasicRequest:
+    """ 
+    Base class for all Tiedie requests. It includes common attributes
+    like technology, UUID, and control application. 
+    """
     def __init__(self):
         self.technology = None
         self.uuid = None
@@ -36,6 +46,7 @@ class TiedieBasicRequest:
 
     @staticmethod
     def create_request(device, control_app_id):
+        """ function to create a tiedie request based on the control id """
         tiedie_request = TiedieBasicRequest()
         tiedie_request.uuid = device.get("id")
 
@@ -50,6 +61,10 @@ class TiedieBasicRequest:
     
 
 class TiedieReadRequest(TiedieBasicRequest):
+    """
+    A request for reading data from IoT devices, with support for both
+    BLE and Zigbee technologies. 
+    """
     ble: Union[None, BleReadRequest] = None
     zigbee: Union[None, ZigbeeReadRequest] = None
 
@@ -79,6 +94,7 @@ class TiedieReadRequest(TiedieBasicRequest):
 
     @staticmethod
     def create_request(data_parameter, control_app_id):
+        """ function to create a tiedie request based on control ID """
         tiedie_request = TiedieReadRequest()
         tiedie_request.uuid = data_parameter.device_id
         tiedie_request.controlApp = control_app_id
@@ -108,6 +124,11 @@ class TiedieReadRequest(TiedieBasicRequest):
     
     
 class TiedieSubscribeRequest(TiedieBasicRequest):
+    """ 
+    A request class for subscribing to IoT device data, which can be
+    either BLE or Zigbee. It includes options for specifying the data
+    format, minimum report time, and maximum report time.
+    """
     def __init__(self):
         super().__init__()
         self.topic = None
@@ -133,7 +154,9 @@ class TiedieSubscribeRequest(TiedieBasicRequest):
     
 
     @staticmethod
-    def create_request(topic: str, data_parameter: DataParameter, control_app_id, options):
+    def create_request(topic: str, data_parameter: DataParameter,
+                       control_app_id, options):
+        """ function to create a tiedie request for zigbee or ble """
         if isinstance(data_parameter, BleDataParameter):
             return TiedieSubscribeRequest.create_request_for_ble(topic, data_parameter, control_app_id, options)
 
@@ -144,7 +167,10 @@ class TiedieSubscribeRequest(TiedieBasicRequest):
 
 
     @staticmethod
-    def create_request_for_ble(topic: str, data_parameter: BleDataParameter, control_app_id, options=None):
+    def create_request_for_ble(topic:str,
+                               data_parameter:BleDataParameter,
+                               control_app_id,options=None):
+        """ function to create a request for ble based on control ID """
         tiedie_request = TiedieSubscribeRequest()
         tiedie_request.topic = topic
         tiedie_request.uuid = data_parameter.device_id
@@ -157,14 +183,17 @@ class TiedieSubscribeRequest(TiedieBasicRequest):
         tiedie_request.data_format = options.dataFormat or DataFormat.JSON
         tiedie_request.topic = options.topic
 
-        ble_subscribe_request = BleSubscribeRequest(data_parameter.serviceUUID, data_parameter.charUUID)
+        ble_subscribe_request = BleSubscribeRequest(data_parameter.serviceUUID,
+                                                    data_parameter.charUUID)
         tiedie_request.ble = ble_subscribe_request
 
         return tiedie_request
 
 
     @staticmethod
-    def create_request_for_zigbee(data_parameter: ZigbeeDataParameter, control_app_id, options):
+    def create_request_for_zigbee(data_parameter: ZigbeeDataParameter,
+                                  control_app_id, options):
+        """ function to create a request for zigbee based on control ID """
         tiedie_request = TiedieSubscribeRequest()
         tiedie_request.uuid = data_parameter.device_id
         tiedie_request.controlApp = control_app_id
@@ -190,6 +219,10 @@ class TiedieSubscribeRequest(TiedieBasicRequest):
 
 
 class TiedieWriteRequest(TiedieBasicRequest):
+    """
+    A request class for writing data to IoT devices, supporting both
+    BLE and Zigbee technologies.
+    """
     def __init__(self):
         super().__init__()
         self.ble = None
@@ -212,6 +245,7 @@ class TiedieWriteRequest(TiedieBasicRequest):
 
     @staticmethod
     def create_request(data_parameter, value, control_app_id):
+        """ function to create a request for  BLE or zigbee based on value """
         tiedie_request = TiedieWriteRequest()
         tiedie_request.uuid = data_parameter.device_id
         tiedie_request.controlApp = control_app_id
@@ -250,6 +284,10 @@ class TiedieWriteRequest(TiedieBasicRequest):
     
 
 class TiedieConnectRequest(TiedieBasicRequest):
+    """
+    A request class for establishing a connection with BLE devices,
+    primarily used for BLE technology.
+    """
     def __init__(self):
         super().__init__()
         self.ble = None
@@ -269,6 +307,7 @@ class TiedieConnectRequest(TiedieBasicRequest):
 
     @staticmethod
     def create_request(device, request, control_app_id):
+        """ function to create a tiedie request """
         tiedie_request = TiedieConnectRequest()
         tiedie_request.technology = Technology.BLE
         tiedie_request.uuid = device.get("id")
@@ -278,6 +317,10 @@ class TiedieConnectRequest(TiedieBasicRequest):
 
 
 class TiedieUnsubscribeRequest(TiedieBasicRequest):
+    """
+    A request for unsubscribing from IoT device data, available
+    for both BLE and Zigbee technologies.
+    """
     def __init__(self):
         super().__init__()
         self.ble = None
@@ -300,6 +343,7 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
     
     @classmethod
     def create_request(cls, dataParameter: DataParameter, controlAppId: str):
+        """ function to create a request """
         if isinstance(dataParameter, BleDataParameter):
             bleDataParameter = dataParameter
 
@@ -315,6 +359,7 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
 
     @classmethod
     def createBleRequest(cls, dataParameter: BleDataParameter, controlAppId: str):
+        """ this functionn defines how to create a BLE request """
         tiedieRequest = TiedieUnsubscribeRequest()
         tiedieRequest.uuid = dataParameter.getDeviceId()
         tiedieRequest.controlApp = controlAppId
@@ -328,7 +373,9 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
 
 
     @classmethod
-    def createZigbeeRequest(cls, dataParameter: ZigbeeDataParameter, controlAppId: str):
+    def createZigbeeRequest(cls, dataParameter: ZigbeeDataParameter,
+                            controlAppId: str):
+        """ this functionn defines how to create a Zigbee request """
         tiedieRequest = TiedieUnsubscribeRequest()
         tiedieRequest.uuid = dataParameter.getDeviceId()
         tiedieRequest.controlApp = controlAppId
@@ -346,6 +393,11 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
 
 
 class TiedieRegisterTopicRequest(TiedieBasicRequest):
+""" 
+A request for registering topics, which are used to organize and manage
+data from IoT devices. It supports different technologies, including BLE
+and Zigbee. 
+"""
     uuids: List[str]
     topic: str
     data_format: DataFormat
@@ -381,7 +433,9 @@ class TiedieRegisterTopicRequest(TiedieBasicRequest):
     
 
     @staticmethod
-    def create_request(topic: str, options, control_app_id: str) -> "TiedieRegisterTopicRequest":
+    def create_request(topic: str, options,
+                       control_app_id: str) -> "TiedieRegisterTopicRequest":
+        """ function to create a tiedie request """
         tiedie_request = TiedieRegisterTopicRequest()
 
         tiedie_request.control_app = control_app_id
@@ -397,29 +451,42 @@ class TiedieRegisterTopicRequest(TiedieBasicRequest):
 
                 tiedie_request.uuids = [parameter.device_id]
 
-                tiedie_request.ble = BleGattTopic(parameter.serviceUUID, parameter.charUUID)
+                tiedie_request.ble = BleGattTopic(parameter.serviceUUID,
+                                                  parameter.charUUID)
             else:
                 parameter = data_registration_options.dataParameter
                 tiedie_request.technology = Technology.ZIGBEE
                 tiedie_request.uuids = [parameter.device_id]
-                tiedie_request.zigbee = ZigbeeRegisterTopicRequest(parameter.endpointID, parameter.clusterID, parameter.attributeID, parameter.type)
+                tiedie_request.zigbee = \
+                    ZigbeeRegisterTopicRequest(parameter.endpointID,
+                                               parameter.clusterID,
+                                               parameter.attributeID,
+                                               parameter.type)
        
         elif isinstance(options, AdvertisementRegistrationOptions):
             advertisement_registration_options = options
             tiedie_request.technology = Technology.BLE
-            tiedie_request.ble = BleAdvertisementTopic(advertisement_registration_options.advertisementFilterType, advertisement_registration_options.advertisementFilters)
+            tiedie_request.ble = \
+                BleAdvertisementTopic(
+                    advertisement_registration_options.advertisementFilterType,
+                    advertisement_registration_options.advertisementFilters)
         
         elif isinstance(options, ConnectionRegistrationOptions):
             tiedie_request.technology = Technology.BLE
             tiedie_request.ble = BleConnectionTopic()
 
         if options.devices is not None:
-            tiedie_request.uuids = [device.deviceID for device in options.devices]
+            tiedie_request.uuids = \
+                [device.deviceID for device in options.devices]
             
         return tiedie_request
 
 
 class TiedieUnregisterTopicRequest(TiedieBasicRequest):
+    """
+    A request for unregistering topics, allowing devices to stop sending
+    data on specific topics.
+    """
     def __init__(self):
         super().__init__()
         self.topic: str = None
@@ -440,6 +507,7 @@ class TiedieUnregisterTopicRequest(TiedieBasicRequest):
 
     @staticmethod
     def create_request(topic: str, uuids: List[str], control_app_id: str):
+        """ function to create a tiedie request """
         tiedie_request = TiedieUnregisterTopicRequest()
 
         tiedie_request.controlApp = control_app_id
@@ -450,6 +518,10 @@ class TiedieUnregisterTopicRequest(TiedieBasicRequest):
 
 
 class TiedieRegisterDataAppRequest:
+    """
+    A request for unregistering topics, allowing devices to stop
+    sending data on specific topics.
+    """
     def __init__(self, topic: str, dataApps:list(), controlApp: str) -> None:
         self.topic: str = topic
         self.data_apps:list() = dataApps
@@ -474,6 +546,7 @@ class TiedieRegisterDataAppRequest:
 
     @staticmethod
     def create_request(dataApp: str, topic: str, controlApp: str):
+        """ function to create a tiedie request """
         return TiedieRegisterDataAppRequest(topic, [dataApp], controlApp)
 
 
