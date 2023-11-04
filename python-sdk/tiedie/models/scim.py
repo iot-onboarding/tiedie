@@ -111,7 +111,7 @@ class BleExtension:
         return str(self.__json__())
     
 
-@attr.dataclass
+@dataclass
 class DppExtension:
     dpp_version: int
     bootstrapping_method: List[str]
@@ -121,7 +121,7 @@ class DppExtension:
     serial_number: str
 
 
-@attr.dataclass
+@dataclass
 class ZigbeeExtension:
     version_support: List[str]
     device_id: str
