@@ -8,12 +8,18 @@ import json
 import requests
 
 from .auth import Authenticator
-from tiedie_pylib.models.request import (TiedieBasicRequest, TiedieConnectRequest, BleConnectRequest, BleDiscoverResponse, 
-                          ZigbeeDiscoverResponse, Technology, TiedieReadRequest, TiedieWriteRequest, TiedieSubscribeRequest,
-                          TiedieUnsubscribeRequest, TiedieRegisterTopicRequest, TiedieUnregisterTopicRequest, TiedieRegisterDataAppRequest)
-from tiedie_pylib.models.responses import (DataResponse, TiedieResponse) 
-from tiedie_pylib.models.scim import Device
-from tiedie_pylib.models.ble import DataParameter
+from tiedie.models.request import (TiedieBasicRequest, TiedieConnectRequest,
+                                   BleConnectRequest, BleDiscoverResponse,
+                                   ZigbeeDiscoverResponse, Technology,
+                                   TiedieReadRequest, TiedieWriteRequest,
+                                   TiedieSubscribeRequest,
+                                   TiedieUnsubscribeRequest,
+                                   TiedieRegisterTopicRequest,
+                                   TiedieUnregisterTopicRequest,
+                                   TiedieRegisterDataAppRequest)
+from tiedie.models.responses import (DataResponse, TiedieResponse) 
+from tiedie.models.scim import Device
+from tiedie.models.ble import DataParameter
 from .httpclient import AbstractHttpClient
 
 
