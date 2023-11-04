@@ -26,8 +26,8 @@ services:
       dockerfile: ./Dockerfile
     ports:
       - 8081:8081
-#    devices:
-#      - /dev/ttyACM0:/dev/ttyACM0
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
     depends_on:
       - mosquitto
       - postgres
@@ -50,7 +50,7 @@ services:
       - POSTGRES_USER=root
       - POSTGRES_PASSWORD=password
     ports:
-      - '5532:5432'
+      - '5432:5432'
     volumes: 
       - ./db:/docker-entrypoint-initdb.d/
 
