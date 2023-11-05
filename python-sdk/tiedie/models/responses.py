@@ -3,17 +3,25 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+"""
+
+This Python module manages Tiedie IoT platform responses and requests, 
+including handling Tiedie responses, data responses, and discovery-related inteactions.
+
+"""
 
 import json
 from enum import Enum
 
 
 class TiedieStatus(Enum):
+    """ Enum representing success and failure status. """
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
     
 
 class TiedieResponse:
+    """ Class for handling Tiedie API response data. """
     def __init__(self):
         self.status = None
         self.reason = None
@@ -25,6 +33,7 @@ class TiedieResponse:
 
 
     def unpack_remaining(self, key, value):
+        """ function to upack corrosponding to the key """
         self.map[key] = value
 
 
@@ -33,6 +42,7 @@ class TiedieResponse:
     
     
 class DataResponse:
+    """ Class for data response with value and status. """
     def __init__(self, value = None, status = None):
         self.value = value
         self.status = status
@@ -50,6 +60,7 @@ class DataResponse:
 
 
 class DiscoverRequest:
+    """ Class for making a discover request. """
     def __init__(self):
         self.serviceUUID = ""
         self.characteristicUUID = ""
@@ -57,5 +68,6 @@ class DiscoverRequest:
 
 
 class DiscoverResponse:
+    """ Class for handling the response of a discovery. """
     def __init__(self):
         self.data_parameters = []
