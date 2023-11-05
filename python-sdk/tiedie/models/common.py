@@ -36,8 +36,8 @@ class DataFormat(Enum):
    JSON = "json"
    XML = "xml"
 
-    def __json__(self):
-        return self.value
+   def __json__(self):
+       return self.value
     
 
 class DataParameter:
