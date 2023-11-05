@@ -4,6 +4,11 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+These classes define data structures and request/response formats for
+IoT applications, particularly for Bluetooth Low Energy (BLE)
+communication.
+"""
 from typing import List
 from enum import Enum
 from .zigbee import DataParameter
@@ -13,6 +18,10 @@ from dataclasses import dataclass
 
 
 class BleReadRequest:
+    """
+    Represents a request for reading data from a BLE device.
+    It includes service_uuid and characteristic_uuid.
+    """
     service_uuid: str = ""
     characteristic_uuid: str = ""
 
@@ -33,6 +42,9 @@ class BleReadRequest:
 
 
 class BleSubscribeRequest:
+    """
+    Represents a request for subscribing to data from a BLE device. It includes serviceUUID and characteristicUUID.
+    """
     def __init__(self, serviceUUID: str, characteristicUUID: str):
         self.serviceUUID = serviceUUID
         self.characteristicUUID = characteristicUUID
@@ -50,6 +62,11 @@ class BleSubscribeRequest:
 
 
 class BleConnectRequest:
+    """ 
+    Represents a request for establishing a connection with BLE devices.
+    It includes a list of services, the number of retries, and a flag for
+    retryMultipleAPs. 
+    """
     def __init__(self, services: List[str], retries: int, retryMultipleAPs: bool):
         self.services = services
         self.retries = retries
@@ -71,8 +88,11 @@ class BleConnectRequest:
             "retryMultipleAPs": self.retryMultipleAPs
         }
 
-
 class BleDataParameter(DataParameter):
+    """
+    Represents parameters for BLE data, including device_id, serviceUUID,
+    charUUID, and optional flags.
+    """
     def __init__(self, device_id, serviceUUID, charUUID, flags=None):
         super().__init__(device_id)
         self.serviceUUID = serviceUUID
@@ -94,6 +114,10 @@ class BleDataParameter(DataParameter):
 
 
 class BleWriteRequest:
+    """ 
+    Represents a request for writing data to a BLE device. 
+    It includes service_uuid, characteristic_uuid, and value. 
+    """
     def __init__(self, service_uuid, characteristic_uuid, value):
         self.service_uuid = service_uuid
         self.characteristic_uuid = characteristic_uuid
@@ -113,11 +137,16 @@ class BleWriteRequest:
 
 
 class BleDiscoverResponse:
+    """
+    Represents a response containing information about BLE services
+    and characteristics. It includes a list of services.
+    """
     def __init__(self, services: List = []):
         self.services = services
 
 
     def toParameterList(self, device_id: str) -> List[DataParameter]:
+        """ function toParameterList """
         parameters = []
         for service in self.services:
             for characteristic in service.get('characteristics'):
@@ -127,12 +156,14 @@ class BleDiscoverResponse:
 
 
     class BleService:
+        """ class BLE Service """
         def __init__(self):
             self.uuid = ""
             self.characteristics = []
 
 
     class BleCharacteristic:
+        """ BLE Characteristic Class """
         def __init__(self):
             self.uuid = ""
             self.flags = []
@@ -140,6 +171,7 @@ class BleDiscoverResponse:
 
 
     class BleDescriptors:
+        """ BLE Descriptor Class """
         def __init__(self):
             self.uuid = ""
 
@@ -155,6 +187,10 @@ class BleDiscoverResponse:
     
 
 class BleAdvertisementFilterType(Enum):
+    """
+    An enumeration of BLE advertisement filter types, including
+    ALLOW and DENY.
+    """
     ALLOW = "allow"
     DENY = "deny"
 
@@ -168,12 +204,20 @@ class BleAdvertisementFilterType(Enum):
 
 
 class BleAdvertisementFilter:
+    """
+    Represents a filter for BLE advertisements, including mac,
+    adType, and adData.
+    """
     mac: str
     adType: str
     adData: str
 
 
 class BleUnsubscribeRequest:
+    """
+    Represents a request for unsubscribing from BLE data. It includes
+    serviceUUID and characteristicUUID.
+    """
     def __init__(self, serviceUUID: str, characteristicUUID: str):
         self.serviceUUID = serviceUUID
         self.characteristicUUID = characteristicUUID
@@ -191,6 +235,10 @@ class BleUnsubscribeRequest:
 
 
 class BleTopicType(Enum):
+    """
+    An enumeration of BLE topic types, including GATT, ADVERTISEMENTS,
+    and CONNECTION.
+    """
     GATT = 'gatt'
     ADVERTISEMENTS = 'advertisements'
     CONNECTION = 'connection'
@@ -204,6 +252,10 @@ class BleTopicType(Enum):
     
 
 class BleRegisterTopicRequest:
+    """
+    Represents a request for registering a BLE topic. It includes
+    the topic type.
+    """
     type: BleTopicType
 
     def __init__(self, type):
@@ -222,6 +274,10 @@ class BleRegisterTopicRequest:
 
 
 class BleGattTopic(BleRegisterTopicRequest):
+    """
+    Represents a specific GATT topic for BLE. It includes serviceUUID
+    and characteristicUUID.
+    """
     serviceUUID: str
     characteristicUUID: str
 
@@ -245,6 +301,10 @@ class BleGattTopic(BleRegisterTopicRequest):
 
 
 class BleAdvertisementTopic(BleRegisterTopicRequest):
+    """
+    Represents a topic for BLE advertisements. It includes filterType
+    and filters.
+    """
     filterType: str
     filters: List
 
@@ -268,6 +328,7 @@ class BleAdvertisementTopic(BleRegisterTopicRequest):
 
 
 class BleConnectionTopic(BleRegisterTopicRequest):
+    """ Represents a topic for BLE connection-related data. """
     def __init__(self):
         super().__init__(type=BleTopicType.CONNECTION)
 
@@ -299,6 +360,11 @@ class DataParameter:
 
 @dataclass
 class RegistrationOptions:
+    """
+    data class for specifying data registration options. It includes
+    a list of devices and the data format.
+    """
+    devices: List[Device]
     devices: List[Device]
     dataFormat: DataFormat
 
@@ -315,6 +381,10 @@ class RegistrationOptions:
 
 @dataclass
 class DataRegistrationOptions(RegistrationOptions):
+    """
+    data class that extends RegistrationOptions and includes a
+    dataParameter field for more specific data registration.
+    """
     dataParameter: DataParameter
 
     def __json__(self):
@@ -336,6 +406,7 @@ class ConnectionRegistrationOptions(RegistrationOptions):
 
 @dataclass
 class AdvertisementRegistrationOptions(RegistrationOptions):
+    """  Management of Advertisement Registration Options """
     advertisementFilterType: BleAdvertisementFilterType
     advertisementFilters: List[BleAdvertisementFilter]
 
