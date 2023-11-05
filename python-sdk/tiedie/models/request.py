@@ -31,7 +31,7 @@ class TiedieBasicRequest:
     def __dict__(self):
         return {
             "technology": self.technology,
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
         }
     
@@ -77,7 +77,7 @@ class TiedieReadRequest(TiedieBasicRequest):
     def __dict__(self):
         return {
             "technology": self.technology,
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
             "ble": self.ble,
             "zigbee": self.zigbee,
@@ -140,7 +140,7 @@ class TiedieSubscribeRequest(TiedieBasicRequest):
     def __dict__(self):
         return {
             "technology": self.technology,
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
             "topic": self.topic,
             "dataFormat": self.data_format,
@@ -232,7 +232,7 @@ class TiedieWriteRequest(TiedieBasicRequest):
     def __dict__(self):
         return {
             "technology": self.technology,
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
             "ble": self.ble,
             "zigbee": self.zigbee
@@ -295,7 +295,7 @@ class TiedieConnectRequest(TiedieBasicRequest):
 
     def __dict__(self):
         return {
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
             "technology": self.technology,
             "ble": self.ble.__dict__(),
@@ -329,7 +329,7 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
     
     def __dict__(self):
         return {
-            "uuid": self.uuid,
+            "id": self.uuid,
             "controlApp": self.controlApp,
             "technology": self.technology,
             "ble": self.ble.__dict__(),
@@ -418,9 +418,9 @@ class TiedieRegisterTopicRequest(TiedieBasicRequest):
 
     def __json__(self):
         return {
-            "uuids": self.uuids,
+            "ids": self.uuids,
             "topic": self.topic,
-            "data_format": self.data_format,
+            "dataFormat": self.data_format,
             "controlApp": self.control_app,
             "ble": self.ble,
             "zigbee": self.zigbee,

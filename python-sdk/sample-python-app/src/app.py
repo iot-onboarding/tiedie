@@ -1,4 +1,3 @@
-#
 # Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
 # See LICENSE file in this distribution.
@@ -21,12 +20,12 @@ from flask import Flask, render_template, request, redirect, jsonify
 from flask_socketio import SocketIO, Namespace
 from google.protobuf.json_format import MessageToJson
 
-from configuration import ClientConfig
 from tiedie.models import ( Device, DataFormat, BleDataParameter,
                             AdvertisementRegistrationOptions,
                             ConnectionRegistrationOptions,
                             DataRegistrationOptions, BleExtension,
                             EndpointAppsExtension )
+from configuration import ClientConfig
 
 sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
@@ -44,10 +43,12 @@ else:
 
 client_config = ClientConfig(app)
 
-data_receiver_client = client_config.get_data_receiver_client()
 onboarding_client = client_config.get_onboarding_client()
-control_client = client_config.get_control_client()
-endpointApps = client_config.getEndpointApps(onboarding_client)
+endpointApps = client_config.get_endpoint_apps(onboarding_client)
+control_client = client_config.get_control_client(
+    control_app_endpoint=endpointApps[0])
+data_receiver_client = client_config.get_data_receiver_client(
+    data_app_endpoint=endpointApps[1])
 
 subscriptionTopics = set()
 advertisementTopics = set()
@@ -85,7 +86,9 @@ class GattHandler(Namespace):
         """ function to define what happens on error """
         print(error)
 
+
 socketio.on_namespace(GattHandler('/subscription'))
+
 
 class AdvertisementHandler(Namespace):
     """ Handles BLE advertisement subscriptions and data stream management. """
@@ -116,7 +119,9 @@ class AdvertisementHandler(Namespace):
         """ function to define what happens on error """
         print(error)
 
+
 socketio.on_namespace(AdvertisementHandler('/advertisements'))
+
 
 class ConnectionStatusHandler(Namespace):
     """ Manages WebSocket connections and connection status data streams. """
@@ -195,10 +200,13 @@ def add_device():
     is_random = True if content['isRandom'] == 'on' else False
     version_support = content['versionSupport'].split(',')
     device = Device(content['deviceDisplayName'], admin_state,
-                    BleExtension(content['deviceMacAddress'], version_support,
-                                 is_random, int(content['passKey'])))
+                    BleExtension(
+                        content['deviceMacAddress'],
+                        version_support,
+                        is_random,
+                        int(content['passKey'])),
+                    endpointAppsExtension=EndpointAppsExtension(endpointApps))
 
-    device.setEndpointAppsExtension(EndpointAppsExtension(endpointApps))
     response = onboarding_client.createDevice(device)
 
     if response.status_code != 201:
@@ -236,7 +244,7 @@ def get_device(id):
     device = response.body
 
     tiedie_response = control_client.discover(device)
-    parameters = []
+    parameters = None
 
     if tiedie_response.httpStatusCode == 200:
         parameters = [
@@ -253,6 +261,12 @@ def get_device(id):
 @app.route("/devices/<id>/connect", methods=["POST"])
 def connect_device(id):
     """ function to connect to a device """
+    services = []
+    service_uuids = request.form.get('serviceUUIDs')
+
+    if service_uuids:
+        services = [uuid.strip() for uuid in service_uuids.split(",")]
+
     response = onboarding_client.getDevice(id)
 
     if response.status_code != 200:
@@ -260,8 +274,10 @@ def connect_device(id):
 
     device = response.body
 
-    tiedie_response = control_client.connect(device,
-                                             services=["1800", "1801", "180A"])
+    tiedie_response = control_client.connect(
+        device, services=services)
+    
+    print(tiedie_response.body)
 
     if tiedie_response.httpStatusCode != 200:
         return render_template("error.html",
@@ -312,11 +328,11 @@ def subscribe_advertisements(id):
 
     control_client.register_topic(topic,
                                   AdvertisementRegistrationOptions(
-                                devices = [device],
-                                dataFormat=DataFormat.JSON,
-                                advertisementFilterType=None,
-                                advertisementFilters=None
-        ))
+                                      devices=[device],
+                                      dataFormat=DataFormat.JSON,
+                                      advertisementFilterType=None,
+                                      advertisementFilters=None
+                                  ))
     advertisementTopics.add(topic)
     print("add topic: ", topic)
     return render_template("advertisement.html", topic=topic)
@@ -368,17 +384,18 @@ def subscribe_characteristic(id: str, svcUUID: str, charUUID: str):
 
     topic = f"data-app/{id}/{svcUUID}/{charUUID}"
 
-    data_app_response = control_client.register_data_app(app.config['DATA_APP_ID'], topic)
+    data_app_response = control_client.register_data_app(
+        app.config['DATA_APP_ID'], topic)
 
     if data_app_response.http_status_code != 200:
         return {"error": data_app_response.content}, data_app_response.http_status_code
 
     topic_response = control_client.register_topic(topic,
                                                    DataRegistrationOptions(
-                                                        devices = None,
-                                                        dataFormat = DataFormat.JSON,
-                                                        dataParameter = parameter)
-                                                )
+                                                       devices=None,
+                                                       dataFormat=DataFormat.JSON,
+                                                       dataParameter=parameter)
+                                                   )
 
     if topic_response.http_status_code != 200:
         return {"error": topic_response.body}, topic_response.http_status_code
@@ -412,7 +429,7 @@ def subscribe_advertisement():
     topic_response = control_client.register_topic(
         topic,
         AdvertisementRegistrationOptions(
-            devices = None,
+            devices=None,
             dataFormat=DataFormat.JSON,
             advertisementFilterType=request_data['filterType'],
             advertisementFilters=request_data['filters']
