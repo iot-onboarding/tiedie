@@ -13,45 +13,25 @@ including handling Tiedie responses, data responses, and discovery-related intea
 import json
 from enum import Enum
 
+from tiedie.models.ble import BleDataParameter
+
 
 class TiedieStatus(Enum):
     """ Enum representing success and failure status. """
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
-    
-
-class TiedieResponse:
-    """ Class for handling Tiedie API response data. """
-    def __init__(self):
-        self.status = None
-        self.reason = None
-        self.errorCode = None
-        self.body = None
-        self.httpStatusCode = None
-        self.httpMessage = None
-        self.map = {}
 
 
-    def unpack_remaining(self, key, value):
-        """ function to upack corrosponding to the key """
-        self.map[key] = value
-
-
-    def __json__(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-    
-    
 class DataResponse:
     """ Class for data response with value and status. """
-    def __init__(self, value = None, status = None):
+
+    def __init__(self, value=None, status=None):
         self.value = value
         self.status = status
 
-
     def __json__(self):
         return self.__dict__()
-    
-    
+
     def __dict__(self):
         return {
             "value": self.value,
@@ -61,6 +41,7 @@ class DataResponse:
 
 class DiscoverRequest:
     """ Class for making a discover request. """
+
     def __init__(self):
         self.serviceUUID = ""
         self.characteristicUUID = ""
@@ -69,5 +50,13 @@ class DiscoverRequest:
 
 class DiscoverResponse:
     """ Class for handling the response of a discovery. """
-    def __init__(self):
-        self.data_parameters = []
+    def __init__(self, httpStatusCode = None):
+        self.httpStatusCode = httpStatusCode
+        self.services = []
+
+    def get_services(self, id, json_data):
+        for service in json_data.get("services", ""):
+            for characteristic in service["characteristics"]:
+                self.services.append(BleDataParameter(id, service.get('serviceID'), characteristic.get('characteristicID'), characteristic.get('flags')))
+    
+    
