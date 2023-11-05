@@ -63,4 +63,3 @@ The 'python-sdk' and 'java-sdk' directories contain code necessary to
 interface an application to the gateway.
 
 Got an Issue?  Your contributions are welcome.
-
