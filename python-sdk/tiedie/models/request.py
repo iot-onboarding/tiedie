@@ -393,11 +393,11 @@ class TiedieUnsubscribeRequest(TiedieBasicRequest):
 
 
 class TiedieRegisterTopicRequest(TiedieBasicRequest):
-""" 
-A request for registering topics, which are used to organize and manage
-data from IoT devices. It supports different technologies, including BLE
-and Zigbee. 
-"""
+    """ 
+    A request for registering topics, which are used to organize and manage
+    data from IoT devices. It supports different technologies, including BLE
+    and Zigbee. 
+    """
     uuids: List[str]
     topic: str
     data_format: DataFormat
