@@ -56,6 +56,7 @@ class ControlClient(AbstractHttpClient):
             request = BleConnectRequest(services, 3, True)
 
         tiedie_request = TiedieConnectRequest.create_request(device, request, self.control_app_id)
+        print(tiedie_request.__dict__())
         ble_discover_response = self.post_with_tiedie_response('/connectivity/connect', tiedie_request, TiedieResponse)
     
         if ble_discover_response.http_status_code == 200:

@@ -50,8 +50,8 @@ class DiscoverRequest:
 
 class DiscoverResponse:
     """ Class for handling the response of a discovery. """
-    def __init__(self, httpStatusCode = None):
-        self.httpStatusCode = httpStatusCode
+    def __init__(self, http_status_code = None):
+        self.http_status_code = http_status_code
         self.services = []
 
     def get_services(self, id, json_data):

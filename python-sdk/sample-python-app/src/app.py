@@ -246,7 +246,7 @@ def get_device(id):
     tiedie_response = control_client.discover(device)
     parameters = None
 
-    if tiedie_response.httpStatusCode == 200:
+    if tiedie_response.http_status_code == 200:
         parameters = [
             p for p in tiedie_response.body if isinstance(p, BleDataParameter)
         ]
@@ -276,10 +276,8 @@ def connect_device(id):
 
     tiedie_response = control_client.connect(
         device, services=services)
-    
-    print(tiedie_response.body)
 
-    if tiedie_response.httpStatusCode != 200:
+    if tiedie_response.http_status_code != 200:
         return render_template("error.html",
                                error="Failed to connect to device")
 
