@@ -205,6 +205,8 @@ class SilabsAccessPoint(AccessPoint):
     def event_handler(self, evt):
         """ function to define actions based on different events """
         remove_ops: list[Operation] = []
+        if evt._str != 'bt_evt_scanner_legacy_advertisement_report':
+            self.log.info(evt)
 
         for operation in self.operations:
             operation.handle_event(evt)

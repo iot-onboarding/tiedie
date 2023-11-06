@@ -62,33 +62,44 @@ SPDX-License-Identifier: Apache-2.0
 
         <div th:if="${parameters != null}">
             <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/disconnect(id=${device.id})}"
-                th:object="${device}">
+                  th:object="${device}">
                 <button type="submit" class="btn btn-danger">Disconnect</button>
             </form>
-            <table class="table">
-                <thead>
-                    <th scope="col">GATT Service UUID</th>
-                    <th scope="col">GATT Characteristic UUID</th>
-                    <th scope="col">Value</th>
-                    <th scope="col" />
-                </thead>
-                <tbody>
-                    <tr th:each="parameter, iStat: ${parameters}">
-                        <td class="ble-ad-data text-black" scope="row" th:text="${parameter.serviceUUID}" />
-                        <td class="ble-ad-data text-black" th:text="${parameter.charUUID}" />
-                        <td class="ble-ad-data text-black" th:id="'value-' + ${iStat.index}" />
-                        <td>
-                            <button class="btn btn-primary" th:if="${#lists.contains(parameter.flags, 'read')}"
-                                th:onclick="readValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Read</button>
-                            <button class="btn btn-success" th:if="${#lists.contains(parameter.flags, 'write')}"
-                                th:onclick="writeValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Write</button>
-                            <button class="btn btn-warning"
-                                th:if="${#lists.contains(parameter.flags, 'notify') or #lists.contains(parameter.flags, 'indicate')}"
-                                th:onclick="subscribe([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Subscribe</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        </div>
+
+            <div class="container text-center" th:if="${parameters != null}">
+            <div class="row row-cols-3">
+                <div class="col card m-1">
+                    <div class="fw-bold">Temperature</div>
+                    <div class="" id="card-2a6e">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">UV Index</div>
+                    <div class="" id="card-2a76">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Pressure</div>
+                    <div class="" id="card-2a6d">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Humidity</div>
+                    <div class="" id="card-2a6f">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Sound level</div>
+                    <div class="" id="card-c8546913bf0245eb8dde9f8754f4a32e">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Ambient Light</div>
+                    <div class="" id="card-c8546913bfd945eb8dde9f8754f4a32e">
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Modal -->
@@ -141,6 +152,59 @@ SPDX-License-Identifier: Apache-2.0
         </div> -->
 
         <script th:inline="javascript">
+            var parameters = [[${parameters}]];
+
+            if (parameters != null) {
+                console.log(parameters);
+                const chars = parameters.filter(param => param.serviceUUID === "181a");
+
+
+                setInterval(async () => {
+                    for (let i = 0; i < chars.length; i++) {
+                        const value = await readValueAsHex(i, [[${device.id}]], chars[i].serviceUUID, chars[i].charUUID);
+
+                        var str = "";
+                        var data = parseInt('0x' + value.match(/../g).reverse().join(''));
+                        switch (chars[i].charUUID) {
+                            case "2a6e":
+                                str = data / 100 + " °C";
+                                break;
+                            case "2a76":
+                                str = data;
+                                break;
+                            case "2a6d":
+                                str = data / 1000 + " mbar";
+                                break;
+                            case "2a6f":
+                                str = data / 100 + " %";
+                                break;
+                            case "c8546913bf0245eb8dde9f8754f4a32e":
+                                str = data / 100 + " dB";
+                                break;
+                            case "c8546913bfd945eb8dde9f8754f4a32e":
+                                str = data / 100 + " lux";
+                                break;
+                        }
+                        document.getElementById(`card-${chars[i].charUUID}`).innerHTML = str;
+                    }
+                }, 1000);
+            }
+
+            function readValueAsHex(index, id, svcUUID, charUUID) {
+                // call API with svcUUID and charUUID
+                console.log("readValue: " + svcUUID + ", " + charUUID);
+
+                return fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/read`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => data.value);
+            }
+
+
             function readValue(index, id, svcUUID, charUUID) {
                 // call API with svcUUID and charUUID
                 console.log("readValue: " + svcUUID + ", " + charUUID);
