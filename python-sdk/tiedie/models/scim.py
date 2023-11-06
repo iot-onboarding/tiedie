@@ -1,5 +1,5 @@
 #!python
-# Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates. 
+# Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
@@ -12,7 +12,7 @@ methods for serialization and deserialization from JSON.
 import json
 import uuid
 import attr
-from typing import List
+from typing import List, Optional
 from dataclasses import dataclass, field
 
 
@@ -65,13 +65,11 @@ class BleExtension:
         self.version_support = version_support
         self.pairing_pass_key = PairingPassKey(pass_key)
 
-
     def __post_init__(self):
         self.versionSupport = self.version_support
         self.deviceMacAddress = self.device_mac_address
         self.addressType = self.address_type
         self.pairingMethods = self.pairing_methods
-
 
     def from_dict(cls, data):
         """ extract from dictionary and return an address pointer """
@@ -106,7 +104,6 @@ class BleExtension:
 
         return cls(**data)
 
-
     def to_dict(self):
         """ function to convert to dictionary """
         data = {
@@ -128,14 +125,12 @@ class BleExtension:
                 self.pairing_oob.__dict__
         return data
 
-
     def __json__(self):
         return self.to_dict()
-    
 
     def __str__(self):
         return str(self.__json__())
-    
+
 
 @dataclass
 class DppExtension:
@@ -163,23 +158,24 @@ class EndpointApp:
     applicationName: str
     clientToken: str
     endpointURL: str
-
+    certificateInfo: dict
 
     def __init__(self, json_str):
         self.id = json_str.get("id", "")
         self.applicationType = json_str.get("applicationType", "")
         self.applicationName = json_str.get("applicationName", "")
         self.clientToken = json_str.get("clientToken", "")
-        self.endpointURL = json_str.json["meta"].get("location", "")
-
+        self.certificateInfo = json_str.get("certificateInfo", {})
+        self.endpointURL = json_str.get("meta", {}).get("location", "")
 
     def to_dict(self):
         """ Stores information about an endpoint application. """
         return {
-            "id": self.id,  
+            "id": self.id,
             "applicationType": self.applicationType,
             "applicationName": self.applicationName,
             "clientToken": self.clientToken,
+            "certificateInfo": self.certificateInfo,
             "endpointURL": self.endpointURL
         }
 
@@ -188,23 +184,22 @@ class EndpointApp:
 class EndpointAppsExtension:
     """ Contains a list of endpoint applications. """
     applications: List[EndpointApp]
-    deviceControlEnterpriseEndpoint: str
-    telemetryEnterpriseEndpoint: str
-
+    deviceControlEnterpriseEndpoint: Optional[str] = None
+    telemetryEnterpriseEndpoint: Optional[str] = None
 
     def to_dict(self):
         """ function to convert to dictionary """
         return {
             "applications": [
                 {
-                    "value": app.id,
-                    "$ref": app.endpointURL
+                    "value": app["id"],
+                    "$ref": app["meta"]["location"]
                 } for app in self.applications
             ],
             "deviceControlEnterpriseEndpoint": self.deviceControlEnterpriseEndpoint,
             "telemetryEnterpriseEndpoint": self.telemetryEnterpriseEndpoint
         }
-    
+
 
 class Device:
     """ Represents a device with extensions and schema handling. """
@@ -244,34 +239,17 @@ class Device:
             ble_extension.get('urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device',
                               {}).get('key', None)
         )
-        endpoint_apps_dict = \
-            device_dict.get('urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device',
-                            {})
-        application_list = \
-            [EndpointApp(id=app.get("value", ""),
-                         endpointUrl=app.get("$ref","")) for app in \
-             endpoint_apps_dict.get('applications', [])]
+        endpoint_apps_dict = device_dict.get(
+            'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device', {})
+        application_list = [EndpointApp(app) for app in endpoint_apps_dict.get('applications', [])]
 
         endpoint_apps_extension = EndpointAppsExtension(
             applications=application_list,
-            deviceControlEnterpriseEndpoint= \
-            endpoint_apps_dict.get('deviceControlEnterpriseEndpoint', ''),
-            telemetryEnterpriseEndpoint= \
-            endpoint_apps_dict.get('telemetryEnterpriseEndpoint', ''))
-            
-        return cls(deviceDisplayName, adminState, ble_extension, schemas,
-                   deviceID, endpoint_apps_extension)
-       
-    @classmethod
-    def setEndpointAppsExtension(cls, application_list: List[EndpointApp],
-                                 deviceControlEnterpriseEndpoint: str,
-                                 telemetryEnterpriseEndpoint: str):
-        """ function setEndpointAppsExtension """
-        cls.endpointAppsExtension = EndpointAppsExtension(
-            applications=application_list, 
-            deviceControlEnterpriseEndpoint=deviceControlEnterpriseEndpoint,
-            telemetryEnterpriseEndpoint=telemetryEnterpriseEndpoint)
+            deviceControlEnterpriseEndpoint=endpoint_apps_dict.get(
+                'deviceControlEnterpriseEndpoint', ''),
+            telemetryEnterpriseEndpoint=endpoint_apps_dict.get('telemetryEnterpriseEndpoint', ''))
 
+        return cls(deviceDisplayName, adminState, ble_extension, schemas, deviceID, endpoint_apps_extension)
 
     @classmethod
     def from_json(cls, json_str):
@@ -282,13 +260,17 @@ class Device:
         """ function to convert to dictionary """
         schemas = ["urn:ietf:params:scim:schemas:core:2.0:Device"]
         if self.ble_extension is not None:
-            schemas.append("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
+            schemas.append(
+                "urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
         if self.dppExtension is not None:
-            schemas.append("urn:ietf:params:scim:schemas:extension:dpp:2.0:Device")
+            schemas.append(
+                "urn:ietf:params:scim:schemas:extension:dpp:2.0:Device")
         if self.zigbeeExtension is not None:
-            schemas.append("urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device")
+            schemas.append(
+                "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device")
         if self.endpointAppsExtension is not None:
-            schemas.append("urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
+            schemas.append(
+                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
         return {
             "deviceID": self.deviceID,
             "deviceDisplayName": self.deviceDisplayName,

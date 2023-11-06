@@ -12,23 +12,21 @@ registration processes.
 
 """
 
-import json
-import requests
+from tiedie.models.ble import DataParameter
+from tiedie.models.request import (BleConnectRequest,
+                                   Technology, TiedieBasicRequest,
+                                   TiedieConnectRequest, TiedieReadRequest,
+                                   TiedieRegisterDataAppRequest,
+                                   TiedieRegisterTopicRequest,
+                                   TiedieSubscribeRequest,
+                                   TiedieUnregisterTopicRequest,
+                                   TiedieUnsubscribeRequest,
+                                   TiedieWriteRequest, ZigbeeDiscoverResponse)
+from tiedie.models.responses import (DataResponse, DiscoverResponse)
+from tiedie.models.scim import Device
 
 from .auth import Authenticator
-from tiedie.models.request import (TiedieBasicRequest, TiedieConnectRequest,
-                                   BleConnectRequest, BleDiscoverResponse,
-                                   ZigbeeDiscoverResponse, Technology,
-                                   TiedieReadRequest, TiedieWriteRequest,
-                                   TiedieSubscribeRequest,
-                                   TiedieUnsubscribeRequest,
-                                   TiedieRegisterTopicRequest,
-                                   TiedieUnregisterTopicRequest,
-                                   TiedieRegisterDataAppRequest)
-from tiedie.models.responses import (DataResponse, TiedieResponse) 
-from tiedie.models.scim import Device
-from tiedie.models.ble import DataParameter
-from .httpclient import AbstractHttpClient
+from .httpclient import AbstractHttpClient, TiedieResponse
 
 
 class ControlClient(AbstractHttpClient):
@@ -57,27 +55,16 @@ class ControlClient(AbstractHttpClient):
         if not request:
             request = BleConnectRequest(services, 3, True)
 
-        tiedie_request = TiedieConnectRequest.create_request(device,
-                                                             request,
-                                                             self.control_app_id)
-        ble_discover_response = \
-            self.post_with_tiedie_response('/connectivity/connect',
-                                           tiedie_request, BleDiscoverResponse)
-        response = TiedieResponse()
-        response.httpStatusCode = ble_discover_response.http_status_code
-        response.httpMessage = ble_discover_response.http_message
-        response.status =   getattr(ble_discover_response, "status", None)
-        response.reason =  getattr(ble_discover_response, "reason", None)
-        if respone.status == 'FAILURE':
-            response.errorCode = ble_discover_response.http_status_code
+        tiedie_request = TiedieConnectRequest.create_request(device, request, self.control_app_id)
+        print(tiedie_request.__dict__())
+        ble_discover_response = self.post_with_tiedie_response('/connectivity/connect', tiedie_request, TiedieResponse)
+    
+        if ble_discover_response.http_status_code == 200:
+            response = DiscoverResponse(ble_discover_response.http_status_code)
+            response.get_services(device.get('id'), ble_discover_response.map)
+            return response
         else:
-            response.errorCode = None
-
-        if response.status != 'FAILURE' and ble_discover_response \
-           and getattr(ble_discover_response.body, "services", None) != None:
-            response.body = \
-                ble_discover_response.body.toParameterList(device.get('id'))
-        return response
+            return ble_discover_response
     
 
     def disconnect(self, device: Device):
@@ -93,32 +80,21 @@ class ControlClient(AbstractHttpClient):
                                                            self.control_app_id)
 
         if tiedie_request.technology == Technology.BLE.value:
-            ble_discover_response = \
-                self.post_with_tiedie_response("/data/discover",
-                                               tiedie_request,
-                                               BleDiscoverResponse)
-            response = TiedieResponse()
-            response.httpStatusCode = ble_discover_response.http_status_code
-            response.httpMessage = ble_discover_response.http_message
-            response.status =   getattr(ble_discover_response, "status", None)
-            response.reason =  getattr(ble_discover_response, "reason", None)
-            if response.status == 'FAILURE':
-                response.errorCode = ble_discover_response.http_status_code
+            ble_discover_response = self.post_with_tiedie_response("/data/discover", tiedie_request, TiedieResponse)
+            if ble_discover_response.http_status_code == 200:
+                response = DiscoverResponse(ble_discover_response.http_status_code)
+                response.get_services(device.get('id'), ble_discover_response.map)
+                return response
             else:
-                response.status = None
-            if response.status != 'FAILURE' and ble_discover_response \
-               and getattr(ble_discover_response.body, "services", None) != None:
-                response.body = \
-                    ble_discover_response.body.toParameterList(device.get('id'))
-            return response
+                return ble_discover_response
 
         zigbee_discover_response = \
             self.post_with_tiedie_response("/data/discover",
                                            tiedie_request,
-                                           ZigbeeDiscoverResponse)
+                                           TiedieResponse)
 
         response = TiedieResponse()
-        response.httpStatusCode = zigbee_discover_response.httpStatusCode
+        response.http_status_code = zigbee_discover_response.http_status_code
         response.httpMessage = zigbee_discover_response.httpMessage
         response.status = zigbee_discover_response.status
         response.reason = zigbee_discover_response.reason
