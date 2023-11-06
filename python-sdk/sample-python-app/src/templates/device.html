@@ -4,22 +4,11 @@ All rights reserved.
 See LICENSE file in this distribution.
 SPDX-License-Identifier: Apache-2.0
 -->
+{% extends 'layout.html' %}
 
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
-
-<head th:insert="~{layout :: head}">
-    <title id="title">Device</title>
-
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
-
-<body th:insert="~{layout :: body}">
+{% block main %}
     <div id="main">
-        <h1>Device Information</h1>
+        <h1>{% block title %}Device Information{% endblock %}</h1>
 
         {% if parameters != None %}
             <span class="badge rounded-pill text-bg-success">Connected</span>
@@ -51,27 +40,39 @@ SPDX-License-Identifier: Apache-2.0
         </table>
     </div>
 
-    {% if parameters != None %}
+    
     <div class="row">
-        <form class="col-4" action="/devices/{{ device.deviceID }}/connect" method="POST">
+        {% if parameters == None %}
+        <form class="col-4 mt-3" action="/devices/{{ device.deviceID }}/connect" method="POST">
+            <div class="mb-3">
+                <label for="serviceUUIDs" class="form-label">Service UUIDs (comma-separated)</label>
+                <input type="text" class="form-control" id="serviceUUIDs" name="serviceUUIDs" placeholder="Enter Service UUIDs">
+            </div>
             <button type="submit" class="btn btn-primary">Connect</button>
         </form>
+        {% endif %}
       
         <form class="col-4" action="/devices/{{ device.deviceID }}/delete" method="POST">
           <button type="submit" class="btn btn-danger">Delete</button>
         </form>
-      
+        
         <form class="col-4" action="/devices/{{ device.deviceID }}/advertisements" method="POST">
-          <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
+            {% if parameters != None %}
+            <button type="submit" class="btn btn-success" disabled>Subscribe to advertisements</button>
+            {% else %}
+            <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
+            {% endif %}
         </form>
       
+        {% if parameters != None %}
         <form class="col-4" action="/devices/{{ device.deviceID }}/disconnect" method="POST">
           <button type="submit" class="btn btn-danger">Disconnect</button>
         </form>
+        {% endif %}
     </div>
-    {% endif %}
-
     
+
+    {% if parameters != None %}
     <div class="row" {% if parameters is none %}style="display:none"{% endif %}>
         <table class="table">
             <thead>
@@ -91,7 +92,7 @@ SPDX-License-Identifier: Apache-2.0
                         <button class="btn btn-primary" onclick="readValue('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}')">Read</button>
                         {% endif %}
                         {% if 'write' in parameter.flags %}
-                        <form onsubmit="writeValue('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}', this.querySelector('input').value); return false;">
+                        <form onsubmit="writeValue('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}', this.querySelector('input').value); return false;" class="input-group mt-3">
                             <input type="text" class="form-control" placeholder="Enter value" id="writeValue-{{ loop.index0 }}">
                             <button type="submit" class="btn btn-primary">Write</button>
                         </form>                      
@@ -105,16 +106,14 @@ SPDX-License-Identifier: Apache-2.0
             </tbody>
         </table>
     </div>
-
-
-    {% raw %}
+    {% endif %}
 
     <script type="text/javascript">
-
+            var is_connected = "{{ parameters }}" != "None";
             function writeValue(index, deviceId, serviceUUID, charUUID, value) {
                 // Prepare the data to be sent in the request
                 var data = {
-                value: value
+                    value: value
                 };
 
                 // Send the AJAX request to the server
@@ -127,6 +126,7 @@ SPDX-License-Identifier: Apache-2.0
                     // Handle the success response
                     console.log('Write operation successful:', response);
                     // Update the UI or perform any other necessary actions
+                    document.getElementById(`value-${index}`).innerHTML = data.value;
                 },
                 error: function(xhr, status, error) {
                     // Handle the error response
@@ -134,7 +134,7 @@ SPDX-License-Identifier: Apache-2.0
                     // Update the UI or display an error message
                 }
                 });
-            } 
+            }
 
             function readValue(index, id, svcUUID, charUUID) {
                 // call API with svcUUID and charUUID
@@ -177,21 +177,25 @@ SPDX-License-Identifier: Apache-2.0
 
             var topic = `data-app/${id}/connection`;
 
-            var ws = io("ws://localhost:3000/connectionstatus");
+            var ws = io("ws://:3000/connectionstatus");
 
             ws.on("connect", () => {
                     console.log("Connected to server");
-                    ws.emit("subscribe", topic);
+                    ws.emit("subscribe", topic); 
             });
 
             ws.on("data", event => {
                 var obj = JSON.parse(event.data);
 
                 console.log(obj);
+
+                if (is_connected && !obj.bleConnectionStatus.connected) {
+                    window.location.reload();
+                }
             });
     </script>
-    {% endraw %}
   </div>
 </body>
 
 </html>
+{% endblock %}
