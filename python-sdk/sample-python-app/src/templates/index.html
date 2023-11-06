@@ -5,17 +5,11 @@ See LICENSE file in this distribution.
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<head th:insert="~{layout :: head}">
-    <title id="title">Home</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
+{% extends 'layout.html' %}
 
-<body th:insert="~{layout :: body}">
+{% block main %}
     <div id="main">
-        <h1>Advertisements</h1>
+        <h1>{% block title %}Advertisements{% endblock %}</h1>
         <form id="subscriptionForm" class="col-8">
             <div class="row mb-3">
                 <div class="form-group col-auto">
@@ -137,7 +131,4 @@ SPDX-License-Identifier: Apache-2.0
             });
         </script>
     </div>
-
-</body>
-
-</html>
+{% endblock %}

@@ -9,84 +9,120 @@
 
 from flask import Flask
 
+import OpenSSL.crypto
 from tiedie.api.onboardingclient import OnboardingClient
 from tiedie.api.controlclient import ControlClient
-from tiedie.api.datareceiverclient import DataReceiverClient 
-from tiedie.api.auth import ApiKeyAuthenticator
+from tiedie.api.datareceiverclient import DataReceiverClient
+from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 
 
 class ClientConfig:
-    
+
     def __init__(self, app: Flask):
         self.app = app
-        self.data_app_key = app.config.get('API_KEY')
-        self.data_app_id = app.config.get('DATA_APP_ID')
+
+        self.client_ca_path = app.config.get('CLIENT_CA_PATH')
+        self.onboarding_app_base_url = app.config.get(
+            'ONBOARDING_APP_BASE_URL')
+        self.onboarding_app_id = app.config.get('ONBOARDING_APP_ID')
+        self.onboarding_app_cert_path = app.config.get(
+            'ONBOARDING_APP_CERT_PATH')
+        self.onboarding_app_key_path = app.config.get(
+            'ONBOARDING_APP_KEY_PATH')
+        self.onboarding_app_api_key = app.config.get('ONBOARDING_APP_API_KEY')
+        self.control_app_base_url = app.config.get('CONTROL_APP_BASE_URL')
         self.control_app_id = app.config.get('CONTROL_APP_ID')
-        self.onboarding_url = app.config.get('ONBOARDING_URL')
-        self.control_url = app.config.get('CONTROL_URL')
-        self.data_url = app.config.get('DATA_URL')
-        self.ca_pem_path = app.config.get('CA_PEM_PATH')
+        self.control_app_cert_path = app.config.get('CONTROL_APP_CERT_PATH')
+        self.control_app_key_path = app.config.get('CONTROL_APP_KEY_PATH')
+        self.data_app_tls_enabled = app.config.get('DATA_APP_TLS_ENABLED')
+        self.data_app_host = app.config.get('DATA_APP_HOST')
+        self.data_app_port = app.config.get('DATA_APP_PORT')
+        self.data_app_id = app.config.get('DATA_APP_ID')
 
     def get_onboarding_client(self):
-        '''
-        with self.app.open_resource(CA_PEM_PATH, 'rb') as ca_stream:
-            ca_cert = ca_stream.read()
+        """
+        Returns an onboarding client.
+        """
+        if self.onboarding_app_cert_path is not None and self.onboarding_app_key_path is not None:
+            # initialize authenticator with certificate
+            authenticator = CertificateAuthenticator(
+                self.client_ca_path, self.onboarding_app_cert_path, self.onboarding_app_key_path)
+        else:
+            authenticator = ApiKeyAuthenticator(
+                self.data_app_id,  self.client_ca_path, self.onboarding_app_api_key)
 
-        with self.app.open_resource(ONBOARDING_CERT_PATH, 'rb') as client_keystore_stream:
-            client_keystore = client_keystore_stream.read()
+        return OnboardingClient(self.onboarding_app_base_url, authenticator)
 
-        key_store = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        key_store.load_cert_chain(certfile=BytesIO(client_keystore), password="")
-        '''
-        authenticator = ApiKeyAuthenticator(self.data_app_id,  self.ca_pem_path, self.data_app_key)
+    def get_control_client(self, control_app_endpoint: dict):
+        """
+        Returns a control client.
+        """
+        if "certificateInfo" in control_app_endpoint:
+            authenticator = CertificateAuthenticator(
+                self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
+        else:
+            authenticator = ApiKeyAuthenticator(
+                self.control_app_id,  self.client_ca_path, control_app_endpoint["clientToken"])
 
-        return OnboardingClient(self.onboarding_url, authenticator)
+        return ControlClient(self.control_app_base_url, authenticator)
 
-    def get_control_client(self):
-        '''
-        with self.app.open_resource(CA_PEM_PATH, 'rb') as ca_stream:
-            ca_cert = ca_stream.read()
+    def get_data_receiver_client(self, data_app_endpoint: dict) -> DataReceiverClient:
+        """
+        Returns a data receiver client.
+        """
+        if "certificateInfo" in data_app_endpoint:
+            authenticator = CertificateAuthenticator(
+                self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
+        else:
+            authenticator = ApiKeyAuthenticator(
+                self.data_app_id,  self.client_ca_path, data_app_endpoint["clientToken"])
 
-        with self.app.open_resource(CONTROL_CERT_PATH, 'rb') as client_keystore_stream:
-            client_keystore = client_keystore_stream.read()
+        return DataReceiverClient(self.data_app_host,  authenticator=authenticator, port=self.data_app_port, disable_tls=not self.data_app_tls_enabled)
+    
+    def get_root_cn(self):
+        with open(self.client_ca_path, 'rb') as ca_stream:
+            cert = ca_stream.read()
 
-        key_store = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-        key_store.load_cert_chain(certfile=BytesIO(client_keystore), password="")
-        '''
-        authenticator = ApiKeyAuthenticator(self.control_app_id,  self.ca_pem_path, self.data_app_key)
+        cert = OpenSSL.crypto.load_certificate(
+            OpenSSL.crypto.FILETYPE_PEM, cert)
 
-        return ControlClient(self.control_url, authenticator)
+        return cert.get_subject().CN
 
+    def get_endpoint_apps(self, onboarding_client: OnboardingClient):
+        """ 
+        Returns the endpoint apps for the onboarding app.
+        """
+        http_response = onboarding_client.getEndpointApps()
+        endpoint_apps = http_response.body["Resources"]
+        if endpoint_apps is None:
+            endpoint_apps = []
 
-    def get_data_receiver_client(self) -> DataReceiverClient:
+        control_app = next((app for app in endpoint_apps if app["applicationType"] == "deviceControl"
+                           and app["applicationName"] == self.control_app_id), None)
 
-        authenticator = ApiKeyAuthenticator(self.data_app_id,  self.ca_pem_path, self.data_app_key)
+        if control_app is None:
+            # create certificateInfo only if certs exist
+            certificate_info = None
+            if self.control_app_cert_path is not None and self.control_app_key_path is not None:
+                certificate_info = {
+                    "rootCN": self.get_root_cn(),
+                    "subjectName": self.control_app_id
+                }
 
-        return DataReceiverClient(self.data_url,  authenticator=authenticator, port=8883)
+            endpoint_app_response = onboarding_client.createEndpointApp({"applicationName": self.control_app_id,
+                                                                         "certificateInfo": certificate_info,
+                                                                         "applicationType": "deviceControl"})
+            control_app = endpoint_app_response.body
 
-    def getEndpointApps(self, onboarding_client):
-        httpResponse = onboarding_client.getEndpointApps()
-        endpointApps = httpResponse.body["Resources"]
-        if endpointApps is None:
-            endpointApps = []
-
-        controlApp = next((app for app in endpointApps if app["applicationType"] == "deviceControl"
-                            and app["applicationName"] == self.control_app_id ), None)
-
-        if controlApp is None:
-            createEndpointAppResponse = onboarding_client.createEndpointApp({"applicationName": self.control_app_id ,
-                                                                            "applicationType": "deviceControl"})
-            controlApp = createEndpointAppResponse.body
-
-        dataApp = next((app for app in endpointApps if app["applicationType"] == "telemetry"
+        data_app = next((app for app in endpoint_apps if app["applicationType"] == "telemetry"
                         and app["applicationName"] == self.data_app_id), None)
 
-        if dataApp is None:
-            createEndpointAppResponse = onboarding_client.createEndpointApp({"applicationName": self.data_app_id,
-                                                                            "applicationType": "telemetry"})
-            dataApp = createEndpointAppResponse.body
+        if data_app is None:
+            endpoint_app_response = onboarding_client.createEndpointApp({"applicationName": self.data_app_id,
+                                                                         "applicationType": "telemetry"})
+            data_app = endpoint_app_response.body
 
-        print("Control App: ", controlApp)
-        print("Data App: ", dataApp)
+        print("Control App: ", control_app)
+        print("Data App: ", data_app)
 
-        return [controlApp, dataApp]
+        return [control_app, data_app]

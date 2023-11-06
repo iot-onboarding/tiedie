@@ -5,18 +5,11 @@ See LICENSE file in this distribution.
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+{% extends 'layout.html' %}
 
-<head th:insert="layout :: head">
-    <title id="title">Devices</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
+<title>{% block title %}Devices{% endblock %}</title>
 
-<body th:insert="layout :: body">
+{% block main %}
     <div id="main">
         <a class="btn btn-primary" href="/devices/add">Add Device</a>
         <table class="table">
@@ -86,4 +79,4 @@ SPDX-License-Identifier: Apache-2.0
     </div>
 </body>
 
-</html>
+{% endblock %}

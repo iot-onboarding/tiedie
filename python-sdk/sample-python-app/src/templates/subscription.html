@@ -5,22 +5,13 @@ See LICENSE file in this distribution.
 SPDX-License-Identifier: Apache-2.0
 -->
 
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+{% extends 'layout.html' %}
 
-<head>
-    <meta charset="UTF-8" />
-    <title>Subscription</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src=" https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.3/socket.io.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-</head>
-
-<body>
+<title>{% block title %}Subscription{% endblock %}</title>
+{% block main %}
     <div th:replace="layout :: main" th:with="title='Subscription'">
         <h1>Topic</h1>
-        <h2 th:text="{{ topic }}">Topic</h2>
+        <h2>{{ topic }}</h2>
 
         <form class="col-4" action="/unsubscribe" method="post">
             <input type="hidden" name="topic" value="{{ topic }}">
@@ -40,7 +31,7 @@ SPDX-License-Identifier: Apache-2.0
             var tbody = document.getElementById("tbody");
             var topic = new URLSearchParams(window.location.search).get('topic');
 
-            var ws = io("ws://localhost:3000/subscription");
+            var ws = io("ws://:3000/subscription");
 
             ws.on("connect", () => {
                 console.log("Connected to server");
@@ -72,3 +63,4 @@ SPDX-License-Identifier: Apache-2.0
 </body>
 
 </html>
+{% endblock %}

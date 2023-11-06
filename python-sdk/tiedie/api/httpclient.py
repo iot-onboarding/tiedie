@@ -13,7 +13,9 @@ and mapping them to specific classes, particularly for IoT applications.
 import json
 from enum import Enum
 import requests
+from tiedie.api.auth import Authenticator
 from requests.exceptions import HTTPError
+
 
 class TiedieStatus(Enum):
     """ TieDie Status"""
@@ -23,7 +25,8 @@ class TiedieStatus(Enum):
 
 class TiedieResponse:
     """ class for TIEDIE responses """
-    def __init__(self, status, http_status_code, http_message, body,
+
+    def __init__(self, status=None, http_status_code=None, http_message=None, body=None,
                  map: dict = None):
         self.status = status
         self.http_status_code = http_status_code
@@ -31,19 +34,19 @@ class TiedieResponse:
         self.body = body
         self.map = map
 
-
     def unpack_remaining(self, key, value):
         """ function unpack_remaining """
         self.map[key] = value
-
 
     def to_json(self):
         """ convert to json """
         return json.dumps(self, default=lambda o: o.__dict__,
                           sort_keys=True, indent=4)
-        
+
+
 class HttpResponse:
     """ class HttpResponse """
+
     def __init__(self, status_code, message, body):
         self.status_code = status_code
         self.message = message
@@ -51,13 +54,11 @@ class HttpResponse:
 
 
 class AbstractHttpClient:
-    """ class AbstractHttpClient """
-    def __init__(self, base_url, media_type, authenticator):
+    def __init__(self, base_url, media_type, authenticator: Authenticator):
         self.base_url = base_url
         self.media_type = media_type
         self.http_client = authenticator.set_auth_options(requests.Session())
 
-    
     def map_response(self, response, return_class):
         """ funtion map_response """
         http_response = HttpResponse(
@@ -65,14 +66,13 @@ class AbstractHttpClient:
             response.reason,
             None
         )
-        
+
         try:
             http_response.body = json.loads(response.content.decode("utf-8"))
         except ValueError:
             pass
 
         return http_response
-    
 
     def post(self, path, body, return_class):
         """ API POST """
@@ -88,7 +88,6 @@ class AbstractHttpClient:
         )
 
         return self.map_response(response, return_class)
-    
 
     def get(self, path, return_class):
         """ APT GET """
@@ -98,10 +97,9 @@ class AbstractHttpClient:
             self.base_url + path,
             headers=headers,
             verify=False,
-            
+
         )
         return self.map_response(response, return_class)
-    
 
     def delete(self, path, return_class):
         """ function delete """
@@ -114,7 +112,6 @@ class AbstractHttpClient:
             verify=False,
         )
         return self.map_response(response, return_class)
-    
 
     def post_with_tiedie_response(self, path, body, return_class):
         """ API POST with tiedie response """
@@ -141,7 +138,7 @@ class AbstractHttpClient:
             tiedie_response.map = json_data
             # XXX what?
             constructor_args = \
-                {k: v for k, v in json_data.items() if k in \
+                {k: v for k, v in json_data.items() if k in
                  return_class.__init__.__code__.co_varnames}
             tiedie_response.body = return_class(**constructor_args)
 
@@ -154,7 +151,7 @@ class AbstractHttpClient:
                 response.reason,
                 None
             )
-        except ValueError:  
+        except ValueError:
             pass
 
         return tiedie_response
