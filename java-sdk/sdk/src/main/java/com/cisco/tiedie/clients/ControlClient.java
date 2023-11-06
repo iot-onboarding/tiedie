@@ -95,6 +95,8 @@ public class ControlClient extends AbstractHttpClient {
     public TiedieResponse<List<DataParameter>> connect(Device device, BleConnectRequest request) throws IOException {
         var tiedieRequest = TiedieConnectRequest.createRequest(device, request, controlAppId);
 
+        System.out.println(tiedieRequest);
+
         var bleDiscoverResponse = postWithTiedieResponse("/connectivity/connect", tiedieRequest, BleDiscoverResponse.class);
 
         TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
@@ -158,6 +160,8 @@ public class ControlClient extends AbstractHttpClient {
      */
     public TiedieResponse<List<DataParameter>> discover(Device device, List<DataParameter> parameters) throws IOException {
         var tiedieRequest = TiedieDiscoverRequest.createRequest(device, parameters, controlAppId);
+
+        System.out.println(tiedieRequest);
 
         if (tiedieRequest.getTechnology() == Technology.BLE) {
             var bleDiscoverResponse = postWithTiedieResponse("/data/discover", tiedieRequest, BleDiscoverResponse.class);

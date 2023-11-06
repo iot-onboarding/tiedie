@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.cisco.tiedie.dto.control.ble.BleConnectRequest;
+import com.cisco.tiedie.dto.control.ble.BleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -144,7 +146,7 @@ public class DeviceController {
         Device device = response.getBody();
         model.addAttribute("device", device);
 
-        TiedieResponse<List<DataParameter>> dataResponse = controlClient.discover(device);
+        TiedieResponse<List<DataParameter>> dataResponse = controlClient.discover(device, List.of(new BleDataParameter("181a")));
 
         if (dataResponse.getHttpStatusCode() != 200) {
             return "device";
@@ -164,7 +166,9 @@ public class DeviceController {
 
     @PostMapping("/devices/{id}/connect")
     public String connectDevice(@ModelAttribute Device device, Model model) throws Exception {
-        TiedieResponse<List<DataParameter>> response = controlClient.connect(device);
+        TiedieResponse<List<DataParameter>> response = controlClient.connect(device, BleConnectRequest.builder()
+                .services(List.of(new BleService("181a")))
+                .build());
 
         if (response.getHttpStatusCode() != 200) {
             return "error";
@@ -255,9 +259,9 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/read", produces = "application/json")
     @ResponseBody
     public DataResponse readCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            Model model) throws Exception {
+                                           @PathVariable("svcUUID") String svcUUID,
+                                           @PathVariable("charUUID") String charUUID,
+                                           Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         TiedieResponse<DataResponse> response = controlClient.read(parameter);
@@ -268,10 +272,10 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/write", produces = "application/json")
     @ResponseBody
     public DataResponse writeCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            @RequestBody String value,
-            Model model) throws Exception {
+                                            @PathVariable("svcUUID") String svcUUID,
+                                            @PathVariable("charUUID") String charUUID,
+                                            @RequestBody String value,
+                                            Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         TiedieResponse<DataResponse> response = controlClient.write(parameter, value);
@@ -282,9 +286,9 @@ public class DeviceController {
     @PostMapping(value = "/devices/{id}/svc/{svcUUID}/char/{charUUID}/subscribe", produces = "application/json")
     @ResponseBody
     public Map<String, String> subscribeCharacteristic(@PathVariable("id") String id,
-            @PathVariable("svcUUID") String svcUUID,
-            @PathVariable("charUUID") String charUUID,
-            Model model) throws Exception {
+                                                       @PathVariable("svcUUID") String svcUUID,
+                                                       @PathVariable("charUUID") String charUUID,
+                                                       Model model) throws Exception {
         BleDataParameter parameter = new BleDataParameter(id, svcUUID, charUUID);
 
         String topic = "data-app/" + id + "/" + svcUUID + "/" + charUUID;
