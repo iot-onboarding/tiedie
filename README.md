@@ -17,7 +17,7 @@ IETF drafts.
 This package enables IoT device provisioning and communication for
 non-IP devices such as [Bluetooth Low
 Energy](https://www.bluetooth.com/specifications/specs/core-specification-5-4/)
-and [Zigbee Z-Wave](https://sdomembers.z-wavealliance.org/document/dl/917) via an
+and [Zigbee](https://zigbeealliance.org/wp-content/uploads/2019/11/docs-05-3474-21-0csg-zigbee-specification.pdf) via an
 application layer gateway.  Want to deploy a new application?  You no
 longer need to lay down additional bridges or make use of USB dongles.
 
