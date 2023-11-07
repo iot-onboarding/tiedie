@@ -41,7 +41,7 @@ This repository contains the following components:
 
 All are welcome, under the condition that no intellectual property
 limitations are introduced.  The LICENSE in this distribution
-applies.  Please also see [CONTRIBUTING.MD](CONTRIBUTING.MD).
+applies.  Please also see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Standards
 
