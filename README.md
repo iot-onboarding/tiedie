@@ -8,15 +8,18 @@ SPDX-License-Identifier: Apache-2.0
 # Welcome to TieDie IoT
 
 This package enables IoT device provisioning and communication for
-non-IP devices (e.g., BLE, Zigbee) via an application layer gateway.
-Want to deploy a new application?  You no longer need to lay down
-additional bridges or make use of USB dongles.
+non-IP devices such as [Bluetooth Low
+Energy](https://www.bluetooth.com/specifications/specs/core-specification-5-4/)
+and [Zigbee](https://zigbeealliance.org/wp-content/uploads/2019/11/docs-05-3474-21-0csg-zigbee-specification.pdf) via an
+application layer gateway.  Want to deploy a new application?  You no
+longer need to lay down additional bridges or make use of USB dongles.
 
 ## How do I use it?
 
-Two SDKs are provided, Java and Python.  A gateway then can operate
-on a Linux system with an 802.15.4 interface.  The order of operations
-is this:
+Two SDKs are provided, Java and Python.  A gateway then can operate on
+a Linux system with an [IEEE
+802.15.4](https://standards.ieee.org/ieee/802.15.4/7029/) interface.
+The order of operations is this:
 
 1. Provision applications to control devices
 2. Provision devices
@@ -38,7 +41,7 @@ This repository contains the following components:
 
 All are welcome, under the condition that no intellectual property
 limitations are introduced.  The LICENSE in this distribution
-applies.
+applies.  Please also see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Standards
 
