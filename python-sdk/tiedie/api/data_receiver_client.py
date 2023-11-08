@@ -23,14 +23,14 @@ class DataReceiverClient:
                  host: str,
                  authenticator: Authenticator,
                  port: int = 8883,
-                 disable_tls: bool = False):
+                 disable_tls: bool = False,
+                 insecure_tls: bool = False):
         self.host = host
         self.port = port
         self.authenticator = authenticator
         self.mqtt_client = mqtt.Client(
             client_id=authenticator.get_client_id(), clean_session=True)
-        if not disable_tls:
-            self.authenticator.set_auth_options_mqtt(self.mqtt_client)
+        self.authenticator.set_auth_options_mqtt(self.mqtt_client, disable_tls, insecure_tls)
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.on_message = self.on_message

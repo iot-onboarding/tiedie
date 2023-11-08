@@ -18,11 +18,11 @@ SPDX-License-Identifier: Apache-2.0
             <tbody>
                 <tr>
                     <th>Device ID</th>
-                    <td>{{ device.deviceID }}</td>
+                    <td>{{ device.device_id }}</td>
                 </tr>
                 <tr>
                     <th>Device Display Name</th>
-                    <td>{{ device.deviceDisplayName }}</td>
+                    <td>{{ device.device_display_name }}</td>
                 </tr>
                 <tr>
                     <th>Device MAC Address</th>
@@ -43,7 +43,7 @@ SPDX-License-Identifier: Apache-2.0
     
     <div class="row">
         {% if parameters == None %}
-        <form class="col-4 mt-3" action="/devices/{{ device.deviceID }}/connect" method="POST">
+        <form class="col-4 mt-3" action="/devices/{{ device.device_id }}/connect" method="POST">
             <div class="mb-3">
                 <label for="serviceUUIDs" class="form-label">Service UUIDs (comma-separated)</label>
                 <input type="text" class="form-control" id="serviceUUIDs" name="serviceUUIDs" placeholder="Enter Service UUIDs">
@@ -52,11 +52,11 @@ SPDX-License-Identifier: Apache-2.0
         </form>
         {% endif %}
       
-        <form class="col-4" action="/devices/{{ device.deviceID }}/delete" method="POST">
+        <form class="col-4" action="/devices/{{ device.device_id }}/delete" method="POST">
           <button type="submit" class="btn btn-danger">Delete</button>
         </form>
         
-        <form class="col-4" action="/devices/{{ device.deviceID }}/advertisements" method="POST">
+        <form class="col-4" action="/devices/{{ device.device_id }}/advertisements" method="POST">
             {% if parameters != None %}
             <button type="submit" class="btn btn-success" disabled>Subscribe to advertisements</button>
             {% else %}
@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
         </form>
       
         {% if parameters != None %}
-        <form class="col-4" action="/devices/{{ device.deviceID }}/disconnect" method="POST">
+        <form class="col-4" action="/devices/{{ device.device_id }}/disconnect" method="POST">
           <button type="submit" class="btn btn-danger">Disconnect</button>
         </form>
         {% endif %}
@@ -84,21 +84,21 @@ SPDX-License-Identifier: Apache-2.0
             <tbody>
                 {% for parameter in parameters %}
                 <tr>
-                    <td class="ble-ad-data text-black" scope="row">{{ parameter.serviceUUID }}</td>
-                    <td class="ble-ad-data text-black">{{ parameter.charUUID }}</td>
+                    <td class="ble-ad-data text-black" scope="row">{{ parameter.service_id }}</td>
+                    <td class="ble-ad-data text-black">{{ parameter.characteristic_id }}</td>
                     <td class="ble-ad-data text-black" id="value-{{ loop.index0 }}"></td>
                     <td>
                         {% if 'read' in parameter.flags %}
-                        <button class="btn btn-primary" onclick="readValue('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}')">Read</button>
+                        <button class="btn btn-primary" onclick="readValue('{{ loop.index0 }}', '{{ device.device_id }}', '{{ parameter.service_id }}', '{{ parameter.characteristic_id }}')">Read</button>
                         {% endif %}
                         {% if 'write' in parameter.flags %}
-                        <form onsubmit="writeValue('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}', this.querySelector('input').value); return false;" class="input-group mt-3">
+                        <form onsubmit="writeValue('{{ loop.index0 }}', '{{ device.device_id }}', '{{ parameter.service_id }}', '{{ parameter.characteristic_id }}', this.querySelector('input').value); return false;" class="input-group mt-3">
                             <input type="text" class="form-control" placeholder="Enter value" id="writeValue-{{ loop.index0 }}">
                             <button type="submit" class="btn btn-primary">Write</button>
                         </form>                      
                         {% endif %}
                         {% if 'notify' in parameter.flags or 'indicate' in parameter.flags %}
-                        <button class="btn btn-warning" onclick="subscribe('{{ loop.index0 }}', '{{ device.deviceID }}', '{{ parameter.serviceUUID }}', '{{ parameter.charUUID }}')">Subscribe</button>
+                        <button class="btn btn-warning" onclick="subscribe('{{ loop.index0 }}', '{{ device.device_id }}', '{{ parameter.service_id }}', '{{ parameter.characteristic_id }}')">Subscribe</button>
                         {% endif %}
                     </td>
                 </tr>

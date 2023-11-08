@@ -74,8 +74,8 @@ class BleConnectRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     services: Optional[List[BleService]] = None
-    retries: int
-    retry_multiple_aps: bool = Field(alias="retryMultipleAPs")
+    retries: Optional[int] = 3
+    retry_multiple_aps: Optional[bool] = Field(alias="retryMultipleAPs", default=True)
 
 
 class BleDataParameter(DataParameter):
