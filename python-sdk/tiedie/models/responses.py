@@ -10,53 +10,79 @@ including handling Tiedie responses, data responses, and discovery-related intea
 
 """
 
-import json
+from dataclasses import dataclass
 from enum import Enum
+from typing import Generic, List, Optional, TypeVar
 
-from tiedie.models.ble import BleDataParameter
+from pydantic import BaseModel
+
+from tiedie.models.ble import BleDataParameter, BleService
 
 
 class TiedieStatus(Enum):
-    """ Enum representing success and failure status. """
-    SUCCESS = "SUCCESS"
+    """ TieDie Status """
     FAILURE = "FAILURE"
+    SUCCESS = "SUCCESS"
 
 
-class DataResponse:
+T = TypeVar('T')
+
+
+class TiedieHTTP(BaseModel):
+    """ TieDie HTTP """
+    status_code: int
+    status_message: str
+
+
+class TiedieRawResponse(BaseModel):
+    """ Raw representation of the TieDie response """
+
+    status: Optional[TiedieStatus] = None
+    reason: Optional[str] = None
+    error_code: Optional[int] = None
+
+    http: Optional[TiedieHTTP] = None
+
+
+class TiedieResponse(TiedieRawResponse, Generic[T]):
+    """ TieDie response """
+    body: Optional[T] = None
+
+
+@dataclass
+class HttpResponse(Generic[T]):
+    """ class HttpResponse """
+
+    status_code: int
+    message: str
+    body: T
+
+
+class ValueResponse(TiedieRawResponse):
     """ Class for data response with value and status. """
 
-    def __init__(self, value=None, status=None):
-        self.value = value
-        self.status = status
-
-    def __json__(self):
-        return self.__dict__()
-
-    def __dict__(self):
-        return {
-            "value": self.value,
-            "status": self.status
-        }
+    value: Optional[str] = None
 
 
-class DiscoverRequest:
-    """ Class for making a discover request. """
+class BleDiscoverResponse(TiedieRawResponse):
+    """
+    Represents a response containing information about BLE services
+    and characteristics. It includes a list of services.
+    """
 
-    def __init__(self):
-        self.serviceUUID = ""
-        self.characteristicUUID = ""
-        self.descriptorUUID = ""
+    services: list[BleService]
 
+    def to_parameter_list(self, device_id: str) -> List[BleDataParameter]:
+        """ Create a generic parameter list from the services and characteristics. """
+        parameter_list: List[BleDataParameter] = []
 
-class DiscoverResponse:
-    """ Class for handling the response of a discovery. """
-    def __init__(self, http_status_code = None):
-        self.http_status_code = http_status_code
-        self.services = []
+        for service in self.services:
+            for characteristic in service.characteristics:
+                parameter_list.append(BleDataParameter(
+                    device_id=device_id,
+                    service_id=service.service_id,
+                    characteristic_id=characteristic.characteristic_id,
+                    flags=characteristic.flags
+                ))
 
-    def get_services(self, id, json_data):
-        for service in json_data.get("services", ""):
-            for characteristic in service["characteristics"]:
-                self.services.append(BleDataParameter(id, service.get('serviceID'), characteristic.get('characteristicID'), characteristic.get('flags')))
-    
-    
+        return parameter_list

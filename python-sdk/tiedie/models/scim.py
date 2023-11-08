@@ -9,132 +9,87 @@ with extensions for BLE and endpoint applications.  It also provides
 methods for serialization and deserialization from JSON.
 """
 
-import json
-import uuid
-import attr
+from enum import Enum
 from typing import List, Optional
-from dataclasses import dataclass, field
+
+from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic.alias_generators import to_camel
 
 
-@dataclass
-class NullPairing:
+class NullPairing(BaseModel):
     """ Represents Null Pairing with an ID. """
     id: str
 
 
-@dataclass
-class PairingJustWorks:
+class PairingJustWorks(BaseModel):
     """ class PairingJustWorks """
     key: int
 
 
-@dataclass
-class PairingPassKey:
+class PairingPassKey(BaseModel):
     """ Represents Pairing with Pass Key."""
     key: int
 
 
-@dataclass
-class PairingOOB:
+class PairingOOB(BaseModel):
     """ Represents Out-of-Band Pairing with keys and numbers. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     key: str
     random_number: str
-    confirmation_number: str
+    confirmation_number: Optional[str] = None
 
 
-@dataclass
-class BleExtension:
+class BleExtension(BaseModel):
     """ Contains BLE extension data and initialization method. """
-    version_support: List[str] = field(default_factory=list)
-    device_mac_address: str = ""
-    address_type: bool = False
-    pairing_methods: List[str] = field(default_factory=list)
-    irk: str = ""
-    null_pairing: NullPairing = None
-    pairing_just_works: PairingJustWorks = None
-    pairing_pass_key: PairingPassKey = None
-    pairing_oob: PairingOOB = None
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
+    version_support: List[str]
+    device_mac_address: str
+    is_random: bool = False
+    irk: Optional[str] = None
+    null_pairing: Optional[NullPairing] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device",
+        default=None)
+    pairing_just_works: Optional[PairingJustWorks] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device",
+        default=None)
+    pairing_pass_key: Optional[PairingPassKey] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device",
+        default=None)
+    pairing_oob: Optional[PairingOOB] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device",
+        default=None)
 
-    def __init__(self, device_mac_address: str, version_support: List[str],
-                 is_random: bool, pass_key: int):
-        self.schemas = \
-            ["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
-        self.device_mac_address = device_mac_address
-        self.address_type = "random" if is_random else "public"
-        self.version_support = version_support
-        self.pairing_pass_key = PairingPassKey(pass_key)
+    @computed_field(alias="pairingMethods")
+    @property
+    def pairing_methods(self) -> List[str]:
+        """ Returns a list of pairing methods.
 
-    def __post_init__(self):
-        self.versionSupport = self.version_support
-        self.deviceMacAddress = self.device_mac_address
-        self.addressType = self.address_type
-        self.pairingMethods = self.pairing_methods
+        Returns:
+            List[str]: List of pairing methods.
+        """
 
-    def from_dict(cls, data):
-        """ extract from dictionary and return an address pointer """
-        null_pairing = \
-            data.pop("urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device",
-                     None)
-        if null_pairing:
-            cls.null_pairing = NullPairing(**null_pairing)
-
-        pairing_just_works = \
-            data.pop("urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device",
-                     None)
-        if pairing_just_works:
-            cls.pairing_just_works = PairingJustWorks(**pairing_just_works)
-
-        pairing_pass_key = \
-            data.pop("urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device",
-                     None)
-        if pairing_pass_key:
-            cls.pairing_pass_key = PairingPassKey(**pairing_pass_key)
-
-        pairing_oob = \
-            data.pop("urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device",
-                     None)
-        if pairing_oob:
-            cls.pairing_oob = PairingOOB(**pairing_oob)
-
-        cls.version_support = data.pop("versionSupport", [])
-        cls.device_mac_address = data.pop("deviceMacAddress", "")
-        cls.address_type = data.pop("isRandom", "")
-        cls.pairing_methods = data.pop("pairingMethods", [])
-
-        return cls(**data)
-
-    def to_dict(self):
-        """ function to convert to dictionary """
-        data = {
-            "versionSupport": self.version_support,
-            "deviceMacAddress": self.device_mac_address,
-            "addressType": self.address_type,
-        }
+        _pairing_methods = []
         if self.null_pairing:
-            data["urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"] \
-                = self.null_pairing.__dict__
+            _pairing_methods.append(
+                "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
         if self.pairing_just_works:
-            data["urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"] \
-                = self.pairing_just_works.__dict__
+            _pairing_methods.append(
+                "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device")
         if self.pairing_pass_key:
-            data["urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"] = \
-                self.pairing_pass_key.__dict__
+            _pairing_methods.append(
+                "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device")
         if self.pairing_oob:
-            data["urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"] = \
-                self.pairing_oob.__dict__
-        return data
-
-    def __json__(self):
-        return self.to_dict()
-
-    def __str__(self):
-        return str(self.__json__())
+            _pairing_methods.append(
+                "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device")
+        return _pairing_methods
 
 
-@dataclass
-class DppExtension:
+class DppExtension(BaseModel):
     """ Represents DPP extension data. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     dpp_version: int
     bootstrapping_method: List[str]
     bootstrap_key: str
@@ -143,144 +98,95 @@ class DppExtension:
     serial_number: str
 
 
-@dataclass
-class ZigbeeExtension:
+class ZigbeeExtension(BaseModel):
     """ Represents Zigbee extension data. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     version_support: List[str]
-    device_id: str
+    device_eui64_address: str
 
 
-@dataclass
-class EndpointApp:
+class EndpointAppType(str, Enum):
+    """ Represents an endpoint application type. """
+    DEVICE_CONTROL = "deviceControl"
+    TELEMETRY = "telemetry"
+
+
+class AppCertificateInfo(BaseModel):
+    """ Stores information about an application certificate. """
+
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    root_cn: str = Field(alias="rootCN")
+    subject_name: str
+    subject_alternative_name: Optional[List[str]] = None
+
+
+class EndpointApp(BaseModel):
     """ Stores information about an endpoint application. """
-    id: str
-    applicationType: str
-    applicationName: str
-    clientToken: str
-    endpointURL: str
-    certificateInfo: dict
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    def __init__(self, json_str):
-        self.id = json_str.get("id", "")
-        self.applicationType = json_str.get("applicationType", "")
-        self.applicationName = json_str.get("applicationName", "")
-        self.clientToken = json_str.get("clientToken", "")
-        self.certificateInfo = json_str.get("certificateInfo", {})
-        self.endpointURL = json_str.get("meta", {}).get("location", "")
-
-    def to_dict(self):
-        """ Stores information about an endpoint application. """
-        return {
-            "id": self.id,
-            "applicationType": self.applicationType,
-            "applicationName": self.applicationName,
-            "clientToken": self.clientToken,
-            "certificateInfo": self.certificateInfo,
-            "endpointURL": self.endpointURL
-        }
+    application_id: Optional[str] = Field(alias="id", default=None)
+    application_type: EndpointAppType
+    application_name: str
+    client_token: Optional[str] = None
+    certificate_info: Optional[AppCertificateInfo] = None
 
 
-@dataclass
-class EndpointAppsExtension:
+class Application(BaseModel):
+    """ Represents an application. """
+    value: str
+    ref: Optional[str] = Field(alias="$ref", default=None)
+
+
+class EndpointAppsExtension(BaseModel):
     """ Contains a list of endpoint applications. """
-    applications: List[EndpointApp]
-    deviceControlEnterpriseEndpoint: Optional[str] = None
-    telemetryEnterpriseEndpoint: Optional[str] = None
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    def to_dict(self):
-        """ function to convert to dictionary """
-        return {
-            "applications": [
-                {
-                    "value": app["id"],
-                    "$ref": app["meta"]["location"]
-                } for app in self.applications
-            ],
-            "deviceControlEnterpriseEndpoint": self.deviceControlEnterpriseEndpoint,
-            "telemetryEnterpriseEndpoint": self.telemetryEnterpriseEndpoint
-        }
+    applications: List[Application]
+    device_control_enterprise_endpoint: Optional[str] = None
+    telemetry_enterprise_endpoint: Optional[str] = None
 
 
-class Device:
+class Device(BaseModel):
     """ Represents a device with extensions and schema handling. """
-    def __init__(self, deviceDisplayName: str, adminState: bool,
-                 ble_extension: BleExtension,
-                 schemas: List[str] =["urn:ietf:params:scim:schemas:core:2.0:Device"],
-                 deviceID: str = str(uuid.uuid4()),
-                 endpointAppsExtension: EndpointAppsExtension = None, **kwargs):
-        self.deviceID = deviceID
-        self.schemas = schemas
-        self.deviceDisplayName = deviceDisplayName
-        self.adminState = adminState
-        self.ble_extension = ble_extension
-        self.zigbeeExtension = None
-        self.dppExtension = None
-        self.endpointAppsExtension = endpointAppsExtension
-        self.meta = kwargs.get('meta', {})
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    @classmethod
-    def create(cls, device_dict):
-        """ function to create schemas """
-        schemas = device_dict.get('schemas', [])
-        deviceID = device_dict.get('id', '')
-        deviceDisplayName = device_dict.get('deviceDisplayName', '')
-        adminState = device_dict.get('adminState', False)
-        meta = device_dict.get('meta', {})
-        ble_extension = \
-            device_dict.get('urn:ietf:params:scim:schemas:extension:ble:2.0:Device',
-                            {})
-        endpoint_apps_extension = \
-            device_dict.get('urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device',
-                            {})
-        ble_extension = BleExtension(
-            ble_extension.get('deviceMacAddress', ''),
-            ble_extension.get('versionSupport', []),
-            ble_extension.get('isRandom', False),
-            ble_extension.get('urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device',
-                              {}).get('key', None)
-        )
-        endpoint_apps_dict = device_dict.get(
-            'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device', {})
-        application_list = [EndpointApp(app) for app in endpoint_apps_dict.get('applications', [])]
+    device_id: Optional[str] = Field(alias="id", default=None)
+    device_display_name: str
+    admin_state: bool
+    ble_extension: Optional[BleExtension] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
+        default=None)
+    zigbee_extension: Optional[ZigbeeExtension] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device",
+        default=None)
+    dpp_extension: Optional[DppExtension] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:dpp:2.0:Device",
+        default=None)
+    endpoint_apps_extension: Optional[EndpointAppsExtension] = Field(
+        alias="urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device",
+        default=None)
 
-        endpoint_apps_extension = EndpointAppsExtension(
-            applications=application_list,
-            deviceControlEnterpriseEndpoint=endpoint_apps_dict.get(
-                'deviceControlEnterpriseEndpoint', ''),
-            telemetryEnterpriseEndpoint=endpoint_apps_dict.get('telemetryEnterpriseEndpoint', ''))
+    @computed_field
+    @property
+    def schemas(self) -> List[str]:
+        """ schemas property
 
-        return cls(deviceDisplayName, adminState, ble_extension, schemas, deviceID, endpoint_apps_extension)
-
-    @classmethod
-    def from_json(cls, json_str):
-        """ convert from  json to string """
-        return cls(**json.loads(json_str))
-
-    def to_dict(self):
-        """ function to convert to dictionary """
-        schemas = ["urn:ietf:params:scim:schemas:core:2.0:Device"]
+        Returns:
+            List[str]: schemas property
+        """
+        _schemas = ["urn:ietf:params:scim:schemas:core:2.0:Device"]
         if self.ble_extension is not None:
-            schemas.append(
+            _schemas.append(
                 "urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
-        if self.dppExtension is not None:
-            schemas.append(
+        if self.dpp_extension is not None:
+            _schemas.append(
                 "urn:ietf:params:scim:schemas:extension:dpp:2.0:Device")
-        if self.zigbeeExtension is not None:
-            schemas.append(
+        if self.zigbee_extension is not None:
+            _schemas.append(
                 "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device")
-        if self.endpointAppsExtension is not None:
-            schemas.append(
-                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
-        return {
-            "deviceID": self.deviceID,
-            "deviceDisplayName": self.deviceDisplayName,
-            "adminState": self.adminState,
-            "schemas": schemas,
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": self.ble_extension.to_dict() if self.ble_extension else None,
-            "urn:ietf:params:scim:schemas:extension:dpp:2.0:Device": self.dppExtension.to_dict() if self.dppExtension else None,
-            "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device": self.zigbeeExtension.to_dict() if self.zigbeeExtension else None,
-            "urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device": self.endpointAppsExtension.to_dict() if self.endpointAppsExtension else None
-        }
-
-    def __json__(self):
-        return self.to_dict()
+        if self.endpoint_apps_extension is not None:
+            _schemas.append(
+                "urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device")
+        return _schemas

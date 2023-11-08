@@ -205,7 +205,7 @@ def add_device():
                         version_support,
                         is_random,
                         int(content['passKey'])),
-                    endpointAppsExtension=EndpointAppsExtension(endpointApps))
+                    endpoint_apps_extension=EndpointAppsExtension(endpointApps))
 
     response = onboarding_client.createDevice(device)
 
