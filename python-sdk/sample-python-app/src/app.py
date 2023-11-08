@@ -14,18 +14,19 @@ real-time updates.
 import sys
 import os
 
-import uuid
 import logging
 from flask import Flask, render_template, request, redirect, jsonify
 from flask_socketio import SocketIO, Namespace
 from google.protobuf.json_format import MessageToJson
+from tiedie.models import (Device, DataFormat, BleDataParameter,
+                           AdvertisementRegistrationOptions,
+                           ConnectionRegistrationOptions,
+                           DataRegistrationOptions, BleExtension,
+                           EndpointAppsExtension)
+from tiedie.models.ble import BleConnectRequest, BleService
+from tiedie.models.scim import Application
+import configuration
 
-from tiedie.models import ( Device, DataFormat, BleDataParameter,
-                            AdvertisementRegistrationOptions,
-                            ConnectionRegistrationOptions,
-                            DataRegistrationOptions, BleExtension,
-                            EndpointAppsExtension )
-from configuration import ClientConfig
 
 sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
@@ -41,17 +42,18 @@ if os.environ.get("DOCKER_BUILD"):
 else:
     app.config.from_pyfile("../config/config.ini")
 
-client_config = ClientConfig(app)
+client_config = configuration.ClientConfig(app)
 
 onboarding_client = client_config.get_onboarding_client()
-endpointApps = client_config.get_endpoint_apps(onboarding_client)
+endpoint_apps = client_config.get_endpoint_apps(onboarding_client)
 control_client = client_config.get_control_client(
-    control_app_endpoint=endpointApps[0])
+    control_app_endpoint=endpoint_apps[0])
 data_receiver_client = client_config.get_data_receiver_client(
-    data_app_endpoint=endpointApps[1])
+    data_app_endpoint=endpoint_apps[1])
 
 subscriptionTopics = set()
 advertisementTopics = set()
+
 
 class GattHandler(Namespace):
     """
@@ -92,6 +94,7 @@ socketio.on_namespace(GattHandler('/subscription'))
 
 class AdvertisementHandler(Namespace):
     """ Handles BLE advertisement subscriptions and data stream management. """
+
     def on_connect(self):
         """ function to define what happens on connection """
         data_receiver_client.connect()
@@ -125,6 +128,7 @@ socketio.on_namespace(AdvertisementHandler('/advertisements'))
 
 class ConnectionStatusHandler(Namespace):
     """ Manages WebSocket connections and connection status data streams. """
+
     def on_connect(self):
         """ function to define what happens on connection """
         data_receiver_client.connect()
@@ -135,10 +139,10 @@ class ConnectionStatusHandler(Namespace):
 
     def on_subscribe(self, message):
         """ function to define what happens on subsription """
-        def callback(dataSubscription):
+        def callback(data_subscription):
             try:
-                print("subscription: ", dataSubscription)
-                payload = MessageToJson(dataSubscription)
+                print("subscription: ", data_subscription)
+                payload = MessageToJson(data_subscription)
 
                 self.emit('data', {'data': payload})
             except Exception as e:
@@ -146,6 +150,7 @@ class ConnectionStatusHandler(Namespace):
 
         print("message: ", message)
         data_receiver_client.subscribe(message, callback)
+
 
 socketio.on_namespace(ConnectionStatusHandler('/connectionstatus'))
 
@@ -159,9 +164,12 @@ def index():
 @app.route("/devices")
 def get_all_devices():
     """ Displays a list of all IoT devices. """
-    response = onboarding_client.getDevices()
+    response = onboarding_client.get_devices()
 
-    devices = response
+    if response.status_code != 200:
+        return render_template("error.html", error="Failed to get devices")
+
+    devices = response.body.resources
     print(devices)
     return render_template("devices.html", devices=devices)
 
@@ -172,6 +180,7 @@ def get_subscriptions():
     return render_template("subscriptions.html",
                            subscription_topics=subscriptionTopics,
                            advertisement_topics=advertisementTopics)
+
 
 @app.route("/subscription",  methods=["GET"])
 def get_subscription():
@@ -196,47 +205,49 @@ def add_device():
 
     content = request.form.to_dict()
     print(content)
-    admin_state = True if content['adminState'] == 'on' else False
-    is_random = True if content['isRandom'] == 'on' else False
+    admin_state = content.get('adminState', 'off') == 'on'
+    is_random = content.get('isRandom', 'off') == 'on'
     version_support = content['versionSupport'].split(',')
-    device = Device(content['deviceDisplayName'], admin_state,
-                    BleExtension(
-                        content['deviceMacAddress'],
-                        version_support,
-                        is_random,
-                        int(content['passKey'])),
-                    endpoint_apps_extension=EndpointAppsExtension(endpointApps))
 
-    response = onboarding_client.createDevice(device)
+    device = Device(
+        device_display_name=content['deviceDisplayName'],
+        admin_state=admin_state,
+        ble_extension=BleExtension(
+            device_mac_address=content['deviceMacAddress'],
+            version_support=version_support,
+            is_random=is_random,
+            pass_key=int(content['passKey'])
+        ),
+        endpoint_apps_extension=EndpointAppsExtension(applications=[
+            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
+        ])
+    )
+
+    response = onboarding_client.create_device(device)
 
     if response.status_code != 201:
         return render_template("error.html", error="Failed to create device")
 
     print("body: ", response.body)
 
-    topic = "data-app/" + response.body['id'] + "/connection"
-    dataAppResponse = control_client.register_data_app(
-        app.config['DATA_APP_ID'], topic)
-
-    if dataAppResponse.http_status_code != 200:
-        return render_template("error.html",
-                               error=dataAppResponse.body['message'])
+    topic = "data-app/" + response.body.device_id + "/connection"
 
     control_client.register_topic(
         topic,
+        device,
         ConnectionRegistrationOptions(
-            devices=[],
-            dataFormat=DataFormat.JSON
+            data_format=DataFormat.DEFAULT,
+            data_apps=[app.config['DATA_APP_ID']]
         )
     )
 
     return redirect("/devices")
 
 
-@app.route("/devices/<id>")
-def get_device(id):
+@app.route("/devices/<device_id>")
+def get_device(device_id):
     """ function to get get device """
-    response = onboarding_client.getDevice(id)
+    response = onboarding_client.get_device(device_id)
 
     if response.status_code != 200:
         return render_template("error.html", error="Failed to get device")
@@ -246,20 +257,18 @@ def get_device(id):
     tiedie_response = control_client.discover(device)
     parameters = None
 
-    if tiedie_response.http_status_code == 200:
+    if tiedie_response.http.status_code == 200:
         parameters = [
             p for p in tiedie_response.body if isinstance(p, BleDataParameter)
         ]
-
-    device = Device.create(device)
 
     return render_template(
         "device.html", device=device, parameters=parameters,
     )
 
 
-@app.route("/devices/<id>/connect", methods=["POST"])
-def connect_device(id):
+@app.route("/devices/<device_id>/connect", methods=["POST"])
+def connect_device(device_id):
     """ function to connect to a device """
     services = []
     service_uuids = request.form.get('serviceUUIDs')
@@ -267,27 +276,30 @@ def connect_device(id):
     if service_uuids:
         services = [uuid.strip() for uuid in service_uuids.split(",")]
 
-    response = onboarding_client.getDevice(id)
+    response = onboarding_client.get_device(device_id)
 
     if response.status_code != 200:
         return render_template("error.html", error="Failed to get device")
 
     device = response.body
 
-    tiedie_response = control_client.connect(
-        device, services=services)
+    tiedie_response = control_client.connect(device,
+                                             BleConnectRequest(services=[
+                                                 BleService(service_id=service)
+                                                 for service in services
+                                             ]))
 
-    if tiedie_response.http_status_code != 200:
+    if tiedie_response.http.status_code != 200:
         return render_template("error.html",
                                error="Failed to connect to device")
 
-    return redirect(f"/devices/{id}")
+    return redirect(f"/devices/{device_id}")
 
 
-@app.route("/devices/<id>/disconnect", methods=["POST"])
-def disconnect_device(id):
+@app.route("/devices/<device_id>/disconnect", methods=["POST"])
+def disconnect_device(device_id):
     """ function to disconnect a connected device """
-    response = onboarding_client.getDevice(id)
+    response = onboarding_client.get_device(device_id)
 
     if response.status_code != 200:
         return render_template("error.html", error="Failed to get device")
@@ -296,16 +308,16 @@ def disconnect_device(id):
 
     tiedie_response = control_client.disconnect(device)
 
-    if tiedie_response.http_status_code != 200:
+    if tiedie_response.http.status_code != 200:
         return render_template("error.html")
 
-    return redirect(f"/devices/{id}")
+    return redirect(f"/devices/{device_id}")
 
 
-@app.route("/devices/<id>/delete", methods=["POST"])
-def delete_device(id):
+@app.route("/devices/<device_id>/delete", methods=["POST"])
+def delete_device(device_id):
     """ function to delete device filter """
-    response = onboarding_client.deleteDevice(id)
+    response = onboarding_client.delete_device(device_id)
 
     if response.status_code != 204:
         return render_template("error.html")
@@ -313,23 +325,20 @@ def delete_device(id):
     return redirect("/devices")
 
 
-@app.route('/devices/<string:id>/advertisements', methods=['POST'])
-def subscribe_advertisements(id):
+@app.route('/devices/<device_id>/advertisements', methods=['POST'])
+def subscribe_advertisements(device_id):
     """ function to subscribe to device advertisements """
-    response = onboarding_client.getDevice(id)
+    response = onboarding_client.get_device(device_id)
 
-    device = response.body['id']
+    device = response.body
 
-    topic = f'data-app/{device}/advertisements/{uuid.uuid4()}'
-
-    device = Device.create(response.body)
+    topic = f'data-app/{device.device_id}/advertisements'
 
     control_client.register_topic(topic,
+                                  device,
                                   AdvertisementRegistrationOptions(
-                                      devices=[device],
-                                      dataFormat=DataFormat.JSON,
-                                      advertisementFilterType=None,
-                                      advertisementFilters=None
+                                      data_apps=[app.config['DATA_APP_ID']],
+                                      data_format=DataFormat.DEFAULT,
                                   ))
     advertisementTopics.add(topic)
     print("add topic: ", topic)
@@ -340,7 +349,7 @@ def subscribe_advertisements(id):
 def unsubscribe():
     """ Unsubscribes from a data stream topic. """
     topic = request.form.get('topic')
-    control_client.unregister_topic(topic, [topic.split('/')[1]])
+    control_client.unregister_topic(topic)
     print("remove topic: ", topic)
     try:
         subscriptionTopics.remove(topic)
@@ -350,58 +359,71 @@ def unsubscribe():
     return redirect('/devices')
 
 
-@app.route("/devices/<id>/svc/<svcUUID>/char/<charUUID>/read",
+@app.route("/devices/<device_id>/svc/<service_id>/char/<char_id>/read",
            methods=["POST"])
-def readCharacteristic(id, svcUUID, charUUID):
-    parameter = BleDataParameter(id, svcUUID, charUUID)
-    response = control_client.read(parameter)
-    return response.body.__dict__()
+def read_characteristic(device_id, service_id, char_id):
     """ Reads a GATT characteristic of an IoT device. """
 
+    device = onboarding_client.get_device(device_id).body
 
-@app.route("/devices/<id>/svc/<svcUUID>/char/<charUUID>/write",
+    parameter = BleDataParameter(
+        device_id=device_id,
+        service_id=service_id,
+        characteristic_id=char_id)
+    response = control_client.read(device, parameter)
+    return response.model_dump_json()
+
+
+@app.route("/devices/<device_id>/svc/<service_id>/char/<char_id>/write",
            methods=["POST"])
-def writeCharacteristic(id, svcUUID, charUUID):
-    parameter = BleDataParameter(id, svcUUID, charUUID)
+def write_characteristic(device_id, service_id, char_id):
     """ Writes a GATT characteristic of an IoT device. """
+
+    device = onboarding_client.get_device(device_id).body
+
+    parameter = BleDataParameter(
+        device_id=device_id,
+        service_id=service_id,
+        characteristic_id=char_id)
 
     value = request.json["value"]
     print("Writing the paramerter: ")
     print("value: ", value)
-    response = control_client.write(parameter, value)
+    response = control_client.write(device, parameter, value)
 
-    return jsonify({'value': value})
+    return response.model_dump_json()
 
 
-@app.route('/devices/<string:id>/svc/<string:svcUUID>/char/<string:charUUID>/subscribe',
+@app.route('/devices/<string:device_id>/svc/<string:service_id>/char/<string:char_id>/subscribe',
            methods=['POST'])
-def subscribe_characteristic(id: str, svcUUID: str, charUUID: str):
+def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
     """ Subscribes to a GATT characteristic of an IoT device. """
 
-    parameter = BleDataParameter(id, svcUUID, charUUID)
+    device = onboarding_client.get_device(device_id).body
 
-    topic = f"data-app/{id}/{svcUUID}/{charUUID}"
+    parameter = BleDataParameter(
+        device_id=device_id,
+        service_id=service_id,
+        characteristic_id=char_id)
 
-    data_app_response = control_client.register_data_app(
-        app.config['DATA_APP_ID'], topic)
-
-    if data_app_response.http_status_code != 200:
-        return {"error": data_app_response.content}, data_app_response.http_status_code
+    topic = f"data-app/{device_id}/{service_id}/{char_id}"
 
     topic_response = control_client.register_topic(topic,
+                                                   device,
                                                    DataRegistrationOptions(
-                                                       devices=None,
-                                                       dataFormat=DataFormat.JSON,
-                                                       dataParameter=parameter)
+                                                       data_apps=[
+                                                           app.config['DATA_APP_ID']],
+                                                       data_format=DataFormat.DEFAULT,
+                                                       data_parameter=parameter)
                                                    )
 
-    if topic_response.http_status_code != 200:
-        return {"error": topic_response.body}, topic_response.http_status_code
+    if topic_response.http.status_code != 200:
+        return {"error": topic_response.body}, topic_response.http.status_code
 
-    subscribe = control_client.subscribe(topic, parameter)
+    subscribe = control_client.subscribe(device, parameter)
 
-    if subscribe.http_status_code != 200:
-        return {"error": subscribe.body}, subscribe.http_status_code
+    if subscribe.http.status_code != 200:
+        return {"error": subscribe.body}, subscribe.http.status_code
     print("add topic: ", topic)
     subscriptionTopics.add(topic)
 
@@ -416,26 +438,20 @@ def subscribe_advertisement():
 
     topic = "data-app/advertisements/" + request_data.get("topic")
 
-    # Register data app
-    data_app_response = control_client.register_data_app(
-        app.config['DATA_APP_ID'], topic)
-
-    if data_app_response.http_status_code != 200:
-        return jsonify({'error': data_app_response.http_message})
-
     # Register topic
     topic_response = control_client.register_topic(
         topic,
+        None,
         AdvertisementRegistrationOptions(
-            devices=None,
-            dataFormat=DataFormat.JSON,
-            advertisementFilterType=request_data['filterType'],
-            advertisementFilters=request_data['filters']
+            data_format=DataFormat.DEFAULT,
+            data_apps=[app.config['DATA_APP_ID']],
+            advertisement_filter_type=request_data['filterType'],
+            advertisement_filters=request_data['filters']
         )
     )
 
-    if topic_response.http_status_code != 200:
-        return jsonify({'error': topic_response.http_message})
+    if topic_response.http.status_code != 200:
+        return jsonify({'error': topic_response.http.status_message})
 
     advertisementTopics.add(topic)
 

@@ -6,6 +6,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+""" this module configures the TieDie clients """
+
 
 from flask import Flask
 
@@ -14,9 +16,11 @@ from tiedie.api.onboarding_client import OnboardingClient
 from tiedie.api.control_client import ControlClient
 from tiedie.api.data_receiver_client import DataReceiverClient
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
+from tiedie.models.scim import EndpointApp
 
 
 class ClientConfig:
+    """ Client configuration class. """
 
     def __init__(self, app: Flask):
         self.app = app
@@ -35,6 +39,9 @@ class ClientConfig:
         self.control_app_cert_path = app.config.get('CONTROL_APP_CERT_PATH')
         self.control_app_key_path = app.config.get('CONTROL_APP_KEY_PATH')
         self.data_app_tls_enabled = app.config.get('DATA_APP_TLS_ENABLED')
+        self.data_app_tls_self_signed = app.config.get(
+            'DATA_APP_TLS_SELF_SIGNED')
+
         self.data_app_host = app.config.get('DATA_APP_HOST')
         self.data_app_port = app.config.get('DATA_APP_PORT')
         self.data_app_id = app.config.get('DATA_APP_ID')
@@ -53,33 +60,38 @@ class ClientConfig:
 
         return OnboardingClient(self.onboarding_app_base_url, authenticator)
 
-    def get_control_client(self, control_app_endpoint: dict):
+    def get_control_client(self, control_app_endpoint: EndpointApp):
         """
         Returns a control client.
         """
-        if "certificateInfo" in control_app_endpoint:
+        if control_app_endpoint.certificate_info is not None:
             authenticator = CertificateAuthenticator(
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.control_app_id,  self.client_ca_path, control_app_endpoint["clientToken"])
+                self.control_app_id,  self.client_ca_path, control_app_endpoint.client_token)
 
         return ControlClient(self.control_app_base_url, authenticator)
 
-    def get_data_receiver_client(self, data_app_endpoint: dict) -> DataReceiverClient:
+    def get_data_receiver_client(self, data_app_endpoint: EndpointApp) -> DataReceiverClient:
         """
         Returns a data receiver client.
         """
-        if "certificateInfo" in data_app_endpoint:
+        if data_app_endpoint.certificate_info is not None:
             authenticator = CertificateAuthenticator(
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.data_app_id,  self.client_ca_path, data_app_endpoint["clientToken"])
+                self.data_app_id,  self.client_ca_path, data_app_endpoint.client_token)
 
-        return DataReceiverClient(self.data_app_host,  authenticator=authenticator, port=self.data_app_port, disable_tls=not self.data_app_tls_enabled)
-    
+        return DataReceiverClient(self.data_app_host,
+                                  authenticator=authenticator,
+                                  port=self.data_app_port,
+                                  disable_tls=not self.data_app_tls_enabled,
+                                  insecure_tls=self.data_app_tls_self_signed)
+
     def get_root_cn(self):
+        """ Get the root CN from certificate. """
         with open(self.client_ca_path, 'rb') as ca_stream:
             cert = ca_stream.read()
 
@@ -92,13 +104,14 @@ class ClientConfig:
         """ 
         Returns the endpoint apps for the onboarding app.
         """
-        http_response = onboarding_client.getEndpointApps()
-        endpoint_apps = http_response.body["Resources"]
+        http_response = onboarding_client.get_endpoint_apps()
+        endpoint_apps = http_response.body.resources
         if endpoint_apps is None:
             endpoint_apps = []
 
-        control_app = next((app for app in endpoint_apps if app["applicationType"] == "deviceControl"
-                           and app["applicationName"] == self.control_app_id), None)
+        control_app = next((app for app in endpoint_apps
+                            if app.application_type == "deviceControl" and
+                            app.application_name == self.control_app_id), None)
 
         if control_app is None:
             # create certificateInfo only if certs exist
@@ -109,17 +122,21 @@ class ClientConfig:
                     "subjectName": self.control_app_id
                 }
 
-            endpoint_app_response = onboarding_client.createEndpointApp({"applicationName": self.control_app_id,
-                                                                         "certificateInfo": certificate_info,
-                                                                         "applicationType": "deviceControl"})
+            endpoint_app_response = onboarding_client.create_endpoint_app(EndpointApp(
+                application_name=self.control_app_id,
+                certificate_info=certificate_info,
+                application_type="deviceControl"
+            ))
             control_app = endpoint_app_response.body
 
-        data_app = next((app for app in endpoint_apps if app["applicationType"] == "telemetry"
-                        and app["applicationName"] == self.data_app_id), None)
+        data_app = next((app for app in endpoint_apps if app.application_type == "telemetry"
+                        and app.application_name == self.data_app_id), None)
 
         if data_app is None:
-            endpoint_app_response = onboarding_client.createEndpointApp({"applicationName": self.data_app_id,
-                                                                         "applicationType": "telemetry"})
+            endpoint_app_response = onboarding_client.create_endpoint_app(EndpointApp(
+                application_name=self.data_app_id,
+                application_type="telemetry"
+            ))
             data_app = endpoint_app_response.body
 
         print("Control App: ", control_app)

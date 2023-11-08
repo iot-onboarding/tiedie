@@ -364,7 +364,7 @@ def test_discovery(mock_server: responses.RequestsMock,
                 "id": device_id,
                 "technology": "ble",
                 "ble[retries]": 3,
-                "ble[retryMultipleAPs]": True
+                "ble[retryMultipleAPs]": "true"
             }),
         ],
         content_type="application/json",
@@ -379,7 +379,25 @@ def test_discovery(mock_server: responses.RequestsMock,
                 "technology": "ble",
                 "ble[services][serviceID]": ["1800", "1801"],
                 "ble[retries]": 5,
-                "ble[retryMultipleAPs]": False
+                "ble[retryMultipleAPs]": "false"
+            })
+        ],
+        content_type="application/json",
+    )
+    mock_server.get(
+        "https://control.example.com/nipc/connectivity/services",
+        body=json.dumps({
+            "status": "FAILURE",
+            "message": "No connection"
+        }),
+        status=400,
+        match=[
+            matchers.query_param_matcher({
+                "id": device_id,
+                "technology": "ble",
+                "ble[services][serviceID]": ["1800", "5555"],
+                "ble[retries]": 5,
+                "ble[retryMultipleAPs]": "false"
             })
         ],
         content_type="application/json",
@@ -435,6 +453,19 @@ def test_discovery(mock_server: responses.RequestsMock,
     assert response.body[0].service_id == "1800"
     assert response.body[0].characteristic_id == "2a00"
     assert response.body[0].flags == ["read", "write"]
+
+    response = control_client.discover(device,
+                                       BleConnectRequest(retries=5,
+                                                         services=[
+                                                             BleService(
+                                                                 service_id="1800"),
+                                                             BleService(
+                                                                 service_id="5555")],
+                                                         retry_multiple_aps=False))
+
+    assert response.http.status_code == 400
+    assert response.status == TiedieStatus.FAILURE
+    assert response.body is None
 
 
 def test_read(mock_server: responses.RequestsMock,

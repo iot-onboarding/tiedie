@@ -16,8 +16,6 @@ class Authenticator:
     Interface to support different authentication methods.
     """
 
-    SKIP_HOSTNAME_VERIFICATION = True
-
     def get_client_id(self) -> str:
         """
         Returns the ID of the client.
@@ -33,7 +31,10 @@ class Authenticator:
         """
         raise NotImplementedError()
 
-    def set_auth_options_mqtt(self, mqtt_client: mqtt.Client):
+    def set_auth_options_mqtt(self,
+                              mqtt_client: mqtt.Client,
+                              disable_tls: bool = False,
+                              insecure_tls: bool = False) -> mqtt.Client:
         """
         Set auth options for the data receiver app.
 
@@ -48,7 +49,6 @@ class ApiKeyAuthenticator(Authenticator):
     """
 
     API_KEY_HEADER = 'x-api-key'
-    SKIP_HOSTNAME_VERIFICATION = True
 
     def __init__(self, app_id, ca_file_path, api_key):
         self.app_id = app_id
@@ -63,8 +63,14 @@ class ApiKeyAuthenticator(Authenticator):
         session.verify = self.ca_file_path
         return session
 
-    def set_auth_options_mqtt(self, mqtt_client: mqtt.Client):
-        mqtt_client.tls_set(ca_certs=self.ca_file_path)
+    def set_auth_options_mqtt(self,
+                              mqtt_client: mqtt.Client,
+                              disable_tls: bool = False,
+                              insecure_tls: bool = False) -> mqtt.Client:
+        if not disable_tls:
+            mqtt_client.tls_set(ca_certs=self.ca_file_path)
+            mqtt_client.tls_insecure_set(insecure_tls)
+            print('tls_insecure_set', insecure_tls)
         mqtt_client.username_pw_set(self.app_id, password=self.api_key)
         return mqtt_client
 
@@ -94,7 +100,12 @@ class CertificateAuthenticator(Authenticator):
         session.cert = (self.cert_path, self.key_path)
         return session
 
-    def set_auth_options_mqtt(self, mqtt_client: mqtt.Client):
-        mqtt_client.tls_set(ca_certs=self.ca_file_path,
-                            certfile=self.cert_path, keyfile=self.key_path)
+    def set_auth_options_mqtt(self,
+                              mqtt_client: mqtt.Client,
+                              disable_tls: bool = False,
+                              insecure_tls: bool = False) -> mqtt.Client:
+        if not disable_tls:
+            mqtt_client.tls_set(ca_certs=self.ca_file_path,
+                                certfile=self.cert_path, keyfile=self.key_path)
+            mqtt_client.tls_insecure_set(insecure_tls)
         return mqtt_client

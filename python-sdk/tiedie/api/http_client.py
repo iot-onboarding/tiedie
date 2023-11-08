@@ -11,8 +11,9 @@ and mapping them to specific classes, particularly for IoT applications.
 """
 
 from enum import Enum
+import json
 from typing import Optional, Type, TypeVar
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 import requests
 from tiedie.api.auth import Authenticator
 from tiedie.models.responses import (
@@ -117,8 +118,8 @@ class AbstractHttpClient:
         try:
             tiedie_response = return_class.model_validate_json(response.text)
             tiedie_response.http = http
-        except ValueError:
-            tiedie_response = return_class(
+        except (ValueError, ValidationError):
+            tiedie_response = TiedieResponse[None](
                 status=TiedieStatus.FAILURE,
                 http=http
             )
@@ -144,6 +145,8 @@ class AbstractHttpClient:
             elif isinstance(value, list):
                 for sub_value in value:
                     stack.append((key, sub_value))
+            elif isinstance(value, bool):
+                query_parameters.append((key, json.dumps(value)))
             else:
                 query_parameters.append((key, str(value)))
 
