@@ -4,6 +4,8 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+""" TieDie Client authenticators """
+
 import OpenSSL.crypto
 import paho.mqtt.client as mqtt
 import requests
@@ -22,7 +24,7 @@ class Authenticator:
         """
         raise NotImplementedError()
 
-    def set_auth_options(self, session: requests.Session) -> object:
+    def set_auth_options(self, session: requests.Session) -> requests.Session:
         """
         Update builder object after adding authentication related settings.
 
@@ -56,7 +58,7 @@ class ApiKeyAuthenticator(Authenticator):
     def get_client_id(self):
         return self.app_id
 
-    def set_auth_options(self, session):
+    def set_auth_options(self, session: requests.Session):
         session.headers[self.API_KEY_HEADER] = self.api_key
         session.verify = self.ca_file_path
         return session
@@ -87,7 +89,7 @@ class CertificateAuthenticator(Authenticator):
 
         return cert.get_subject().CN
 
-    def set_auth_options(self, session: requests.Session) -> object:
+    def set_auth_options(self, session: requests.Session):
         session.verify = self.ca_file_path
         session.cert = (self.cert_path, self.key_path)
         return session

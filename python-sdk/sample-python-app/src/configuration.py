@@ -10,9 +10,9 @@
 from flask import Flask
 
 import OpenSSL.crypto
-from tiedie.api.onboardingclient import OnboardingClient
-from tiedie.api.controlclient import ControlClient
-from tiedie.api.datareceiverclient import DataReceiverClient
+from tiedie.api.onboarding_client import OnboardingClient
+from tiedie.api.control_client import ControlClient
+from tiedie.api.data_receiver_client import DataReceiverClient
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 
 
