@@ -560,8 +560,13 @@ class BLEControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/nipc/data/subscription", request.getPath());
+        HttpUrl url = request.getRequestUrl();
+        assert url != null;
+        assertEquals("/nipc/data/subscription", url.encodedPath());
         assertEquals("DELETE", request.getMethod());
+        assertEquals(deviceId, url.queryParameter("id"));
+        assertEquals("1800", url.queryParameter("ble[serviceID]"));
+        assertEquals("2a00", url.queryParameter("ble[characteristicID]"));
     }
 
     // write a test to test the registerTopic method

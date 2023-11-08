@@ -169,7 +169,7 @@ public class ControlClient extends AbstractHttpClient {
             return response;
         }
 
-        var zigbeeDiscoverResponse = postWithTiedieResponse("/connectivity/services", tiedieRequest, ZigbeeDiscoverResponse.class);
+        var zigbeeDiscoverResponse = getWithTiedieResponse("/connectivity/services", tiedieRequest, ZigbeeDiscoverResponse.class);
 
         TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
         response.setHttpStatusCode(zigbeeDiscoverResponse.getHttpStatusCode());
