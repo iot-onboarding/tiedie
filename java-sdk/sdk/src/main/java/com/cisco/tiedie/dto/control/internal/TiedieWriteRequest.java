@@ -42,6 +42,7 @@ public class TiedieWriteRequest extends TiedieBasicRequest {
             }
             ZigbeeDataParameter zigbeeDataParameter = (ZigbeeDataParameter) dataParameter;
             tiedieRequest.setTechnology(Technology.ZIGBEE);
+            tiedieRequest.setValue(value);
             var zigbeeWriteRequest = new ZigbeeWriteRequest(
                     zigbeeDataParameter.getEndpointID(),
                     zigbeeDataParameter.getClusterID(),

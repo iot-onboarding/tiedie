@@ -180,9 +180,15 @@ abstract class AbstractHttpClient {
 
     <T, V> TiedieResponse<V> deleteWithTiedieResponse(String path, T body, Class<V> returnClass) throws IOException {
         List<String[]> queryParameters = getQueryParameters(body);
+        HttpUrl.Builder urlBuilder
+                = Objects.requireNonNull(HttpUrl.parse(baseUrl + path)).newBuilder();
+
+        for (String[] queryParameter : queryParameters) {
+            urlBuilder.addQueryParameter(queryParameter[0], queryParameter[1]);
+        }
         Request request = new Request.Builder()
                 .delete()
-                .url(baseUrl + path)
+                .url(urlBuilder.build())
                 .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
