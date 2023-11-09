@@ -3,6 +3,7 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+
 """
 This Python module defines classes for managing device information
 with extensions for BLE and endpoint applications.  It also provides

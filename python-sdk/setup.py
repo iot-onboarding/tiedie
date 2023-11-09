@@ -1,6 +1,5 @@
 """ Setup file for tiedie SDK for Python. """
 
-#!python
 # Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
 # See LICENSE file in this distribution.

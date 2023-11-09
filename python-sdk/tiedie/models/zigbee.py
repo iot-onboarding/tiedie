@@ -3,6 +3,7 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+
 """
 
 Python module for Zigbee communication, including classes for attributes, 
