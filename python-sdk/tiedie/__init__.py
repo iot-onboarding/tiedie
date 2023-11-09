@@ -4,5 +4,7 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+""" TieDie SDK for Python """
+
 from .api import *
 from .models import *

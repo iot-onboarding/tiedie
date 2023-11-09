@@ -23,7 +23,7 @@ from silabs.ble_operations.subscribe import SubscribeOperation
 from silabs.ble_operations.write import WriteOperation
 from silabs.common.util import BluetoothApp
 from config import SL_BT_CONFIG_MAX_CONNECTIONS
-from access_point import AccessPoint, ConnectionRequest
+from access_point import AccessPoint, BleConnectOptions, ConnectionRequest
 
 
 class SilabsAccessPoint(AccessPoint):
@@ -53,7 +53,10 @@ class SilabsAccessPoint(AccessPoint):
 
         scan_operation.run()
 
-    def connect(self, address, services, retries=3) -> tuple[Response, int]:
+    def connect(self,
+                address,
+                ble_connect_options: BleConnectOptions,
+                retries=3) -> tuple[Response, int]:
         if not self.connectable():
             return jsonify({
                 "status": "FAILURE",
@@ -69,7 +72,7 @@ class SilabsAccessPoint(AccessPoint):
             }), HTTPStatus.BAD_REQUEST
 
         operation = ConnectOperation(
-            self.silabs_app.lib, self.data_producer, address, services, retries)
+            self.silabs_app.lib, self.data_producer, address, retries)
         self.operations.append(operation)
 
         operation.run()
@@ -78,7 +81,7 @@ class SilabsAccessPoint(AccessPoint):
             return operation.response()
 
         discover_operation = DiscoverOperation(
-            self.silabs_app.lib, operation.handle, services)
+            self.silabs_app.lib, operation.handle, retries, ble_connect_options.services)
         self.operations.append(discover_operation)
 
         discover_operation.run()
@@ -88,12 +91,15 @@ class SilabsAccessPoint(AccessPoint):
 
         return discover_operation.response()
 
-    def discover(self, address, retries) -> tuple[Response, int]:
+    def discover(self,
+                 address,
+                 ble_connect_options: BleConnectOptions,
+                 retries=3) -> tuple[Response, int]:
         if address not in self.conn_reqs:
             return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
 
         discover_operation = DiscoverOperation(
-            self.silabs_app.lib, self.conn_reqs[address].handle, retries)
+            self.silabs_app.lib, self.conn_reqs[address].handle, retries, ble_connect_options.services)
         self.operations.append(discover_operation)
 
         discover_operation.run()

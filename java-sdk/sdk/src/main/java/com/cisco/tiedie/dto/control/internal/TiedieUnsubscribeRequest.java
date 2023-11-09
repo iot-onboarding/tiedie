@@ -19,26 +19,25 @@ public class TiedieUnsubscribeRequest extends TiedieBasicRequest {
     private BleUnsubscribeRequest ble;
     private ZigbeeUnsubscribeRequest zigbee;
 
-    public static TiedieUnsubscribeRequest createRequest(DataParameter dataParameter, String controlAppId) {
+    public static TiedieUnsubscribeRequest createRequest(DataParameter dataParameter) {
         if (dataParameter instanceof BleDataParameter) {
             BleDataParameter bleDataParameter = (BleDataParameter) dataParameter;
 
-            return createRequest(bleDataParameter, controlAppId);
+            return createRequest(bleDataParameter);
         }
 
         if (dataParameter instanceof ZigbeeDataParameter) {
             ZigbeeDataParameter zigbeeDataParameter = (ZigbeeDataParameter) dataParameter;
 
-            return createRequest(zigbeeDataParameter, controlAppId);
+            return createRequest(zigbeeDataParameter);
         }
 
         throw new UnsupportedOperationException("Operation not supported for this device");
     }
 
-    public static TiedieUnsubscribeRequest createRequest(BleDataParameter dataParameter, String controlAppId) {
+    public static TiedieUnsubscribeRequest createRequest(BleDataParameter dataParameter) {
         var tiedieRequest = new TiedieUnsubscribeRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.BLE);
 
@@ -49,10 +48,9 @@ public class TiedieUnsubscribeRequest extends TiedieBasicRequest {
         return tiedieRequest;
     }
 
-    private static TiedieUnsubscribeRequest createRequest(ZigbeeDataParameter dataParameter, String controlAppId) {
+    private static TiedieUnsubscribeRequest createRequest(ZigbeeDataParameter dataParameter) {
         var tiedieRequest = new TiedieUnsubscribeRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         tiedieRequest.setTechnology(Technology.ZIGBEE);
 

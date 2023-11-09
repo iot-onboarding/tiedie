@@ -19,6 +19,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 public abstract class RegistrationOptions {
-    private List<Device> devices;
+    private Device device;
     private DataFormat dataFormat;
+    private List<String> dataAppIds;
 }

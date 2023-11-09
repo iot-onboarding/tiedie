@@ -18,38 +18,37 @@ from .proto import data_app_pb2
 
 class DataReceiverClient:
     """ class DataReceiverClient """
-    def __init__(self, 
+
+    def __init__(self,
                  host: str,
-                   authenticator: Authenticator,
-                     port: int = 8883, 
-                     disable_tls: bool = False):
+                 authenticator: Authenticator,
+                 port: int = 8883,
+                 disable_tls: bool = False,
+                 insecure_tls: bool = False):
         self.host = host
         self.port = port
         self.authenticator = authenticator
-        self.mqtt_client = mqtt.Client(client_id=authenticator.get_client_id(), clean_session=True)
-        if not disable_tls:
-            self.authenticator.set_auth_options_mqtt(self.mqtt_client)
+        self.mqtt_client = mqtt.Client(
+            client_id=authenticator.get_client_id(), clean_session=True)
+        self.authenticator.set_auth_options_mqtt(self.mqtt_client, disable_tls, insecure_tls)
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.on_disconnect = self.on_disconnect
         self.mqtt_client.on_message = self.on_message
         self.connected = False
-
 
     def connect(self):
         """ function to define what happens on connection """
         self.mqtt_client.connect(self.host, self.port, 60)
         self.mqtt_client.loop_start()
 
-
     def disconnect(self):
         """ function to define what happens on disconnection """
         self.mqtt_client.disconnect()
         self.mqtt_client.loop_stop()
 
-
-    def subscribe(self,topic:str,
-                  callback:Callable[[Optional[data_app_pb2.DataSubscription]],
-                                    None]):
+    def subscribe(self, topic: str,
+                  callback: Callable[[Optional[data_app_pb2.DataSubscription]],
+                                     None]):
         """ function to define what happens on subscription """
         def on_message(_client, _userdata, msg):
             payload = msg.payload

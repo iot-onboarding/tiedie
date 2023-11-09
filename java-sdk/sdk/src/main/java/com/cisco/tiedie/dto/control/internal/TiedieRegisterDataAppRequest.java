@@ -17,9 +17,8 @@ import java.util.List;
 public class TiedieRegisterDataAppRequest {
     private String topic;
     private List<String> dataApps;
-    private String controlApp;
 
-    public static TiedieRegisterDataAppRequest createRequest(String dataApp, String topic, String controlApp) {
-        return new TiedieRegisterDataAppRequest(topic, List.of(dataApp), controlApp);
+    public static TiedieRegisterDataAppRequest createRequest(String dataApp, String topic) {
+        return new TiedieRegisterDataAppRequest(topic, List.of(dataApp));
     }
 }

@@ -23,15 +23,15 @@ SPDX-License-Identifier: Apache-2.0
             <tbody>
                 {% for device in devices %}
                 <tr>
-                    <td scope="row">{{ device.deviceID }}</td>
-                    <td> {{ device.deviceDisplayName }}</td>
+                    <td scope="row">{{ device.device_id }}</td>
+                    <td> {{ device.device_display_name }}</td>
                     <td>{{ device.ble_extension.device_mac_address }}</td>
                     <!-- <td>
-                        <span id="{{ device.deviceID }}-connected" class="badge rounded-pill text-bg-success d-none">Connected</span>
-                        <span id="{{ device.deviceID }}-disconnected" class="badge rounded-pill text-bg-danger">Disconnected</span>
+                        <span id="{{ device.device_id }}-connected" class="badge rounded-pill text-bg-success d-none">Connected</span>
+                        <span id="{{ device.device_id }}-disconnected" class="badge rounded-pill text-bg-danger">Disconnected</span>
                     </td> -->
                     <td>
-                        <a class="btn btn-primary" href="{{ url_for('get_device', id=device.deviceID) }}">View</a>
+                        <a class="btn btn-primary" href="{{ url_for('get_device', device_id=device.device_id) }}">View</a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
             console.log(typeof(devices))
             if (Array.isArray(devices)) {
                 var topics = devices.map((device) => {
-                    return `data-app/${device.deviceID}/connection`;
+                    return `data-app/${device.device_id}/connection`;
                 });
                 // Rest of your code using the `topics` array
             } else {

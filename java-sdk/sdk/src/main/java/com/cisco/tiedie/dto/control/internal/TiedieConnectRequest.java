@@ -17,11 +17,10 @@ public class TiedieConnectRequest extends TiedieBasicRequest {
 
     private BleConnectRequest ble;
 
-    public static TiedieConnectRequest createRequest(Device device, BleConnectRequest request, String controlAppId) {
+    public static TiedieConnectRequest createRequest(Device device, BleConnectRequest request) {
         TiedieConnectRequest tiedieRequest = new TiedieConnectRequest();
         tiedieRequest.setTechnology(Technology.BLE);
         tiedieRequest.setId(device.getId());
-        tiedieRequest.setControlApp(controlAppId);
         tiedieRequest.setBle(request);
 
         return tiedieRequest;

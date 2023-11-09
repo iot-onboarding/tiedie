@@ -10,6 +10,9 @@ import com.cisco.tiedie.auth.CertificateAuthenticator;
 import com.cisco.tiedie.clients.utils.CertificateHelper;
 import com.cisco.tiedie.dto.control.TiedieResponse;
 import com.cisco.tiedie.dto.control.TiedieStatus;
+import com.cisco.tiedie.dto.control.ble.BleDataParameter;
+import com.cisco.tiedie.dto.control.internal.TiedieDiscoverRequest;
+import com.cisco.tiedie.dto.scim.BleExtension;
 import com.cisco.tiedie.dto.scim.Device;
 import com.cisco.tiedie.dto.scim.ZigbeeExtension;
 import com.cisco.tiedie.utils.ObjectMapperSingleton;
@@ -90,7 +93,7 @@ abstract class ControlClientTest {
 
         CertificateAuthenticator authenticator = CertificateAuthenticator.create(caStream, keyStore, "");
 
-        HttpUrl baseUrl = mockWebServer.url("/control");
+        HttpUrl baseUrl = mockWebServer.url("/nipc");
         return new ControlClient(baseUrl.toString(), authenticator);
     }
 
@@ -98,7 +101,7 @@ abstract class ControlClientTest {
         InputStream caStream = CertificateHelper.createPemInputStream(rootCert);
         ApiKeyAuthenticator authenticator = ApiKeyAuthenticator.create(caStream, CONTROL_APP_ID, CONTROL_API_KEY);
 
-        HttpUrl baseUrl = mockWebServer.url("/control");
+        HttpUrl baseUrl = mockWebServer.url("/nipc");
         return new ControlClient(baseUrl.toString(), authenticator);
     }
 
@@ -165,12 +168,11 @@ abstract class ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/introduce", request.getPath());
+        assertEquals("/nipc/connectivity/binding", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
+                "  \"id\" : \"" + deviceId + "\"\n" +
                 "}", request.getBody().readUtf8());
 
         assertEquals(CONTROL_API_KEY, request.getHeader("x-api-key"));
