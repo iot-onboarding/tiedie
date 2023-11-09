@@ -1,6 +1,6 @@
 """ Setup file for tiedie SDK for Python. """
 
-# Copyright (c) 2023, Cisco and/or its affiliates.
+# Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
