@@ -19,10 +19,9 @@ public class TiedieReadRequest extends TiedieBasicRequest {
     private BleReadRequest ble;
     private ZigbeeReadRequest zigbee;
 
-    public static TiedieReadRequest createRequest(DataParameter dataParameter, String controlAppId) {
+    public static TiedieReadRequest createRequest(DataParameter dataParameter) {
         var tiedieRequest = new TiedieReadRequest();
         tiedieRequest.setId(dataParameter.getDeviceId());
-        tiedieRequest.setControlApp(controlAppId);
 
         if (dataParameter instanceof BleDataParameter) {
             BleDataParameter bleDataParameter = (BleDataParameter) dataParameter;

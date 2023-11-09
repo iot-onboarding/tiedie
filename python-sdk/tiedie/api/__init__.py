@@ -4,8 +4,10 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
-from .controlclient import *
-from .datareceiverclient import *
-from .onboardingclient import *
-from .httpclient import *
+""" TieDie Client classes """
+
+from .control_client import *
+from .data_receiver_client import *
+from .onboarding_client import *
+from .http_client import *
 from .auth import *

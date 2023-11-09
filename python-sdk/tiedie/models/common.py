@@ -11,7 +11,10 @@ and subscription options used in IoT applications.
 """
 
 from enum import Enum
-import json
+from typing import Generic, List, Optional, TypeVar
+
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 
 
 class Technology(Enum):
@@ -31,76 +34,61 @@ class Technology(Enum):
 
 class DataFormat(Enum):
     """
-    An enumeration class representing data formats, including JSON and XML.
+    An enumeration class representing subscription data formats.
     """
-    JSON = "json"
-    XML = "xml"
-
-    def __json__(self):
-        return self.value
+    DEFAULT = "default"
+    PAYLOAD = "payload"
 
 
-class DataParameter:
+class DataParameter(BaseModel):
     """ A class for storing data parameters, with a device_id attribute. """
 
-    def __init__(self, device_id: str):
-        self.device_id = device_id
-
-    def __str__(self):
-        return str(self.__dict__())
-
-    def __dict__(self):
-        return {"deviceId": self.device_id}
-
-    def __json__(self):
-        return json.dumps(self.__dict__())
+    device_id: Optional[str] = None
 
 
-class ListResponse:
+Resource = TypeVar("Resource", bound=BaseModel)
+
+
+class ListResponse(BaseModel, Generic[Resource]):
     """
     A class representing a list response with attributes for totalResults,
     startIndex, itemsPerPage, and resources.
     """
-    totalResults: int
-    startIndex: int
-    itemsPerPage: int
-    resources: list
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    @classmethod
-    def from_json(cls, json_str):
-        return cls(json.loads(json_str))
+    total_results: int
+    start_index: int
+    items_per_page: int
+
+    resources: List[Resource] = Field(alias="Resources")
 
 
-class EndpointAppListResponse:
+class RegistrationOptions(BaseModel):
     """
-    A class representing a list response specific to endpoint applications.
+    A class representing registration options for IoT devices.
     """
-    totalResults: int
-    startIndex: int
-    itemsPerPage: int
-    resources: list
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    data_format: Optional[DataFormat] = Field(
+        alias="dataFormat", default=DataFormat.DEFAULT)
+    data_apps: Optional[List[str]] = Field(alias="dataApps", default=None)
 
 
-class SubscriptionOptions:
+class DataRegistrationOptions(RegistrationOptions):
     """
-    A class for specifying subscription options, including topic,
-    dataFormat, minReportTime, and maxReportTime.
+    A class representing registration options for IoT devices.
     """
 
-    def __init__(self, topic: str = None, dataFormat: DataFormat = None,
-                 minReportTime: int = None, maxReportTime: int = None):
-        self.topic = topic
-        self.dataFormat = dataFormat
-        self.minReportTime = minReportTime
-        self.maxReportTime = maxReportTime
+    data_parameter: Optional[DataParameter] = Field(
+        alias="dataParameter", default=None)
 
-    def __json__(self):
-        return self.__dict__()
 
-    def __dict__(self):
-        return {
-            "topic": self.topic,
-            "dataFormat": self.dataFormat,
-            "minReportTime": self.minReportTime,
-            "maxReportTime": self.maxReportTime
-        }
+class ConnectionRegistrationOptions(RegistrationOptions):
+    """ A class representing registration options for BLE devices. """
+
+
+class DataApp(BaseModel):
+    """ A class representing a data app. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    data_app_id: str = Field(alias="dataAppID")

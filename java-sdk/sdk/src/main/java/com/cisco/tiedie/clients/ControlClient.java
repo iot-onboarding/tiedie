@@ -37,8 +37,6 @@ import java.util.List;
  */
 public class ControlClient extends AbstractHttpClient {
 
-    private final String controlAppId;
-
     /**
      * Create a {@link ControlClient} object.
      *
@@ -47,7 +45,6 @@ public class ControlClient extends AbstractHttpClient {
      */
     public ControlClient(String baseUrl, Authenticator authenticator) {
         super(baseUrl, MediaType.parse("application/json"), authenticator);
-        this.controlAppId = authenticator.getClientID();
     }
 
     /**
@@ -62,9 +59,9 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<Void> introduce(Device device) throws IOException {
-        var tiedieRequest = TiedieBasicRequest.createRequest(device, controlAppId);
+        var tiedieRequest = TiedieBasicRequest.createRequest(device);
 
-        return postWithTiedieResponse("/connectivity/introduce", tiedieRequest, Void.class);
+        return postWithTiedieResponse("/connectivity/binding", tiedieRequest, Void.class);
     }
 
     /**
@@ -93,9 +90,9 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<List<DataParameter>> connect(Device device, BleConnectRequest request) throws IOException {
-        var tiedieRequest = TiedieConnectRequest.createRequest(device, request, controlAppId);
+        var tiedieRequest = TiedieConnectRequest.createRequest(device, request);
 
-        var bleDiscoverResponse = postWithTiedieResponse("/connectivity/connect", tiedieRequest, BleDiscoverResponse.class);
+        var bleDiscoverResponse = postWithTiedieResponse("/connectivity/connection", tiedieRequest, BleDiscoverResponse.class);
 
         TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
         response.setHttpStatusCode(bleDiscoverResponse.getHttpStatusCode());
@@ -120,9 +117,7 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<Void> disconnect(Device device) throws IOException {
-        var tiedieRequest = TiedieBasicRequest.createRequest(device, controlAppId);
-
-        return postWithTiedieResponse("/connectivity/disconnect", tiedieRequest, Void.class);
+        return deleteWithTiedieResponse("/connectivity/connection?id=" + device.getId(), Void.class);
     }
 
     /**
@@ -151,16 +146,16 @@ public class ControlClient extends AbstractHttpClient {
      * If the device is a Zigbee device, this is the supported list of endpoints, clusters and attributes.
      *
      * @param device The {@link Device} object.
-     * @param services List of data parameters to be discovered
+     * @param parameters List of data parameters to be discovered
      * @return If the device is BLE, the response is a list of {@link BleDataParameter}.
      * If the device is Zigbee, the response is a list of {@link ZigbeeDataParameter}.
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<List<DataParameter>> discover(Device device, List<DataParameter> parameters) throws IOException {
-        var tiedieRequest = TiedieDiscoverRequest.createRequest(device, parameters, controlAppId);
+        var tiedieRequest = TiedieDiscoverRequest.createRequest(device, parameters);
 
         if (tiedieRequest.getTechnology() == Technology.BLE) {
-            var bleDiscoverResponse = postWithTiedieResponse("/data/discover", tiedieRequest, BleDiscoverResponse.class);
+            var bleDiscoverResponse = getWithTiedieResponse("/connectivity/services", tiedieRequest, BleDiscoverResponse.class);
             TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
             response.setHttpStatusCode(bleDiscoverResponse.getHttpStatusCode());
             response.setHttpMessage(bleDiscoverResponse.getHttpMessage());
@@ -174,7 +169,7 @@ public class ControlClient extends AbstractHttpClient {
             return response;
         }
 
-        var zigbeeDiscoverResponse = postWithTiedieResponse("/data/discover", tiedieRequest, ZigbeeDiscoverResponse.class);
+        var zigbeeDiscoverResponse = getWithTiedieResponse("/connectivity/services", tiedieRequest, ZigbeeDiscoverResponse.class);
 
         TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
         response.setHttpStatusCode(zigbeeDiscoverResponse.getHttpStatusCode());
@@ -203,9 +198,9 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<DataResponse> read(DataParameter dataParameter) throws IOException {
-        var tiedieRequest = TiedieReadRequest.createRequest(dataParameter, controlAppId);
+        var tiedieRequest = TiedieReadRequest.createRequest(dataParameter);
 
-        return postWithTiedieResponse("/data/read", tiedieRequest, DataResponse.class);
+        return getWithTiedieResponse("/data/attribute", tiedieRequest, DataResponse.class);
     }
 
     /**
@@ -223,9 +218,9 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<DataResponse> write(DataParameter dataParameter, String value) throws IOException {
-        var tiedieRequest = TiedieWriteRequest.createRequest(dataParameter, value, controlAppId);
+        var tiedieRequest = TiedieWriteRequest.createRequest(dataParameter, value);
 
-        return postWithTiedieResponse("/data/write", tiedieRequest, DataResponse.class);
+        return postWithTiedieResponse("/data/attribute", tiedieRequest, DataResponse.class);
     }
 
     /**
@@ -256,9 +251,9 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<Void> subscribe(DataParameter dataParameter, SubscriptionOptions options) throws IOException {
-        var tiedieRequest = TiedieSubscribeRequest.createRequest(dataParameter, controlAppId, options);
+        var tiedieRequest = TiedieSubscribeRequest.createRequest(dataParameter, options);
 
-        return postWithTiedieResponse("/data/subscribe", tiedieRequest, Void.class);
+        return postWithTiedieResponse("/data/subscription", tiedieRequest, Void.class);
     }
 
     /**
@@ -273,26 +268,18 @@ public class ControlClient extends AbstractHttpClient {
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
     public TiedieResponse<Void> unsubscribe(DataParameter dataParameter) throws IOException {
-        var tiedieRequest = TiedieUnsubscribeRequest.createRequest(dataParameter, controlAppId);
+        var tiedieRequest = TiedieUnsubscribeRequest.createRequest(dataParameter);
 
-        return postWithTiedieResponse("/data/unsubscribe", tiedieRequest, Void.class);
+        return deleteWithTiedieResponse("/data/subscription", tiedieRequest, Void.class);
     }
 
     public TiedieResponse<Void> registerTopic(String topic, RegistrationOptions options) throws IOException {
-        var tiedieRequest = TiedieRegisterTopicRequest.createRequest(topic, options, controlAppId);
+        var tiedieRequest = TiedieRegisterTopicRequest.createRequest(topic, options);
 
-        return postWithTiedieResponse("/registration/registerTopic", tiedieRequest, Void.class);
+        return postWithTiedieResponse("/registration/topic", tiedieRequest, Void.class);
     }
 
-    public TiedieResponse<Void> unregisterTopic(String topic, List<String> devices) throws IOException {
-        var tiedieRequest = TiedieUnregisterTopicRequest.createRequest(topic, devices, controlAppId);
-
-        return postWithTiedieResponse("/registration/unregisterTopic", tiedieRequest, Void.class);
-    }
-
-    public TiedieResponse<Void> registerDataApp(String dataApp, String topic) throws IOException {
-        var tiedieRequest = TiedieRegisterDataAppRequest.createRequest(dataApp, topic, controlAppId);
-
-        return postWithTiedieResponse("/registration/registerDataApp", tiedieRequest, Void.class);
+    public TiedieResponse<Void> unregisterTopic(String topic) throws IOException {
+        return deleteWithTiedieResponse("/registration/topic?topic=" + topic, Void.class);
     }
 }

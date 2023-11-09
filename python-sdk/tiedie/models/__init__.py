@@ -4,9 +4,11 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
+""" TieDie SDK Model classes """
+
 from .ble import *
 from .zigbee import *
-from .request import *
+from .requests import *
 from .responses import *
 from .scim import *
 from .common import *

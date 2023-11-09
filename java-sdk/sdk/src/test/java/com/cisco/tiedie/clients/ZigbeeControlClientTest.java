@@ -9,6 +9,7 @@ import com.cisco.tiedie.dto.control.*;
 import com.cisco.tiedie.dto.control.zigbee.ZigbeeDataParameter;
 import com.cisco.tiedie.dto.scim.Device;
 import com.cisco.tiedie.dto.scim.ZigbeeExtension;
+import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.RecordedRequest;
 import org.junit.jupiter.api.Disabled;
@@ -57,12 +58,11 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/connectivity/introduce", request.getPath());
+        assertEquals("/nipc/connectivity/binding", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
+                "  \"id\" : \"" + deviceId + "\"\n" +
                 "}", request.getBody().readUtf8());
     }
 
@@ -160,13 +160,11 @@ class ZigbeeControlClientTest extends ControlClientTest {
         }
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/discover", request.getPath());
-        assertEquals("POST", request.getMethod());
-        assertEquals("{\n" +
-                "  \"technology\" : \"zigbee\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"" + CONTROL_APP_ID + "\"\n" +
-                "}", request.getBody().readUtf8());
+        HttpUrl url = request.getRequestUrl();
+        assert url != null;
+        assertEquals("/nipc/connectivity/services", url.encodedPath());
+        assertEquals("GET", request.getMethod());
+        assertEquals(deviceId, url.queryParameter("id"));
     }
 
     @MethodSource("clientProvider")
@@ -192,18 +190,14 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/read", request.getPath());
-        assertEquals("POST", request.getMethod());
-        assertEquals("{\n" +
-                "  \"technology\" : \"zigbee\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
-                "  \"zigbee\" : {\n" +
-                "    \"endpointID\" : 1,\n" +
-                "    \"clusterID\" : 6,\n" +
-                "    \"attributeID\" : 0\n" +
-                "  }\n" +
-                "}", request.getBody().readUtf8());
+        HttpUrl url = request.getRequestUrl();
+        assert url != null;
+        assertEquals("/nipc/data/attribute", url.encodedPath());
+        assertEquals("GET", request.getMethod());
+        assertEquals(deviceId, url.queryParameter("id"));
+        assertEquals("1", url.queryParameter("zigbee[endpointID]"));
+        assertEquals("6", url.queryParameter("zigbee[clusterID]"));
+        assertEquals("0", url.queryParameter("zigbee[attributeID]"));
     }
 
     @MethodSource("clientProvider")
@@ -230,12 +224,12 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/write", request.getPath());
+        assertEquals("/nipc/data/attribute", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
+                "  \"value\" : \"" + value + "\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
                 "    \"clusterID\" : 3,\n" +
@@ -270,12 +264,11 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/subscribe", request.getPath());
+        assertEquals("/nipc/data/subscription", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
@@ -297,12 +290,11 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         request = mockWebServer.takeRequest();
-        assertEquals("/control/data/subscribe", request.getPath());
+        assertEquals("/nipc/data/subscription", request.getPath());
         assertEquals("POST", request.getMethod());
         assertEquals("{\n" +
                 "  \"technology\" : \"zigbee\",\n" +
                 "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
                 "  \"dataFormat\" : \"default\",\n" +
                 "  \"zigbee\" : {\n" +
                 "    \"endpointID\" : 1,\n" +
@@ -339,19 +331,12 @@ class ZigbeeControlClientTest extends ControlClientTest {
         assertEquals(TiedieStatus.SUCCESS, response.getStatus());
 
         RecordedRequest request = mockWebServer.takeRequest();
-        assertEquals("/control/data/unsubscribe", request.getPath());
-        assertEquals("POST", request.getMethod());
-        assertEquals("{\n" +
-                "  \"technology\" : \"zigbee\",\n" +
-                "  \"id\" : \"" + deviceId + "\",\n" +
-                "  \"controlApp\" : \"control-app\",\n" +
-                "  \"zigbee\" : {\n" +
-                "    \"endpointID\" : 1,\n" +
-                "    \"clusterID\" : 6,\n" +
-                "    \"attributeID\" : 0,\n" +
-                "    \"type\" : 16\n" +
-                "  }\n" +
-                "}", request.getBody().readUtf8());
+        HttpUrl url = request.getRequestUrl();
+        assert url != null;
+        System.out.println(url);
+        assertEquals("/nipc/data/subscription", url.encodedPath());
+        assertEquals("DELETE", request.getMethod());
+        assertEquals(deviceId, url.queryParameter("id"));
     }
 }
 

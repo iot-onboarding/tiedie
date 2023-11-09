@@ -17,10 +17,9 @@ public class TiedieUnregisterTopicRequest extends TiedieBasicRequest {
     private String topic;
     private List<String> ids;
 
-    public static TiedieUnregisterTopicRequest createRequest(String topic, List<String> uuids, String controlAppId) {
+    public static TiedieUnregisterTopicRequest createRequest(String topic, List<String> uuids) {
         var tiedieRequest = new TiedieUnregisterTopicRequest();
 
-        tiedieRequest.setControlApp(controlAppId);
         tiedieRequest.setIds(uuids);
         tiedieRequest.setTopic(topic);
 

@@ -22,11 +22,9 @@ public class TiedieDiscoverRequest extends TiedieBasicRequest {
 
     private BleDiscoverRequest ble;
 
-    public static TiedieDiscoverRequest createRequest(Device device, List<DataParameter> parameters,
-            String controlAppId) {
+    public static TiedieDiscoverRequest createRequest(Device device, List<DataParameter> parameters) {
         TiedieDiscoverRequest tiedieRequest = new TiedieDiscoverRequest();
         tiedieRequest.setId(device.getId());
-        tiedieRequest.setControlApp(controlAppId);
 
         if (device.getBleExtension() != null) {
             tiedieRequest.setTechnology(Technology.BLE);

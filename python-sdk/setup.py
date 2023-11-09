@@ -1,3 +1,5 @@
+""" Setup file for tiedie SDK for Python. """
+
 #!python
 # Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
@@ -12,6 +14,22 @@ setup(
     description='Tiedie SDK for Python',
     packages=find_packages(),
     install_requires=[
-         'attr', 'requests', 'urllib3', 'paho-mqtt', 'protobuf', 'protobuf', 'google', 'cryptography', 'certifi', 'pyOpenSSL'
+        'attr',
+        'requests',
+        'urllib3',
+        'paho-mqtt',
+        'protobuf',
+        'google',
+        'cryptography',
+        'certifi',
+        'pyOpenSSL',
+        'pydantic>=2.4',
     ],
+    extras_require={
+        'test': [
+            'pytest>=7.4',
+            'responses>=0.24.0',
+            'pytest-cov>=4.1'
+        ]
+    }
 )

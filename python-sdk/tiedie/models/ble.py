@@ -9,182 +9,96 @@ These classes define data structures and request/response formats for
 IoT applications, particularly for Bluetooth Low Energy (BLE)
 communication.
 """
-from typing import List
+
 from enum import Enum
-from .zigbee import DataParameter
-from .common import *
-from .scim import Device
-from dataclasses import dataclass
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
+
+from .common import DataParameter, RegistrationOptions
 
 
-class BleReadRequest:
+class BleReadRequest(BaseModel):
     """
     Represents a request for reading data from a BLE device.
     It includes service_uuid and characteristic_uuid.
     """
-    service_uuid: str = ""
-    characteristic_uuid: str = ""
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    def __init__(self, service_uuid: str, characteristic_uuid: str):
-        self.service_uuid = service_uuid
-        self.characteristic_uuid = characteristic_uuid
+    service_id: str = Field(alias="serviceID")
+    characteristic_id: str = Field(alias="characteristicID")
 
 
-    def __json__(self):
-        return self.__dict__()
-    
-
-    def __dict__(self):
-        return {
-            "serviceUUID": self.service_uuid,
-            "characteristicUUID": self.characteristic_uuid
-        }
-
-
-class BleSubscribeRequest:
+class BleSubscribeRequest(BaseModel):
     """
-    Represents a request for subscribing to data from a BLE device. It includes serviceUUID and characteristicUUID.
+    Represents a request for subscribing to data from a BLE device. 
+    It includes serviceUUID and characteristicUUID.
     """
-    def __init__(self, serviceUUID: str, characteristicUUID: str):
-        self.serviceUUID = serviceUUID
-        self.characteristicUUID = characteristicUUID
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    service_id: str
+    characteristic_id: str
 
 
-    def __json__(self):
-        return self.__dict__()
+class BleDescriptors(BaseModel):
+    """ Represents a BLE descriptor. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    descriptor_id: str = Field(alias="descriptorID")
 
 
-    def __dict__(self):
-        return {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
-        }
+class BleCharacteristic(BaseModel):
+    """ Represents a BLE characteristic. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    characteristic_id: str = Field(alias="characteristicID")
+    flags: List[str]
+    descriptors: Optional[List[BleDescriptors]] = None
 
 
-class BleConnectRequest:
+class BleService(BaseModel):
+    """ Represents a BLE service. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    service_id: str = Field(alias="serviceID")
+    characteristics: Optional[List[BleCharacteristic]] = None
+
+
+class BleConnectRequest(BaseModel):
     """ 
     Represents a request for establishing a connection with BLE devices.
     It includes a list of services, the number of retries, and a flag for
     retryMultipleAPs. 
     """
-    def __init__(self, services: List[str], retries: int, retryMultipleAPs: bool):
-        self.services = services
-        self.retries = retries
-        self.retryMultipleAPs = retryMultipleAPs
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
+    services: Optional[List[BleService]] = None
+    retries: Optional[int] = 3
+    retry_multiple_aps: Optional[bool] = Field(alias="retryMultipleAPs", default=True)
 
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "services": [
-            {
-                "serviceID": service
-            } for service in self.services
-            ],
-            "retries": self.retries,
-            "retryMultipleAPs": self.retryMultipleAPs
-        }
 
 class BleDataParameter(DataParameter):
     """
-    Represents parameters for BLE data, including device_id, serviceUUID,
-    charUUID, and optional flags.
+    Represents parameters for BLE data, including device_id, service id,
+    characteristic id, and optional flags.
     """
-    def __init__(self, device_id, serviceUUID, charUUID, flags=None):
-        super().__init__(device_id)
-        self.serviceUUID = serviceUUID
-        self.charUUID = charUUID
-        self.flags = flags if flags else []
+
+    service_id: str
+    characteristic_id: Optional[str] = None
+    flags: Optional[List[str]] = None
 
 
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "deviceId": self.device_id,
-            "serviceUUID": self.serviceUUID,
-            "charUUID": self.charUUID,
-            "flags": self.flags
-        }
-
-
-class BleWriteRequest:
+class BleWriteRequest(BaseModel):
     """ 
     Represents a request for writing data to a BLE device. 
     It includes service_uuid, characteristic_uuid, and value. 
     """
-    def __init__(self, service_uuid, characteristic_uuid, value):
-        self.service_uuid = service_uuid
-        self.characteristic_uuid = characteristic_uuid
-        self.value = value
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
+    service_id: str = Field(alias="serviceID")
+    characteristic_id: str = Field(alias="characteristicID")
 
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "serviceUUID": self.service_uuid,
-            "characteristicUUID": self.characteristic_uuid,
-            "value": self.value
-        }
-
-
-class BleDiscoverResponse:
-    """
-    Represents a response containing information about BLE services
-    and characteristics. It includes a list of services.
-    """
-    def __init__(self, services: List = []):
-        self.services = services
-
-
-    def toParameterList(self, device_id: str) -> List[DataParameter]:
-        """ function toParameterList """
-        parameters = []
-        for service in self.services:
-            for characteristic in service.get('characteristics'):
-                parameter = BleDataParameter(device_id, service.get('uuid'), characteristic.get('uuid'), characteristic.get('flags'))
-                parameters.append(parameter)
-        return parameters
-
-
-    class BleService:
-        """ class BLE Service """
-        def __init__(self):
-            self.uuid = ""
-            self.characteristics = []
-
-
-    class BleCharacteristic:
-        """ BLE Characteristic Class """
-        def __init__(self):
-            self.uuid = ""
-            self.flags = []
-            self.descriptors = []
-
-
-    class BleDescriptors:
-        """ BLE Descriptor Class """
-        def __init__(self):
-            self.uuid = ""
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "services": self.services
-        }
-    
 
 class BleAdvertisementFilterType(Enum):
     """
@@ -195,109 +109,33 @@ class BleAdvertisementFilterType(Enum):
     DENY = "deny"
 
 
-    def __json__(self):
-        return self.value
-   
-   
-    def __dict__(self):
-        return self.value
-
-
-class BleAdvertisementFilter:
+class BleAdvertisementFilter(BaseModel):
     """
     Represents a filter for BLE advertisements, including mac,
     adType, and adData.
     """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     mac: str
-    adType: str
-    adData: str
-
-
-class BleUnsubscribeRequest:
-    """
-    Represents a request for unsubscribing from BLE data. It includes
-    serviceUUID and characteristicUUID.
-    """
-    def __init__(self, serviceUUID: str, characteristicUUID: str):
-        self.serviceUUID = serviceUUID
-        self.characteristicUUID = characteristicUUID
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
-        }
+    ad_type: str
+    ad_data: str
 
 
 class BleTopicType(Enum):
     """
     An enumeration of BLE topic types, including GATT, ADVERTISEMENTS,
-    and CONNECTION.
+    and CONNECTION_EVENTS.
     """
     GATT = 'gatt'
     ADVERTISEMENTS = 'advertisements'
-    CONNECTION = 'connection'
-
-    def __json__(self):
-        return self.__dict__()
+    CONNECTION_EVENTS = 'connection_events'
 
 
-    def __dict__(self):
-        return self.value
-    
+class BleRegisterTopicRequest(BaseModel):
+    """ A request class for registering topic to BLE devices. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-class BleRegisterTopicRequest:
-    """
-    Represents a request for registering a BLE topic. It includes
-    the topic type.
-    """
-    type: BleTopicType
-
-    def __init__(self, type):
-        super().__init__()
-        self.type = type
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "type": self.type
-        }
-
-
-class BleGattTopic(BleRegisterTopicRequest):
-    """
-    Represents a specific GATT topic for BLE. It includes serviceUUID
-    and characteristicUUID.
-    """
-    serviceUUID: str
-    characteristicUUID: str
-
-    def __init__(self, serviceUUID: str, characteristicUUID: str):
-        super().__init__(type=BleTopicType.GATT)
-        self.serviceUUID = serviceUUID
-        self.characteristicUUID = characteristicUUID
-
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        parent_dict = super().__dict__()
-        current_dict = {
-            "serviceUUID": self.serviceUUID,
-            "characteristicUUID": self.characteristicUUID
-        }
-        return {**parent_dict, **current_dict}
+    type: BleTopicType = Field(alias="type")
 
 
 class BleAdvertisementTopic(BleRegisterTopicRequest):
@@ -305,119 +143,37 @@ class BleAdvertisementTopic(BleRegisterTopicRequest):
     Represents a topic for BLE advertisements. It includes filterType
     and filters.
     """
-    filterType: str
-    filters: List
 
-    def __init__(self, filterType: str, filters: List):
-        super().__init__(type=BleTopicType.ADVERTISEMENTS)
-        self.filterType = filterType
-        self.filters = filters
+    type: BleTopicType = Field(
+        alias="type", default=BleTopicType.ADVERTISEMENTS)
 
-
-    def __json__(self):
-        return self.__dict__()
+    filter_type: Optional[BleAdvertisementFilterType] = Field(
+        alias="filterType", default=None)
+    filters: Optional[List[BleAdvertisementFilter]] = Field(default=None)
 
 
-    def __dict__(self):
-        parent_dict = super().__dict__()
-        current_dict = {
-            "filterType": self.filterType,
-            "filters": self.filters
-        }
-        return {**parent_dict, **current_dict}
+class BleGattTopic(BleRegisterTopicRequest):
+    """
+    Represents a specific GATT topic for BLE. It includes serviceUUID
+    and characteristicUUID.
+    """
+
+    type: BleTopicType = Field(alias="type", default=BleTopicType.GATT)
+    service_id: str = Field(alias="serviceID")
+    characteristic_id: str = Field(alias="characteristicID")
 
 
 class BleConnectionTopic(BleRegisterTopicRequest):
     """ Represents a topic for BLE connection-related data. """
-    def __init__(self):
-        super().__init__(type=BleTopicType.CONNECTION)
+
+    type: BleTopicType = Field(
+        alias="type", default=BleTopicType.CONNECTION_EVENTS)
 
 
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return super().__dict__()
-    
-
-@dataclass
-class DataParameter:
-    """
-    Unique ID of the device
-    """
-    device_id: str
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "device_id": self.device_id
-        }
-
-
-@dataclass
-class RegistrationOptions:
-    """
-    data class for specifying data registration options. It includes
-    a list of devices and the data format.
-    """
-    devices: List[Device]
-    devices: List[Device]
-    dataFormat: DataFormat
-
-    def __json__(self):
-        return self.__dict__()
-    
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat
-        }
-
-
-@dataclass
-class DataRegistrationOptions(RegistrationOptions):
-    """
-    data class that extends RegistrationOptions and includes a
-    dataParameter field for more specific data registration.
-    """
-    dataParameter: DataParameter
-
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat,
-            "dataParameter": self.dataParameter
-        }
-
-
-@dataclass
-class ConnectionRegistrationOptions(RegistrationOptions):
-    pass
-
-
-@dataclass
 class AdvertisementRegistrationOptions(RegistrationOptions):
-    """  Management of Advertisement Registration Options """
-    advertisementFilterType: BleAdvertisementFilterType
-    advertisementFilters: List[BleAdvertisementFilter]
+    """
+    A class representing registration options for BLE devices.
+    """
 
-    def __json__(self):
-        return self.__dict__()
-
-
-    def __dict__(self):
-        return {
-            "devices": self.devices,
-            "dataFormat": self.dataFormat,
-            "advertisementFilterType": self.advertisementFilterType,
-            "advertisementFilters": self.advertisementFilters
-        }
+    advertisement_filter_type: Optional[BleAdvertisementFilterType] = Field(default=None)
+    advertisement_filter: Optional[List[BleAdvertisementFilter]] = Field(default=None)
