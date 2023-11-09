@@ -3,6 +3,7 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+
 """
 These classes are designed for structured communication with the
 Tiedie IoT platform.  They enable the creation of requests for

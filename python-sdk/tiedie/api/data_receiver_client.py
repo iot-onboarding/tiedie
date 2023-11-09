@@ -3,6 +3,7 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+
 """
 
 The mmodule defines a Python client using Paho MQTT for receiving and 
