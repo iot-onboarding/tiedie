@@ -70,7 +70,16 @@ def scim_addusers():
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         return ble_create_device(request)
-
+    return make_response(
+        jsonify(
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
+                "detail": "Extension not implemented.",
+                "status": 501
+            }
+        ),
+        501
+    )
 
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
@@ -178,6 +187,16 @@ def update_user(user_id):
     schemas = request.json["schemas"]
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         return ble_update_device(request,user)
+    return make_response(
+        jsonify(
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
+                "detail": "Extension not implemented.",
+                "status": 501
+            }
+        ),
+        501
+    )
 
 
 @scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
