@@ -18,11 +18,7 @@ ENV DOCKER_BUILD=1
 
 WORKDIR /app
 
-<<<<<<< HEAD
-COPY tiedie_pylib /app/tiedie_pylib
-=======
 COPY tiedie /app/tiedie
->>>>>>> e028d92 (33 who calls a python library xyz pylib (#34))
 COPY setup.py /app
 
 RUN python -m pip install .
