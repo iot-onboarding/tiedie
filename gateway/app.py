@@ -16,36 +16,24 @@ import ssl
 
 import click
 import paho.mqtt.client as mqtt
-from flask import Flask
-from flask_migrate import Migrate
 from sqlalchemy import select
 
 from config import (BOOT_TIMEOUT, MQTT_HOST, MQTT_PORT, POSTGRES_DB,
                     POSTGRES_HOST, POSTGRES_PASSWORD, POSTGRES_PORT,
                     POSTGRES_USER)
-from control import control_app, PeerCertWSGIRequestHandler
+from control import PeerCertWSGIRequestHandler
 import ap_factory
 from data_producer import DataProducer
 from database import db, session
-from scim import scim_app
 from models import EndpointApp, OnboardingAppKey
 from util import make_hash
+from app_factory import create_app
 
-app = Flask(__name__)
-migrate = Migrate(app, db)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = (
+app = create_app((
     'postgresql+psycopg2://'
     f'{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}'
-)
-app.config['JSON_SORT_KEYS'] = False
-
-db.init_app(app)
-app.url_map.strict_slashes = False
-
-app.register_blueprint(control_app)
-app.register_blueprint(scim_app)
-
+))
 
 @app.cli.command("register-onboarding-app")
 @click.argument("name")
