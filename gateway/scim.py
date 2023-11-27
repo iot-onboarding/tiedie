@@ -29,12 +29,12 @@ def authenticate_user(func):
 
     @wraps(func)
     def check_apikey(*args, **kwargs):
-        client_cert = request.environ['peercert']
+        client_cert = request.environ.get('peercert')
         if client_cert:
             return func(*args, **kwargs)
 
         api_key = request.headers.get("X-Api-Key")
-        if api_key and bool(OnboardingAppKey.query.filter_by(keyVal=api_key).first()):
+        if api_key and bool(OnboardingAppKey.query.filter_by(key_val=api_key).first()):
             return func(*args, **kwargs)
 
         return make_response(jsonify({"error": "Unauthorized"}), 403)
