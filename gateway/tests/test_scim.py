@@ -51,20 +51,21 @@ def fixture_api_key(app):
         db.session.commit()
         yield key
 
+
 def test_create_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
         "/scim/v2/Devices",
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
-                "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
             "deviceDisplayName": "BLE Heart Monitor",
             "adminState": True,
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" : {       
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
                 "isRandom": False,
-                "mobility": True  
+                "mobility": True
             }
         }, headers={
             "x-api-key": api_key
@@ -81,6 +82,7 @@ def test_create_device(client: FlaskClient, api_key: str):
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     ]
 
+
 def test_get_device(client: FlaskClient, api_key):
     """ Test GET device """
     device_id = uuid.uuid4()
@@ -90,18 +92,29 @@ def test_get_device(client: FlaskClient, api_key):
 
     assert response.status_code == 404
 
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 0
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 0
+
     response = client.post(
         "/scim/v2/Devices",
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
-                "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
             "deviceDisplayName": "BLE Heart Monitor",
             "adminState": True,
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" : {       
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
                 "isRandom": False,
-                "mobility": True  
+                "mobility": True
             }
         }, headers={
             "x-api-key": api_key
@@ -118,3 +131,122 @@ def test_get_device(client: FlaskClient, api_key):
     print(response.json)
     assert response.json["id"] == device_id
     assert response.json["meta"] is not None
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 1
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 1
+    assert response.json["Resources"][0]["id"] == device_id
+
+
+def test_delete_device(client: FlaskClient, api_key):
+    """ Test DELETE device """
+    device_id = uuid.uuid4()
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
+            "deviceDisplayName": "BLE Heart Monitor",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
+                "versionSupport": ["5.3"],
+                "deviceMacAddress": "AA:BB:CC:11:22:33",
+                "isRandom": False,
+                "mobility": True
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+
+    device_id = response.json["id"]
+
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 204
+
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 0
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 0
+
+
+def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
+    """ Test POST Endpoint Apps """
+    response = client.post(
+        "/scim/v2/EndpointApps",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
+            "applicationType": "deviceControl",
+            "applicationName": "Device Control App 1",
+            "certificateInfo": {
+                "rootCN": "DigiCert Global Root CA",
+                "subjectName": "wwww.example.com"
+            },
+        },
+        headers={
+            "x-api-key": api_key
+        }
+    )
+
+    assert response.status_code == 201
+    print(response.json)
+
+    assert response.json["id"] is not None
+    assert response.json["meta"] is not None
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:schemas:core:2.0:EndpointApp"
+    ]
+    assert response.json["clientToken"] is None
+
+
+def test_create_endpoint_app_token(client: FlaskClient, api_key: str):
+    """ Test POST Endpoint Apps """
+    response = client.post(
+        "/scim/v2/EndpointApps",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
+            "applicationType": "deviceControl",
+            "applicationName": "Device Control App 1",
+        },
+        headers={
+            "x-api-key": api_key
+        }
+    )
+
+    assert response.status_code == 201
+    print(response.json)
+
+    assert response.json["id"] is not None
+    assert response.json["meta"] is not None
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:schemas:core:2.0:EndpointApp"
+    ]
+    assert response.json["clientToken"] is not None

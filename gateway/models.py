@@ -232,7 +232,7 @@ class EndpointApp(db.Model):
             "applicationType": self.applicationType,
             "applicationName": self.applicationName,
             "certificateInfo": self.certificateInfo,
-            "clientToken": str(self.clientToken),
+            "clientToken": str(self.clientToken) if self.clientToken else None,
             "meta": {
                 "resourceType": "EndpointApp",
                 "created": self.createdTime,
