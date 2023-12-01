@@ -7,9 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
       - name: Install dependencies
         run: |
-          sudo apt-get -y install python3-apt openjdk-11-jre-headless
+          sudo apt-get -y install python3-apt
           python -m pip install --upgrade pip
           pip install -r gateway/requirements.txt
           pip install pylint
