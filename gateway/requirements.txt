@@ -23,4 +23,5 @@ SQLAlchemy>=2.0.5.post1
 tomli>=2.0.1
 typing_extensions>=4.5.0
 Werkzeug>=2.2.3
-
+pytest>=7.4
+testcontainers-postgres>=0.0.1rc1
