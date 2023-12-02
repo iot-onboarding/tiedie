@@ -143,8 +143,7 @@ class Device(db.Model):
         """serialize function"""
         response = {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
-                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
-                        "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"],
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
             "id": self.id,
             "deviceDisplayName": self.device_display_name,
             "adminState": self.admin_state,
@@ -192,13 +191,13 @@ class Device(db.Model):
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
                 "applications": [{"value": app.id,
-                                  "$ref":  f"https://{EXTERNAL_HOST}:" +
-                                  f"{EXTERNAL_PORT}/scim/v2/EndpointApps/" +
+                                  "$ref":  f"https://{EXTERNAL_HOST}:"
+                                  f"{EXTERNAL_PORT}/scim/v2/EndpointApps/"
                                   f"{app.id}"
                                   } for app in self.endpoint_apps],
                 "deviceControlEnterpriseEndpoint":
-                    f"https://{EXTERNAL_HOST}:" +
-                    "{EXTERNAL_PORT}/control",
+                    f"https://{EXTERNAL_HOST}:"
+                    f"{EXTERNAL_PORT}/control",
                 "telemetryEnterpriseEndpoint":
                     f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
@@ -233,7 +232,7 @@ class EndpointApp(db.Model):
             "applicationType": self.applicationType,
             "applicationName": self.applicationName,
             "certificateInfo": self.certificateInfo,
-            "clientToken": str(self.clientToken),
+            "clientToken": str(self.clientToken) if self.clientToken else None,
             "meta": {
                 "resourceType": "EndpointApp",
                 "created": self.createdTime,
