@@ -17,7 +17,6 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from database import session
-import config
 from models import EndpointApp, Device, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
