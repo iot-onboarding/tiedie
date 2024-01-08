@@ -69,9 +69,9 @@ def ble_create_device(request):
     try:
         user = Device(
             device_id=device_id,
-            schemas=request.json['schemas'],
-            device_display_name=request.json['device_display_name'],
-            admin_state=request.json['admin_state'],
+            schemas=request.json["schemas"],
+            device_display_name=request.json["deviceDisplayName"],
+            admin_state=request.json["adminState"],
             version_support = request.json[
                 "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
                     "versionSupport"),
