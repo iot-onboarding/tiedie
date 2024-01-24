@@ -151,14 +151,14 @@ class DiscoverOperation(Operation):
             "requestID": uuid4(),
             "services": [
                 {
-                    "serviceID": service.uuid,
+                    "serviceID": service.service_id,
                     "characteristics": [
                         {
-                            "characteristicID": characteristic.uuid,
+                            "characteristicID": characteristic.characteristic_id,
                             "flags": characteristic.properties,
                             "descriptors": [
                                 {
-                                    "descriptorID": descriptor.uuid,
+                                    "descriptorID": descriptor.descriptor_id,
                                 } for descriptor in characteristic.descriptors.values()
                             ],
                         } for characteristic in service.characteristics.values()
