@@ -123,7 +123,7 @@ class DiscoverOperation(Operation):
 
     def bt_evt_gatt_characteristic(self, evt):
         """ Handles Bluetooth GATT characteristic discovery, storing UUID and properties. """
-        if evt.connection == self.handle:
+        if evt.connection == self.handle and self.current_service is not None:
             characteristic_id = evt.uuid[::-1].hex()
 
             self.current_service.characteristics[characteristic_id] = Characteristic(
@@ -131,7 +131,7 @@ class DiscoverOperation(Operation):
 
     def bt_evt_gatt_descriptor(self, evt):
         """ Handles Bluetooth GATT descriptor discovery, storing UUID and descriptor handle. """
-        if evt.connection == self.handle:
+        if evt.connection == self.handle and self.current_characteristic is not None:
             descriptor_id = evt.uuid[::-1].hex()
 
             self.current_characteristic.descriptors[descriptor_id] = Descriptor(

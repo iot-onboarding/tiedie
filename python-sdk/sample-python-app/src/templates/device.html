@@ -28,10 +28,10 @@ SPDX-License-Identifier: Apache-2.0
                     <th>Device MAC Address</th>
                     <td>{{ device.ble_extension.device_mac_address }}</td>
                 </tr>
-                <tr>
+                <!-- <tr>
                     <th>Device Pass Key</th>
                     <td>{{ device.ble_extension.pairing_pass_key.key }}</td>
-                </tr>
+                </tr> -->
                 <tr>
                     <th>Device Version Support</th>
                     <td>{{ device.ble_extension.version_support }}</td>
@@ -74,7 +74,42 @@ SPDX-License-Identifier: Apache-2.0
 
     {% if parameters != None %}
     <div class="row" {% if parameters is none %}style="display:none"{% endif %}>
-        <!-- <table class="table">
+        <div class="container text-center" th:if="${parameters != null}">
+            <div class="row row-cols-3">
+                <div class="col card m-1">
+                    <div class="fw-bold">Temperature</div>
+                    <div class="" id="card-2a6e">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">UV Index</div>
+                    <div class="" id="card-2a76">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Pressure</div>
+                    <div class="" id="card-2a6d">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Humidity</div>
+                    <div class="" id="card-2a6f">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Sound level</div>
+                    <div class="" id="card-c8546913bf0245eb8dde9f8754f4a32e">
+                    </div>
+                </div>
+                <div class="col card m-1">
+                    <div class="fw-bold">Ambient Light</div>
+                    <div class="" id="card-c8546913bfd945eb8dde9f8754f4a32e">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="table">
             <thead>
                 <th scope="col">GATT Service UUID</th>
                 <th scope="col">GATT Characteristic UUID</th>
@@ -104,41 +139,7 @@ SPDX-License-Identifier: Apache-2.0
                 </tr>
                 {% endfor %}
             </tbody>
-        </table> -->
-
-        <div class="container text-center" th:if="${parameters != null}">
-        <div class="row row-cols-3">
-            <div class="col card m-1">
-                <div class="fw-bold">Temperature</div>
-                <div class="" id="card-2a6e">
-                </div>
-            </div>
-            <div class="col card m-1">
-                <div class="fw-bold">UV Index</div>
-                <div class="" id="card-2a76">
-                </div>
-            </div>
-            <div class="col card m-1">
-                <div class="fw-bold">Pressure</div>
-                <div class="" id="card-2a6d">
-                </div>
-            </div>
-            <div class="col card m-1">
-                <div class="fw-bold">Humidity</div>
-                <div class="" id="card-2a6f">
-                </div>
-            </div>
-            <div class="col card m-1">
-                <div class="fw-bold">Sound level</div>
-                <div class="" id="card-c8546913bf0245eb8dde9f8754f4a32e">
-                </div>
-            </div>
-            <div class="col card m-1">
-                <div class="fw-bold">Ambient Light</div>
-                <div class="" id="card-c8546913bfd945eb8dde9f8754f4a32e">
-                </div>
-            </div>
-        </div>
+        </table>
     </div>
     {% endif %}
 
