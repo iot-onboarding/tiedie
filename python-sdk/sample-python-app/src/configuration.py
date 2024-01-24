@@ -53,7 +53,7 @@ class ClientConfig:
                 self.client_ca_path, self.onboarding_app_cert_path, self.onboarding_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.data_app_id,  self.client_ca_path, self.onboarding_app_api_key)
+                self.onboarding_app_id, self.client_ca_path, self.onboarding_app_api_key)
 
         return OnboardingClient(self.onboarding_app_base_url, authenticator)
 
@@ -66,7 +66,7 @@ class ClientConfig:
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.control_app_id,  self.client_ca_path, control_app_endpoint.client_token)
+                self.control_app_id, self.client_ca_path, control_app_endpoint.client_token)
 
         return ControlClient(self.control_app_base_url, authenticator)
 
@@ -79,7 +79,7 @@ class ClientConfig:
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.data_app_id,  self.client_ca_path, data_app_endpoint.client_token)
+                self.data_app_id, self.client_ca_path, data_app_endpoint.client_token)
 
         return DataReceiverClient(self.data_app_host,
                                   authenticator=authenticator,
