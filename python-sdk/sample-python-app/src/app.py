@@ -216,7 +216,7 @@ def add_device():
             device_mac_address=content['deviceMacAddress'],
             version_support=version_support,
             is_random=is_random,
-            pass_key=int(content['passKey'])
+            # pass_key=int(content['passKey'])
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
