@@ -23,6 +23,7 @@ class ScanOperation(Operation):
 
     def run(self):
         """ Start scanning """
+        self.lib.bt.scanner.set_parameters(0, 24, 12)
         self.lib.bt.scanner.start(  # type: ignore
             self.lib.bt.scanner.SCAN_PHY_SCAN_PHY_1M,  # type: ignore
             self.lib.bt.scanner.DISCOVER_MODE_DISCOVER_GENERIC)  # type: ignore

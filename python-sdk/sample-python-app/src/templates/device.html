@@ -74,7 +74,7 @@ SPDX-License-Identifier: Apache-2.0
 
     {% if parameters != None %}
     <div class="row" {% if parameters is none %}style="display:none"{% endif %}>
-        <table class="table">
+        <!-- <table class="table">
             <thead>
                 <th scope="col">GATT Service UUID</th>
                 <th scope="col">GATT Characteristic UUID</th>
@@ -104,12 +104,104 @@ SPDX-License-Identifier: Apache-2.0
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table> -->
+
+        <div class="container text-center" th:if="${parameters != null}">
+        <div class="row row-cols-3">
+            <div class="col card m-1">
+                <div class="fw-bold">Temperature</div>
+                <div class="" id="card-2a6e">
+                </div>
+            </div>
+            <div class="col card m-1">
+                <div class="fw-bold">UV Index</div>
+                <div class="" id="card-2a76">
+                </div>
+            </div>
+            <div class="col card m-1">
+                <div class="fw-bold">Pressure</div>
+                <div class="" id="card-2a6d">
+                </div>
+            </div>
+            <div class="col card m-1">
+                <div class="fw-bold">Humidity</div>
+                <div class="" id="card-2a6f">
+                </div>
+            </div>
+            <div class="col card m-1">
+                <div class="fw-bold">Sound level</div>
+                <div class="" id="card-c8546913bf0245eb8dde9f8754f4a32e">
+                </div>
+            </div>
+            <div class="col card m-1">
+                <div class="fw-bold">Ambient Light</div>
+                <div class="" id="card-c8546913bfd945eb8dde9f8754f4a32e">
+                </div>
+            </div>
+        </div>
     </div>
     {% endif %}
 
     <script type="text/javascript">
-            var is_connected = "{{ parameters }}" != "None";
+            var is_connected = {% if parameters != None %}true{% else %}false{% endif %};
+
+            var parameters = [
+            {% if parameters != None %}
+                {% for parameter in parameters %}{{ parameter.model_dump_json() | safe }},{% endfor %}
+            {% endif %}
+            ];
+
+            if (parameters != null) {
+                console.log(parameters);
+                const chars = parameters.filter(param => param.service_id === "181a");
+
+                console.log(chars);
+
+                setInterval(async () => {
+                    for (let i = 0; i < chars.length; i++) {
+                        const value = await readValueAsHex(i, "{{ device.device_id }}", chars[i].service_id, chars[i].characteristic_id);
+
+                        var str = "";
+                        var data = parseInt('0x' + value.match(/../g).reverse().join(''));
+                        switch (chars[i].characteristic_id) {
+                            case "2a6e":
+                                str = data / 100 + " °C";
+                                break;
+                            case "2a76":
+                                str = data;
+                                break;
+                            case "2a6d":
+                                str = data / 1000 + " mbar";
+                                break;
+                            case "2a6f":
+                                str = data / 100 + " %";
+                                break;
+                            case "c8546913bf0245eb8dde9f8754f4a32e":
+                                str = data / 100 + " dB";
+                                break;
+                            case "c8546913bfd945eb8dde9f8754f4a32e":
+                                str = data / 100 + " lux";
+                                break;
+                        }
+                        document.getElementById(`card-${chars[i].characteristic_id}`).innerHTML = str;
+                    }
+                }, 2000);
+            }
+
+            function readValueAsHex(index, id, svcUUID, charUUID) {
+                // call API with svcUUID and charUUID
+                console.log("readValue: " + svcUUID + ", " + charUUID);
+
+                return fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/read`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => data.value);
+            }
+
             function writeValue(index, deviceId, serviceUUID, charUUID, value) {
                 // Prepare the data to be sent in the request
                 var data = {
