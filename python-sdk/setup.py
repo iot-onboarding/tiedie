@@ -22,12 +22,12 @@ setup(
         'cryptography',
         'certifi',
         'pyOpenSSL',
-        'pydantic>=2.4',
+        'pydantic==2.4',
     ],
     extras_require={
         'test': [
             'pytest==7.4',
-            'responses>=0.24.0',
+            'responses==0.24.0',
             'pytest-cov>=4.1'
         ]
     }
