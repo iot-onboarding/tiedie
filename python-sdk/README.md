@@ -12,6 +12,20 @@ See accompanying LICENSE file in this distribution.
 This distribution contains libraries to enable communications between
 applications and IoT devices through an application layer gateway.
 
+## Prerequisites
+
+- Python 3.10 or higher
+
+## Installation
+
+```bash
+# Optionally, create a virtual env
+python3 -m venv venv
+source venv/bin/activate
+
+pip3 install .
+```
+
 ## Usage
 
 ### Authentication
@@ -26,192 +40,275 @@ required to verify the certificate sent by the server.
 
 This file (`ca.pem`) is required by the authenticator.
 
-```
-with self.app.open_resource(path.ca.pem, 'rb') as client_keystore_stream:
-            client_keystore = client_keystore_stream.read()
-```
-
 #### API key authentication
 
 To authenticate using an API key, generate an API key for the client.
 
-```
-Authenticator authenticator = ApiKeyAuthenticator.create(caInputStream, "app_id", "api_key");
-authenticator = ApiKeyAuthenticator(app_id,  CA_PEM_PATH, app_key)
+```python
+from tiedie.api.auth import ApiKeyAuthenticator
+
+authenticator = ApiKeyAuthenticator(
+    app_id="<app_id>",
+    ca_file_path="<client_ca_path>",
+    api_key="<api_key>"
+)
 ```
 
 #### Certificate based
 
-To authenticate using a certificate, we use a Java KeyStore to store the certificates
-and load the credentials from it.
+To authenticate using a certificate, we need the client certificate and private key. 
 
-For example, the keystore can be created using the pkcs #12 format.
+```python
+from tiedie.api.auth import CertificateAuthenticator
 
-The PKCS #12 file (`.p12` or `.pfx`) can be created from the certificate and private key
-as follows:
-
-```bash
-openssl pkcs12 -export -out client.p12 -inkey client.key -in client.crt
-```
-
-An example with a keystore is shown below:
-
-```
-with io.open(client_config.CA_PEM_PATH, 'rb') as ca_stream, \
-    io.open(client_config.CONTROL_CERT_PATH, 'rb') as client_keystore_stream:
-    key_store = KeyStore.getInstance("PKCS12")
-    key_store.load(client_keystore_stream, "".toCharArray())
-            
-    authenticator = ApiKeyAuthenticator.create(ca_stream, control_app_id, endpoint_app.get_client_token())
+authenticator = CertificateAuthenticator(
+    ca_file_path="<client_ca_path>",
+    cert_path="<client_cert_path>",
+    key_path="<client_key_path>",
+)
 ```
 
 ### Onboarding Client
 
 The onboarding client can be created as follows:
 
-```
-onboardingClient = OnboardingClient("https://<host>/scim/v2", authenticator);
+```python
+from tiedie.api.onboarding_client import OnboardingClient
+
+onboardingClient = OnboardingClient(
+    base_url="https://<host>/scim/v2", 
+    authenticator=authenticator
+)
 ```
 
 #### Create an Endpoint App
 
 Register an endpoint app using the onboarding app.
 
-```
-endpointApps = onboarding_client.getEndpointApps().body["Resources"]
+```python
+from tiedie.models.scim import EndpointApp, EndpointAppType
 
-onboarding_client.createEndpointApp({"applicationName": self.control_app_id // self.data_app_id,
-                                     "applicationType": "DEVICE_CONTROL" // "applicationType": "TELEMETRY" })
+response = onboarding_client.create_endpoint_app(
+    EndpointApp(
+        application_name="control-app",
+        application_type=EndpointAppType.DEVICE_CONTROL
+    )
+)
+
+print(response.body.application_name)
+print(response.body.application_type)
+print(response.body.application_id)
+print(response.body.client_token)
 ```
 
 #### Onboard a device
 
-```
-device = Device(content['deviceDisplayName'], admin_state, BleExtension(content['deviceMacAddress'], version_support, is_random, int(content['passKey'])))
+```python
+from tiedie.models.scim import Device, BleExtension, PairingPassKey
 
-response = onboarding_client.createDevice(device)
+device = Device(
+    device_display_name="BLE Monitor",
+    admin_state=False,
+    ble_extension=BleExtension(
+        device_mac_address="AA:BB:CC:11:22:33",
+        is_random=False,
+        version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
+        pairing_pass_key=PairingPassKey(key=123456)
+    )
+)
+
+response = onboarding_client.create_device(device)
+
+print(response.body.device_id)
 ```
 
 #### Fetch a device
 
-```
-response = onboarding_client.getDevice(id)
+```python
+response = onboarding_client.get_device(device_id)
 
-device = Device.create(response.body)
+assert response.status_code == 200
+print(response.body.device_id)
+```
+
+#### Get all devices
+
+```python
+response = onboarding_client.get_devices()
+
+assert response.status_code == 200
+print(response.body.resources[0].device_id)
 ```
 
 #### Un-onboard a device
 
-```
-response = onboarding_client.deleteDevice(id)
+```python
+response = onboarding_client.delete_device(device_id)
+assert response.status_code == 204
 ```
 
 ### Control Client
 
 The control API client can be created as follows:
 
-```
-controlClient = ControlClient(control_base_url, authenticator)
+```python
+controlClient = ControlClient(
+    base_url="https://<host>/nipc",
+    authenticator=authenticator
+)
 ```
 
 You can control a device using the APIs using the corresponding `Device` object.
 
 #### Connect
 
-```
-tiedie_response = control_client.connect(device)
+```python
+response = control_client.connect(device)
 ```
 
 #### Disconnect
 
-```
-tiedie_response = control_client.disconnect(device)
+```python
+response = control_client.disconnect(device)
 ```
 
 #### Read
 
-```
-parameter = BleDataParameter(id, svcUUID, charUUID)
-response = control_client.read(parameter)
+```python
+from tiedie.models.ble import BleDataParameter
+
+response = control_client.read(device, BleDataParameter(
+    device_id=device_id,
+    service_id="1800",
+    characteristic_id="2a00"
+))
 ```
 
 #### Write
 
-```
-parameter = BleDataParameter(id, svcUUID, charUUID)
-response = control_client.write(parameter, value)
+```python
+from tiedie.models.ble import BleDataParameter
+
+response = control_client.write(
+    device,
+    BleDataParameter(
+        device_id=device_id,
+        service_id="1800",
+        characteristic_id="2a00"
+    ),
+    "00001111")
 ```
 
 #### Subscribe
 
+```python
+from tiedie.models.ble import BleDataParameter
+
+response = control_client.subscribe(
+    device,
+    BleDataParameter(
+        device_id=device_id,
+        service_id="1800",
+        characteristic_id="2a00"
+    )
+)
 ```
-parameter = BleDataParameter(id, svcUUID, charUUID)
-subscribe = control_client.subscribe(topic, parameter)
 
+#### Unsubscribe
 
+```python
+from tiedie.models.ble import BleDataParameter
+
+response = control_client.unsubscribe(
+    device,
+    BleDataParameter(
+        device_id=device_id,
+        service_id="1800",
+        characteristic_id="2a00"
+    )
+)
 ```
 
 #### Register Topic
 
 To register a topic on a GATT subscription:
 
-```
-topic = f"data-app/{id}/{svcUUID}/{charUUID}"
+```python
+from tiedie.models.common import DataRegistrationOptions
+from tiedie.models.ble import BleDataParameter
 
-topic_response = control_client.register_topic(topic, 
-                                                   DataRegistrationOptions(
-                                                        devices = None,
-                                                        dataFormat = DataFormat.JSON,
-                                                        dataParameter = parameter)
-                                                )
-```
-
-To register a topic on advertisements:
-
-```
-Ttopic_response = control_client.register_topic(
-        topic, 
-        AdvertisementRegistrationOptions(
-            devices = None,
-            dataFormat=DataFormat.JSON,
-            advertisementFilterType=request_data['filterType'],
-            advertisementFilters=request_data['filters']
-        )
+response = control_client.register_topic(topic, device, DataRegistrationOptions(
+        data_apps=["app1", "app2"],
+        data_parameter=BleDataParameter(
+            device_id=device_id, service_id="1800", characteristic_id="2a00")
     )
+)
+```
+
+To register a topic on advertisements for onboarded devices:
+
+```python
+from tiedie.models.ble import AdvertisementRegistrationOptions
+
+response = control_client.register_topic(
+    topic, device, AdvertisementRegistrationOptions(
+        data_apps=["app1", "app2"]
+    )
+)
+```
+
+To register a topic on advertisements for non-onboarded devices:
+
+```python
+from tiedie.models.ble import AdvertisementRegistrationOptions, BleAdvertisementFilter, BleAdvertisementFilterType
+
+response = control_client.register_topic(topic, None, AdvertisementRegistrationOptions(
+        data_apps=["app1", "app2"],
+        advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
+        advertisement_filter=[
+            BleAdvertisementFilter(mac="1800", ad_type="2a00", ad_data="0001"),
+            BleAdvertisementFilter(mac="1800", ad_type="2a01", ad_data="0002")
+        ]
+    )
+)
 ```
 
 To register a topic on connection status: 
 
-```
-control_client.register_topic(
-        topic, 
-        ConnectionRegistrationOptions(
-            devices=[],
-            dataFormat=DataFormat.JSON
-        )
+```python
+from tiedie.models.common import ConnectionRegistrationOptions
+
+response = control_client.register_topic(topic, device, ConnectionRegistrationOptions(
+        data_apps=["app1", "app2"],
     )
-```
-
-#### Register Data App
-
-```
-topic = "data-app/" + response.body['id'] + "/connection"
-dataAppResponse = control_client.register_data_app(app.config['data-app.id'], topic)
+)
 ```
 
 ### Data Receiver Client
 
 The data receiver client can be created as follows:
 
-```
-dataReceiverClient = DataReceiverClient(data_base_url,  authenticator=authenticator, port=8883)
-dataReceiverClient.connect();
+```python
+data_receiver_client = DataReceiverClient("<host>"
+                                  authenticator=authenticator,
+                                  port=8883,
+                                  disable_tls=False,
+                                  insecure_tls=True)
+data_receiver_client.connect()
 ```
 
 #### Subscriptions
 
-```
+```python
+# callback which receives the subscription message protobuf
+def callback(data_subscription):
+    print(data_subscription)
+
 data_receiver_client.subscribe(topic, callback)
-callback -> Handles Message
-});
+```
+
+To disconnect the client:
+
+```python
+data_receiver_client.disconnect()
 ```
