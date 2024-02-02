@@ -45,7 +45,8 @@ class OnboardingClient(AbstractHttpClient):
         """Get a list of Device objects.
 
         Returns:
-            HttpResponse[ListResponse[Device] | None]: Response object containing the list of Device objects.
+            HttpResponse[ListResponse[Device] | None]: Response object containing 
+                the list of Device objects.
         """
         return self.get("/Devices", ListResponse[Device])
 
@@ -64,7 +65,8 @@ class OnboardingClient(AbstractHttpClient):
         """Get a list of EndpointApp objects.
 
         Returns:
-            HttpResponse[ListResponse[EndpointApp] | None]: Response object containing the list of EndpointApp objects.
+            HttpResponse[ListResponse[EndpointApp] | None]: Response object containing 
+                the list of EndpointApp objects.
         """
         return self.get("/EndpointApps", ListResponse[EndpointApp])
 

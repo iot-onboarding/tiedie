@@ -237,8 +237,10 @@ class ControlClient(AbstractHttpClient):
 
         Args:
             topic (str): The topic to register.
-            device (Optional[Device], optional): The device to register a topic for. Defaults to None.
-            options (Optional[RegistrationOptions], optional): Additional topic registration objects. Defaults to None.
+            device (Optional[Device], optional): The device to register a topic for. 
+                Defaults to None.
+            options (Optional[RegistrationOptions], optional): Additional topic registration 
+                objects. Defaults to None.
 
         Returns:
             TiedieResponse[None]: The response object containing the status of the request.
