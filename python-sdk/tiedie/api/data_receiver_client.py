@@ -54,7 +54,8 @@ class DataReceiverClient:
 
         Args:
             topic (str): The topic to subscribe to.
-            callback (Callable[[Optional[data_app_pb2.DataSubscription]], None]): A callback function to be called when a message is received.
+            callback (Callable[[Optional[data_app_pb2.DataSubscription]], None]): 
+                A callback function to be called when a message is received.
         """
         def on_message(_client, _userdata, msg):
             payload = msg.payload
