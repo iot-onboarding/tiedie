@@ -75,7 +75,7 @@ The onboarding client can be created as follows:
 ```python
 from tiedie.api.onboarding_client import OnboardingClient
 
-onboardingClient = OnboardingClient(
+onboarding_client = OnboardingClient(
     base_url="https://<host>/scim/v2", 
     authenticator=authenticator
 )
@@ -152,7 +152,7 @@ assert response.status_code == 204
 The control API client can be created as follows:
 
 ```python
-controlClient = ControlClient(
+control_client = ControlClient(
     base_url="https://<host>/nipc",
     authenticator=authenticator
 )
