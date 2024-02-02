@@ -23,11 +23,13 @@ class Authenticator:
         raise NotImplementedError()
 
     def set_auth_options(self, session: requests.Session) -> requests.Session:
-        """
-        Update builder object after adding authentication related settings.
+        """ Set auth options to the requests session.
 
-        :param builder: OkHttpClient.Builder object.
-        :return: Updated builder object after adding authentication related settings.
+        Args:
+            session (requests.Session): The requests session object to be configured.
+
+        Returns:
+            requests.Session: Updated requests session object.
         """
         raise NotImplementedError()
 
