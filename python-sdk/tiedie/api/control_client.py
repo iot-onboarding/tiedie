@@ -166,7 +166,15 @@ class ControlClient(AbstractHttpClient):
         return tiedie_response
 
     def read(self, device: Device, data_parameter: DataParameter) -> ValueResponse:
-        """ Reads the value of a GATT characteristic of an IoT device. """
+        """ Reads a value from a GATT characteristic of an IoT device.
+
+        Args:
+            device (Device): The device to read from.
+            data_parameter (DataParameter): The data parameter to read.
+
+        Returns:
+            ValueResponse: The response object containing the value.
+        """
         tiedie_request = \
             TiedieReadRequest(device=device, data_parameter=data_parameter)
         return self.get_with_tiedie_response("/data/attribute",
@@ -175,7 +183,16 @@ class ControlClient(AbstractHttpClient):
     def write(self, device: Device,
               data_parameter: DataParameter,
               value: str) -> ValueResponse:
-        """ Writes a value to a GATT characteristic of an IoT device. """
+        """ Writes a value to a GATT characteristic of an IoT device.
+
+        Args:
+            device (Device): The device to write to.
+            data_parameter (DataParameter): The data parameter to write to.
+            value (str): The value to write.
+
+        Returns:
+            ValueResponse: The response object containing the value.
+        """
         tiedie_request = TiedieWriteRequest(device=device,
                                             data_parameter=data_parameter,
                                             value=value)
@@ -183,14 +200,30 @@ class ControlClient(AbstractHttpClient):
                                               tiedie_request, ValueResponse)
 
     def subscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
-        """ Subscribes to a data stream topic for an IoT device. """
+        """ Subscribes to a data stream topic for an IoT device.
+
+        Args:
+            device (Device): The device to subscribe to.
+            data_parameter (DataParameter): The data parameter to subscribe to.
+
+        Returns:
+            TiedieResponse[None]: The response object containing the status of the request.
+        """
         tiedie_request = TiedieReadRequest(device=device,
                                            data_parameter=data_parameter)
         return self.post_with_tiedie_response("/data/subscription",
                                               tiedie_request, None)
 
     def unsubscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
-        """ Unsubscribes from a data stream topic for an IoT device. """
+        """ Unsubscribes from a data stream topic for an IoT device.
+
+        Args:
+            device (Device): The device to unsubscribe from.
+            data_parameter (DataParameter): The data parameter to unsubscribe from.
+
+        Returns:
+            TiedieResponse[None]: The response object containing the status of the request.
+        """
         tiedie_request = TiedieReadRequest(device=device,
                                            data_parameter=data_parameter)
         return self.delete_with_tiedie_response("/data/subscription",
@@ -200,13 +233,31 @@ class ControlClient(AbstractHttpClient):
                        topic: str,
                        device: Optional[Device] = None,
                        options: Optional[RegistrationOptions] = None) -> TiedieResponse[None]:
-        """ Registers a data stream topic for an IoT device. """
+        """ Registers a data stream topic for IoT devices.
+
+        Args:
+            topic (str): The topic to register.
+            device (Optional[Device], optional): The device to register a topic for. 
+                Defaults to None.
+            options (Optional[RegistrationOptions], optional): Additional topic registration 
+                objects. Defaults to None.
+
+        Returns:
+            TiedieResponse[None]: The response object containing the status of the request.
+        """
         tiedie_request = \
             TiedieRegisterTopicRequest(topic=topic, device=device, registration_options=options)
         return self.post_with_tiedie_response("/registration/topic",
                                               tiedie_request, None)
 
     def unregister_topic(self, topic: str):
-        """ Unregisters a data stream topic for IoT devices. """
+        """ Unregisters a data stream topic for IoT devices.
+
+        Args:
+            topic (str): The topic to unregister.
+
+        Returns:
+            _type_: The response object containing the status of the request.
+        """
         return self.delete_with_tiedie_response("/registration/topic",
                                                 TopicQuery(topic=topic), None)

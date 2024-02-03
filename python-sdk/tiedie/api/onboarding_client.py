@@ -20,29 +20,74 @@ class OnboardingClient(AbstractHttpClient):
         super().__init__(base_url, "application/scim+json", authenticator)
 
     def create_device(self, device: Device) -> HttpResponse[Device | None]:
-        """Onboard a new device on the controller."""
+        """Onboard a new device.
+
+        Args:
+            device (Device): Device object to be onboarded.
+
+        Returns:
+            HttpResponse[Device | None]: Response object containing the Device object.
+        """
         return self.post("/Devices", device, Device)
 
-    def get_device(self, device_id: str):
-        """Get the Device object using its unique ID."""
+    def get_device(self, device_id: str) -> HttpResponse[Device | None]:
+        """Get the Device object using its unique ID.
+
+        Args:
+            device_id (str): Unique ID of the device.
+
+        Returns:
+            HttpResponse[Device | None]: Response object containing the Device object.
+        """
         return self.get(f"/Devices/{device_id}", Device)
 
-    def get_devices(self):
-        """Get a list of Device objects."""
+    def get_devices(self) -> HttpResponse[ListResponse[Device] | None]:
+        """Get a list of Device objects.
+
+        Returns:
+            HttpResponse[ListResponse[Device] | None]: Response object containing 
+                the list of Device objects.
+        """
         return self.get("/Devices", ListResponse[Device])
 
-    def delete_device(self, device_id: str):
-        """Un-onboard a device on the controller."""
+    def delete_device(self, device_id: str) -> HttpResponse[None]:
+        """Delete a device.
+
+        Args:
+            device_id (str): Unique ID of the device.
+
+        Returns:
+            HttpResponse[None]: Response object.
+        """
         return self.delete(f"/Devices/{device_id}", None)
 
-    def get_endpoint_apps(self):
-        """Get a list of EndpointApp objects."""
+    def get_endpoint_apps(self) -> HttpResponse[ListResponse[EndpointApp] | None]:
+        """Get a list of EndpointApp objects.
+
+        Returns:
+            HttpResponse[ListResponse[EndpointApp] | None]: Response object containing 
+                the list of EndpointApp objects.
+        """
         return self.get("/EndpointApps", ListResponse[EndpointApp])
 
-    def get_endpoint_app(self, app_id: str):
-        """Get the EndpointApp object using its unique ID."""
+    def get_endpoint_app(self, app_id: str) -> HttpResponse[EndpointApp | None]:
+        """Get the EndpointApp object using its unique ID.
+
+        Args:
+            app_id (str): Unique ID of the EndpointApp.
+
+        Returns:
+            HttpResponse[EndpointApp | None]: Response object containing the EndpointApp object.
+        """
         return self.get(f"/EndpointApps/{app_id}", EndpointApp)
 
-    def create_endpoint_app(self, endpoint_app: EndpointApp):
-        """Create a new EndpointApp object."""
+    def create_endpoint_app(self, endpoint_app: EndpointApp) -> HttpResponse[EndpointApp | None]:
+        """Onboard a new Endpoint application.
+
+        Args:
+            endpoint_app (EndpointApp): EndpointApp object to be created.
+
+        Returns:
+            HttpResponse[EndpointApp | None]: Response object containing the EndpointApp object.
+        """
         return self.post("/EndpointApps", endpoint_app, EndpointApp)
