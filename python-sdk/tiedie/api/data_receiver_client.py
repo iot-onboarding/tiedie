@@ -32,25 +32,31 @@ class DataReceiverClient:
         self.mqtt_client = mqtt.Client(
             client_id=authenticator.get_client_id(), clean_session=True)
         self.authenticator.set_auth_options_mqtt(self.mqtt_client, disable_tls, insecure_tls)
-        self.mqtt_client.on_connect = self.on_connect
-        self.mqtt_client.on_disconnect = self.on_disconnect
-        self.mqtt_client.on_message = self.on_message
+        self.mqtt_client.on_connect = self.__on_connect
+        self.mqtt_client.on_disconnect = self.__on_disconnect
+        self.mqtt_client.on_message = self.__on_message
         self.connected = False
 
     def connect(self):
-        """ function to define what happens on connection """
+        """ Connect to the MQTT broker """
         self.mqtt_client.connect(self.host, self.port, 60)
         self.mqtt_client.loop_start()
 
     def disconnect(self):
-        """ function to define what happens on disconnection """
+        """ Disconnect from the MQTT broker """
         self.mqtt_client.disconnect()
         self.mqtt_client.loop_stop()
 
     def subscribe(self, topic: str,
                   callback: Callable[[Optional[data_app_pb2.DataSubscription]],
                                      None]):
-        """ function to define what happens on subscription """
+        """ Subscribe to a topic and register a callback function.
+
+        Args:
+            topic (str): The topic to subscribe to.
+            callback (Callable[[Optional[data_app_pb2.DataSubscription]], None]): 
+                A callback function to be called when a message is received.
+        """
         def on_message(_client, _userdata, msg):
             payload = msg.payload
             data_subscription = data_app_pb2.DataSubscription()
@@ -61,22 +67,23 @@ class DataReceiverClient:
         self.mqtt_client.on_message = on_message
 
     def unsubscribe(self, topic: str):
-        """ function to define what happens on unsubscription """
+        """ Unsubscribe from a topic.
+
+        Args:
+            topic (str): The topic to unsubscribe from.
+        """
         self.mqtt_client.unsubscribe(topic)
 
-    def on_message(self, message):
-        """ function to define what happens on message """
+    def __on_message(self, message):
         print("Received message: " + str(message.payload))
 
-    def on_connect(self, _client, _userdata, _flags, rc):
-        """ function to define what happens on connection """
+    def __on_connect(self, _client, _userdata, _flags, rc):
         if rc == 0:
             print("Connected to broker")
             self.connected = True
         else:
             print("Connection failed with error code " + str(rc))
 
-    def on_disconnect(self, _client, _userdata, _rc):
-        """ function to define what happens on disconnection """
+    def __on_disconnect(self, _client, _userdata, _rc):
         print("Disconnected from broker")
         self.connected = False
