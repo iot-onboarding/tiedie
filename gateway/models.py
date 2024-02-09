@@ -90,7 +90,7 @@ class CoreDevice(db.Model):
     def serialize(self):
         """serialize function"""
         response = {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"]
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"],
             "id": self.id,
             "deviceDisplayName": self.device_display_name,
             "adminState": self.admin_state,
