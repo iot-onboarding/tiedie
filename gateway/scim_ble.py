@@ -112,38 +112,38 @@ def ble_create_device(request):
             400,
         )
 
-def ble_update_device(request,user):
+def ble_update_device(request,entry):
     """
     Update SCIM entry for BLE device.
     """
 
-    user.id = request.json.get("id")
-    user.device_display_name = request.json.get("deviceDisplayName")
-    user.admin_state = request.json.get("adminState")
-    user.version_support = request.json[
+    entry.id = request.json.get("id")
+    entry.device_display_name = request.json.get("deviceDisplayName")
+    entry.admin_state = request.json.get("adminState")
+    entry.version_support = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "versionSupport")
-    user.device_mac_address = request.json[
+    entry.device_mac_address = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "deviceMacAddress")
-    user.is_random = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
+    entry.is_random = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "isRandom")
-    user.pairing_methods = request.json[
+    entry.pairing_methods = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-    user.pairing_null = request.json[
+    entry.pairing_null = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
-    user.pairing_just_works_key = request.json[
+    entry.pairing_just_works_key = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
         "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"].get("key")
-    user.pairing_pass_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+    entry.pairing_pass_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
         "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"].get("key")
-    user.pairing_oob_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+    entry.pairing_oob_key = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
-    user.pairing_oobrn = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
+    entry.pairing_oobrn = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("randNumber")
-    user.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     session.commit()
-    return make_response(jsonify(user.serialize()), 200)
+    return make_response(jsonify(entry.serialize()), 200)
