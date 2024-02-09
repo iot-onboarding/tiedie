@@ -15,7 +15,7 @@ def blow_an_error(e,code):
     """
     Simple formating handling routine"
     """
-    
+
     return make_response(
         jsonify(
             {

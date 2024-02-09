@@ -77,8 +77,7 @@ class CoreDevice(db.Model):
             schemas,
             device_display_name,
             admin_state,
-            endpoint_apps,
-            created_time,
+            created_time
     ):
         self.id = device_id
         self.schemas = schemas
@@ -86,7 +85,7 @@ class CoreDevice(db.Model):
         self.admin_state = admin_state
         self.created_time = created_time
         self.modified_time = created_time
-    
+
     def serialize(self):
         """serialize function"""
         response = {
@@ -98,6 +97,7 @@ class CoreDevice(db.Model):
                      "created": self.created_time,
                      "lastModified": self.modified_time},
             }
+        return response
 
 class BleDevice(db.Model):
     """ Represent BLE device information and associated data fields. """
@@ -282,7 +282,7 @@ class GattTopic(db.Model):
     characteristic_uuid = Column(String())
     data_format = Column(Enum("default", "payload", name="data_format"))
 
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[BleDevice]] = relationship(
         secondary=gatt_topic_devices, back_populates="gatt_topics")
 
     def __init__(self, topic, service_uuid, characteristic_uuid, data_format, devices):
@@ -322,7 +322,7 @@ class AdvTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[BleDevice]] = relationship(
         secondary=adv_topic_devices, back_populates="adv_topics")
     onboarded = Column(Boolean, default=False)
     filter_type = Column(String())
@@ -350,7 +350,7 @@ class ConnectionTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[Device]] = relationship(
+    devices: Mapped[List[BleDevice]] = relationship(
         secondary=connection_topic_devices, back_populates="connection_topics")
 
     def __init__(self, topic: str, data_format, devices: Any):

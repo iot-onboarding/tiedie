@@ -115,7 +115,7 @@ class DataProducer:
                              value: bytes):
         """ Publish GATT notifications/indications to registered MQTT topics """
         with self.app.app_context():
-            user = session.scalar(select(Device)
+            user = session.scalar(select(BleDevice)
                                   .join(GattTopic, Device.gatt_topics)
                                   .where(and_(Device.device_mac_address == mac_address,
                                               GattTopic.service_uuid == service_uuid,
