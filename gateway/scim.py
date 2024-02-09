@@ -63,7 +63,7 @@ def scim_addusers():
             device_id=request.json.get("id"),
             schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
-            admin_state=request.json["adminState"], 
+            admin_state=request.json["adminState"],
             )
         session.add(entry)
         session.commit()
@@ -76,7 +76,7 @@ def scim_addusers():
         ble_extension= ble_create_device(request)
         core.update(ble_extensions)
     return make_response(jsonify(core),200)
-    
+
     return blow_an_error("Extension not implemented.",501)
 
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
