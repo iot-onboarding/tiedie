@@ -64,7 +64,8 @@ def scim_addusers():
             schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
-            )
+            created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
         session.add(entry)
         session.commit()
         core=entry.serialize()
@@ -73,25 +74,31 @@ def scim_addusers():
 
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        ble_extension= ble_create_device(request)
+        ble_extensions= ble_create_device(request)
         core.update(ble_extensions)
+    else:
+        return blow_an_error("Extension not implemented.",501)
+        
     return make_response(jsonify(core),200)
 
-    return blow_an_error("Extension not implemented.",501)
 
-@scim_app.route("/Devices/<string:user_id>", methods=["GET"])
+@scim_app.route("/Devices/<string:device_id>", methods=["GET"])
 @authenticate_user
-def get_user(user_id):
+def get_user(device_id):
     """
     SCIM API: Retrieve user data by ID and onboardApp parameters.
     If not found, a "User not found" response with a status code of 404
     is returned.
     """
-    user = Device.query.get(user_id)
-    if not user:
-        return blow_an_error("User not found",404)
+    entry = CoreDevice.query.get(device_id)
+    if not entry:
+        return blow_an_error("Device not found",404)
 
-    return jsonify(user.serialize())
+    core=entry.serialize()
+    entry = BleDevice.query.get(device_id)
+    if entry:
+        core.update(entry.serialize())
+    return jsonify(entry)
 
 
 @scim_app.route("/Devices", methods=["GET"])
