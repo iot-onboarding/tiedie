@@ -12,7 +12,7 @@ from flask import jsonify, make_response
 from sqlalchemy import select
 from models import EndpointApp, BleDevice
 from database import session
-
+from scim_error import blow_an_error
 
 def ble_create_device(request):
     """
@@ -55,16 +55,7 @@ def ble_create_device(request):
         device_mac_address=device_mac_address).first()
 
     if existing_device:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"],
-                    "detail": "User already exists in the database.",
-                    "status": 409,
-                }
-            ),
-            409,
-        )
+        return blow_an_error("Device already exists in the database.",409)
 
     try:
         entry = BleDevice(
@@ -98,28 +89,19 @@ def ble_create_device(request):
         session.add(entry)
 
         session.commit()
-        return make_response(jsonify(entry.serialize()), 201)
+        return entry.serialize()
     except Exception as e:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": str(e),
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error(str(e),400)
 
-def ble_update_device(request,entry):
+def ble_update_device(request):
     """
     Update SCIM entry for BLE device.
     """
-
-    entry.id = request.json.get("id")
-    entry.device_display_name = request.json.get("deviceDisplayName")
-    entry.admin_state = request.json.get("adminState")
+    entry: BleDevice = BleDevice.query.get(entry_id)
+    # if ble is added, just add it.
+    if not entry:
+        return create_ble_device(request)
+    
     entry.version_support = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "versionSupport")
@@ -143,7 +125,6 @@ def ble_update_device(request,entry):
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("key")
     entry.pairing_oobrn = request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"].get("randNumber")
-    entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     session.commit()
     return make_response(jsonify(entry.serialize()), 200)

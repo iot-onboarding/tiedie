@@ -20,22 +20,9 @@ from database import session
 from models import EndpointApp, CoreDevice, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
-
+from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
-
-def blow_an_error(e,code):
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "scimType": "invalidSyntax",
-                "detail": e,
-                "status": code,
-                }
-        ),
-        code,
-    )
 
 def authenticate_user(func):
     """Verify x-api-key"""
@@ -80,15 +67,15 @@ def scim_addusers():
             )
         session.add(entry)
         session.commit()
-        core_entry=entry.serialize()
+        core=entry.serialize()
     except Exception as e:
         return blow_an_error(str(e),400)
 
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         ble_extension= ble_create_device(request)
-        core_entry.update(ble_extensions)
-    return make_response(jsonify(core_entry),200)
+        core.update(ble_extensions)
+    return make_response(jsonify(core),200)
     
     return blow_an_error("Extension not implemented.",501)
 
@@ -151,9 +138,9 @@ def get_devices():
     )
 
 
-@scim_app.route("/Devices/<string:user_id>", methods=["PUT"])
+@scim_app.route("/Devices/<string:entry_id>", methods=["PUT"])
 @authenticate_user
-def update_user(user_id):
+def update_user(entry_id):
     """
     Function to retrieve SCIM device data based on parameters like start
     index, count, and filters.
@@ -163,26 +150,41 @@ def update_user(user_id):
     if not request.json:
         return blow_an_error("Request body is not valid JSON.",400)
 
-    user: Device = Device.query.get(user_id)
+    entry: CoreDevice = CoreDevice.query.get(entry_id)
 
-    if not user:
-        return blow_an_error("User not found",404)
+    if not entry:
+        return blow_an_error("Device not found",404)
 
+    entry.id = request.json.get("id")
+    entry.device_display_name = request.json.get("deviceDisplayName")
+    entry.admin_state = request.json.get("adminState")
+    entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    session.commit()
+    core=entry.serialize()
     schemas = request.json["schemas"]
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        return ble_update_device(request,user)
-    return blow_an_error("Extension not implemented.",501)
 
+        ble_json=request.json[
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
+        ble_entry=ble_update_device(ble_json)
+    else:
+        return blow_an_error("Extension not implemented.",501)
+
+    ble_extension=ble_entry.serialize()
+    core.update(ble_extension)
+    return make_response(jsonify(core),200)
 
 @scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
 @authenticate_user
-def delete_user(user_id):
+def delete_device(entry_id):
     """Delete SCIM User"""
-    user = Device.query.get(user_id)
+    entry = Device.query.get(entry_id)
     if not user:
         return blow_an_error("User not found",404)
-
-    session.delete(user)
+    session.delete(entry)
+    ble_entry = BleDevice.query.get(entry_id)
+    if ble_entry:
+        session.delete(ble_entry)
     session.commit()
     return make_response("", 204)
 
