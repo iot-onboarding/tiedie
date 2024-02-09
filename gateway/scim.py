@@ -17,13 +17,25 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from database import session
-from models import EndpointApp, Device, OnboardingAppKey
+from models import EndpointApp, CoreDevice, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
 
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
 
+def blow_an_error(e,code):
+    return make_response(
+        jsonify(
+            {
+                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
+                "scimType": "invalidSyntax",
+                "detail": e,
+                "status": code,
+                }
+        ),
+        code,
+    )
 
 def authenticate_user(func):
     """Verify x-api-key"""
@@ -54,33 +66,27 @@ def scim_addusers():
     """
     # Get the request json and check if it is valid
     if not request.json:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error("Request body is not valid JSON.",400)
 
     schemas = request.json.get("schemas")
+
+    # Add device core object
+    try:
+        entry = CoreDevice(
+            device_id=request.json.get("id"),
+            schemas=request.json["schemas"],
+            device_display_name=request.json["deviceDisplayName"],
+            admin_state=request.json["adminState"], 
+            )
+        session.add(entry)
+        session.commit()
+    except Exception as e:
+        return blow_an_error(str(e),400)
 
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         return ble_create_device(request)
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "detail": "Extension not implemented.",
-                "status": 501
-            }
-        ),
-        501
-    )
+    return blow_an_error("Extension not implemented.",501)
 
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
 @authenticate_user
@@ -92,16 +98,8 @@ def get_user(user_id):
     """
     user = Device.query.get(user_id)
     if not user:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"],
-                    "detail": "User not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
+        return blow_an_error("User not found",404)
+
     return jsonify(user.serialize())
 
 
@@ -159,45 +157,17 @@ def update_user(user_id):
     Returns a JSON response with a list of serialized devices.
     """
     if not request.json:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error("Request body is not valid JSON.",400)
 
     user: Device = Device.query.get(user_id)
 
     if not user:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",],
-                    "detail": "User not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
+        return blow_an_error("User not found",404)
 
     schemas = request.json["schemas"]
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         return ble_update_device(request,user)
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "detail": "Extension not implemented.",
-                "status": 501
-            }
-        ),
-        501
-    )
+    return blow_an_error("Extension not implemented.",501)
 
 
 @scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
@@ -206,16 +176,7 @@ def delete_user(user_id):
     """Delete SCIM User"""
     user = Device.query.get(user_id)
     if not user:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"],
-                    "detail": "User not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
+        return blow_an_error("User not found",404)
 
     session.delete(user)
     session.commit()
@@ -229,16 +190,7 @@ def get_endpoint(device_id):
     endpoint_app = session.scalar(
         select(EndpointApp).filter_by(id=device_id))
     if not endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "detail": "Endpoint App not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
+        return blow_an_error("Endpoint App not found",404)
 
     return make_response(jsonify(endpoint_app.serialize()), 200)
 
@@ -293,34 +245,14 @@ def get_endpoints():
 def create_endpoint():
     """ Creates SCIM endpoint app; checks validity, avoids duplicates, returns response. """
     if not request.json:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error("Request body is not valid JSON.",400)
 
     # check if endpoint app already exists
     endpoint_app = session.scalar(select(EndpointApp).filter_by(
         applicationName=request.json.get("applicationName")))
 
     if endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Endpoint App already exists",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error("Endpoint App already exists",400)
 
     endpoint_app = EndpointApp()
     endpoint_app.applicationType = request.json.get("applicationType")
@@ -345,16 +277,7 @@ def delete_endpoint(device_id):
     """ Deletes SCIM endpoint app by ID, handles not-found case, returns responses. """
     endpoint_app = EndpointApp.query.get(device_id)
     if not endpoint_app:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                    "detail": "Endpoint App not found",
-                    "status": 404,
-                }
-            ),
-            404,
-        )
+        return blow_an_error("Endpoint App not found",404)
 
     session.delete(endpoint_app)
     session.commit()
@@ -366,17 +289,8 @@ def delete_endpoint(device_id):
 def bulk_command():
     """ Processes SCIM bulk requests, handles operations, and returns summarized results. """
     if request.json is None:
-        return make_response(
-            jsonify(
-                {
-                    "schemas": ["urn:ietf:params:scim:api:messages:2.0:Error"],
-                    "scimType": "invalidSyntax",
-                    "detail": "Request body is not valid JSON.",
-                    "status": 400,
-                }
-            ),
-            400,
-        )
+        return blow_an_error("Request body is not valid JSON.",400)
+
     print(request.json.get("schemas"))
     if request.json.get("schemas") == ["urn:ietf:params:scim:api:messages:2.0:BulkRequest"]:
         operations = request.json.get("Operations")
@@ -423,14 +337,4 @@ def bulk_command():
 
         return make_response(jsonify({"status": "SUCCESS", "operations": results}), 200)
 
-    return make_response(
-        jsonify(
-            {
-                "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "scimType": "invalidSyntax",
-                "detail": "Request body is not valid JSON.",
-                "status": 400,
-            }
-        ),
-        400,
-    )
+    return blow_an_error("Request body is not valid JSON.",400)

@@ -10,7 +10,7 @@ This module implements BLE dispatch for SCIM.
 import datetime
 from flask import jsonify, make_response
 from sqlalchemy import select
-from models import EndpointApp, Device
+from models import EndpointApp, BleDevice
 from database import session
 
 
@@ -67,11 +67,8 @@ def ble_create_device(request):
         )
 
     try:
-        user = Device(
+        entry = BleDevice(
             device_id=device_id,
-            schemas=request.json["schemas"],
-            device_display_name=request.json["deviceDisplayName"],
-            admin_state=request.json["adminState"],
             version_support = request.json[
                 "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
                     "versionSupport"),
@@ -98,7 +95,7 @@ def ble_create_device(request):
             endpoint_apps=endpoint_apps,
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
         )
-        session.add(user)
+        session.add(entry)
 
         session.commit()
         return make_response(jsonify(user.serialize()), 201)
