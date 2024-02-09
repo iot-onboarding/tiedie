@@ -61,14 +61,49 @@ devices_endpoint_apps = db.Table(
 )
 
 
-class Device(db.Model):
-    """ Represent BLE device information and associated data fields. """
-    __tablename__ = "bledevices"
-
+class CoreDevice(db.Model):
+    """ Core elements of Tiedie devices."""
+    __tablename__ = "coreschema"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     schemas = db.Column(db.String())
     device_display_name = db.Column(db.String())
     admin_state = db.Column(db.Boolean())
+    created_time = db.Column(db.String())
+    modified_time = db.Column(db.String())
+
+    def __init__(
+            self,
+            device_id,
+            schemas,
+            device_display_name,
+            admin_state,
+            endpoint_apps,
+            created_time,
+    ):
+        self.id = device_id
+        self.schemas = schemas
+        self.device_display_name = device_display_name
+        self.admin_state = admin_state
+        self.created_time = created_time
+        self.modified_time = created_time
+    
+    def serialize(self):
+        """serialize function"""
+        response = {
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"]
+            "id": self.id,
+            "deviceDisplayName": self.device_display_name,
+            "adminState": self.admin_state,
+            "meta": {"resourceType": "Device",
+                     "created": self.created_time,
+                     "lastModified": self.modified_time},
+            }
+
+class BleDevice(db.Model):
+    """ Represent BLE device information and associated data fields. """
+    __tablename__ = "bledevices"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     version_support = db.Column(db.ARRAY(db.String()))
     device_mac_address = db.Column(db.String())
     is_random = db.Column(db.Boolean())
@@ -80,8 +115,6 @@ class Device(db.Model):
     pairing_pass_key = db.Column(db.Integer())
     pairing_oob_key = db.Column(db.String())
     pairing_oobrn = db.Column(db.BigInteger())
-    created_time = db.Column(db.String())
-    modified_time = db.Column(db.String())
 
     endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
         "EndpointApp", secondary=devices_endpoint_apps)
@@ -99,9 +132,6 @@ class Device(db.Model):
     def __init__(
         self,
         device_id,
-        schemas,
-        device_display_name,
-        admin_state,
         version_support,
         device_mac_address,
         is_random,
@@ -114,12 +144,8 @@ class Device(db.Model):
         pairing_oob_key,
         pairing_oobrn,
         endpoint_apps,
-        created_time,
     ):
         self.id = device_id
-        self.schemas = schemas
-        self.device_display_name = device_display_name
-        self.admin_state = admin_state
         self.version_support = version_support
         self.device_mac_address = device_mac_address
         self.is_random = is_random
@@ -133,8 +159,6 @@ class Device(db.Model):
         self.pairing_oobrn = pairing_oobrn
         if endpoint_apps:
             self.endpoint_apps.extend(endpoint_apps)
-        self.created_time = created_time
-        self.modified_time = created_time
 
     def __repr__(self):
         return f"<id {self.id}>"
@@ -142,11 +166,6 @@ class Device(db.Model):
     def serialize(self):
         """serialize function"""
         response = {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
-                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
-            "id": self.id,
-            "deviceDisplayName": self.device_display_name,
-            "adminState": self.admin_state,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": self.version_support,
                 "deviceMacAddress": self.device_mac_address,

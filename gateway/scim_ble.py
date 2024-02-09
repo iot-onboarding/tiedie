@@ -98,7 +98,7 @@ def ble_create_device(request):
         session.add(entry)
 
         session.commit()
-        return make_response(jsonify(user.serialize()), 201)
+        return make_response(jsonify(entry.serialize()), 201)
     except Exception as e:
         return make_response(
             jsonify(

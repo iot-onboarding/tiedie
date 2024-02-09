@@ -80,12 +80,16 @@ def scim_addusers():
             )
         session.add(entry)
         session.commit()
+        core_entry=entry.serialize()
     except Exception as e:
         return blow_an_error(str(e),400)
 
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        return ble_create_device(request)
+        ble_extension= ble_create_device(request)
+        core_entry.update(ble_extensions)
+    return make_response(jsonify(core_entry),200)
+    
     return blow_an_error("Extension not implemented.",501)
 
 @scim_app.route("/Devices/<string:user_id>", methods=["GET"])
