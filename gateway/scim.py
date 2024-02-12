@@ -118,27 +118,34 @@ def get_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        users = Device.query.filter_by(device_mac_address=filter_value).first()
+        entries = CoreDevice.query.filter_by(device_mac_address=filter_value).first()
 
-        if not users:
-            users = []
+        if not entries:
+            entries = []
         else:
-            users = [users]
+            entries = [entries]
 
     else:
-        users = Device.query.paginate(
+        entries = CoreDevice.query.paginate(
             page=start_index, per_page=count, error_out=False).items
 
-    serialized_users = [e.serialize() for e in users]
+    serialized_entries=[]
+    for entry in entries:
+        serialized_entry=entry.serialized()
+        ble_entry=BleDevice.query.get(entry.device_id)
+        if ble_entry:
+            serialized_entry.update(ble_entry.serialize())
+        serialized_entries.append(serialized.entry)
+
 
     return make_response(
         jsonify(
             {
                 "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
-                "totalResults": len(users),
+                "totalResults": len(entries),
                 "startIndex": start_index,
-                "itemsPerPage": len(users),
-                "Resources": serialized_users,
+                "itemsPerPage": len(entries),
+                "Resources": serialized_entries,
             }
         ),
         200,

@@ -30,7 +30,7 @@ from models import (
     EndpointApp,
     GattTopic,
     CoreDevice,
-    BleDevice
+    BleDevice,
     AdvFilter
 )
 
