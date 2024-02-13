@@ -200,7 +200,7 @@ class BleDevice(db.Model):
                     "key": self.pairing_oob_key,
                     "randNumber": self.pairing_oobrn
             }
-
+        core["schemas"].append("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
         if self.endpoint_apps is not None:
             core["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
