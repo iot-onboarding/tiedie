@@ -194,7 +194,7 @@ def delete_device(entry_id):
     """Delete SCIM User"""
     entry = CoreDevice.query.get(entry_id)
     if not entry:
-        return blow_an_error("Device not found",404)
+        return blow_an_error("Device not found",500)
     session.delete(entry)
     ble_entry = BleDevice.query.get(entry_id)
     if ble_entry:
