@@ -98,7 +98,7 @@ def get_entry(device_id):
     entry = session.get(BleDevice,device_id)
     if entry:
         core.update(entry.serialize())
-    return jsonify(entry)
+    return jsonify(core)
 
 
 @scim_app.route("/Devices", methods=["GET"])
