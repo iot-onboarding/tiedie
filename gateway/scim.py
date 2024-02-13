@@ -180,7 +180,7 @@ def update_entry(entry_id):
 
         ble_json=request.json[
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
-        ble_entry=ble_update_device(ble_json)
+        ble_entry=ble_update_device(ble_json,core)
     else:
         return blow_an_error("Extension not implemented.",501)
 
