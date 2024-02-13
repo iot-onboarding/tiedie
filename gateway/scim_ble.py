@@ -95,8 +95,8 @@ def ble_update_device(request,core):
     """
     Update SCIM entry for BLE device.
     """
-    entry: BleDevice = BleDevice.query.get(request.json["id"])
-    # if ble is added, just add it.
+    entry: BleDevice = session.get(BleDevice,request.json["id"])
+    # if ble is added in update, just add it.
     if not entry:
         return ble_create_device(request,core)
 

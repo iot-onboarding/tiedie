@@ -90,12 +90,12 @@ def get_user(device_id):
     If not found, a "User not found" response with a status code of 404
     is returned.
     """
-    entry = CoreDevice.query.get(device_id)
+    entry = session.get(CoreDevice,device_id)
     if not entry:
         return blow_an_error("Device not found",404)
 
     core=entry.serialize()
-    entry = BleDevice.query.get(device_id)
+    entry = session.get(BleDevice,device_id)
     if entry:
         core.update(entry.serialize())
     return jsonify(entry)
@@ -132,7 +132,7 @@ def get_devices():
     serialized_entries=[]
     for entry in entries:
         serialized_entry=entry.serialized()
-        ble_entry=BleDevice.query.get(entry.device_id)
+        ble_entry=session.get(BleDevice,entry.device_id)
         if ble_entry:
             serialized_entry.update(ble_entry.serialize())
         serialized_entries.append(serialized_entry)
@@ -164,7 +164,7 @@ def update_entry(entry_id):
     if not request.json:
         return blow_an_error("Request body is not valid JSON.",400)
 
-    entry: CoreDevice = CoreDevice.query.get(entry_id)
+    entry: CoreDevice = session.get(CoreDevice,entry_id)
 
     if not entry:
         return blow_an_error("Device not found",404)
@@ -192,11 +192,11 @@ def update_entry(entry_id):
 @authenticate_user
 def delete_device(entry_id):
     """Delete SCIM User"""
-    entry = CoreDevice.query.get(entry_id)
+    entry = session.get(CoreDevice,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
     session.delete(entry)
-    ble_entry = BleDevice.query.get(entry_id)
+    ble_entry = session.get(BleDevice,entry_id)
     if ble_entry:
         session.delete(ble_entry)
     session.commit()
@@ -295,7 +295,7 @@ def create_endpoint():
 @authenticate_user
 def delete_endpoint(device_id):
     """ Deletes SCIM endpoint app by ID, handles not-found case, returns responses. """
-    endpoint_app = EndpointApp.query.get(device_id)
+    endpoint_app = session.get(EndPointApp,device_id)
     if not endpoint_app:
         return blow_an_error("Endpoint App not found",404)
 
