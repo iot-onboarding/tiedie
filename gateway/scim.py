@@ -79,7 +79,7 @@ def scim_addusers():
     else:
         return blow_an_error("Extension not implemented.",501)
 
-    return make_response(jsonify(core),200)
+    return make_response(jsonify(core),201)
 
 
 @scim_app.route("/Devices/<string:device_id>", methods=["GET"])
