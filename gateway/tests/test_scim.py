@@ -121,7 +121,6 @@ def test_get_device(client: FlaskClient, api_key):
         }
     )
 
-    print(response.json)
     device_id = response.json["id"]
 
     response = client.get(f"/scim/v2/Devices/{device_id}", headers={
