@@ -295,7 +295,7 @@ def create_endpoint():
 @authenticate_user
 def delete_endpoint(device_id):
     """ Deletes SCIM endpoint app by ID, handles not-found case, returns responses. """
-    endpoint_app = session.get(EndPointApp,device_id)
+    endpoint_app = session.get(EndpointApp,device_id)
     if not endpoint_app:
         return blow_an_error("Endpoint App not found",404)
 
