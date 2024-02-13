@@ -188,13 +188,13 @@ def update_user(entry_id):
     core.update(ble_extension)
     return make_response(jsonify(core),200)
 
-@scim_app.route("/Devices/<string:user_id>", methods=["DELETE"])
+@scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
 @authenticate_user
 def delete_device(entry_id):
     """Delete SCIM User"""
     entry = CoreDevice.query.get(entry_id)
     if not entry:
-        return blow_an_error("Device not found",500)
+        return blow_an_error("Device not found",404)
     session.delete(entry)
     ble_entry = BleDevice.query.get(entry_id)
     if ble_entry:
