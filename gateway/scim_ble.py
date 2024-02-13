@@ -7,7 +7,6 @@
 This module implements BLE dispatch for SCIM.
 """
 
-import datetime
 from flask import jsonify, make_response
 from sqlalchemy import select
 from models import EndpointApp, BleDevice
