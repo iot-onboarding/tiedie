@@ -10,7 +10,6 @@ and serves a secure Flask web application with MQTT and BLE integration.
 
 """
 
-import datetime
 import uuid
 import ssl
 
@@ -48,7 +47,7 @@ def onboarding_apiauth(name):
 
 def mqtt_connect() -> mqtt.Client:
     """ Function MQTT connect """
-    client = mqtt.Client()
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.tls_set(ca_certs="ca_certificates/ca.pem")
     client.tls_insecure_set(True)
     client.username_pw_set("admin", "admin")
