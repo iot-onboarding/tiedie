@@ -13,7 +13,7 @@ from models import EndpointApp, BleDevice
 from database import session
 from scim_error import blow_an_error
 
-def ble_create_device(request):
+def ble_create_device(request,core):
     """
     Process BLE SCIM creation request.  Returns SCIM object or error.
     """
@@ -87,7 +87,7 @@ def ble_create_device(request):
         session.add(entry)
 
         session.commit()
-        return entry.serialize()
+        return entry.serialize(core)
     except Exception as e:
         return blow_an_error(str(e),400)
 
