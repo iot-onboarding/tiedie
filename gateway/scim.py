@@ -132,7 +132,7 @@ def get_devices():
     serialized_entries=[]
     for entry in entries:
         serialized_entry=entry.serialize()
-        ble_entry=session.get(BleDevice,entry.device_id)
+        ble_entry=session.get(BleDevice,entry.id)
         if ble_entry:
             serialized_entry.update(ble_entry.serialize())
         serialized_entries.append(serialized_entry)
