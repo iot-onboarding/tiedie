@@ -29,7 +29,6 @@ from models import (
     DataAppTopic,
     EndpointApp,
     GattTopic,
-    CoreDevice,
     BleDevice,
     AdvFilter
 )
@@ -276,7 +275,7 @@ def subscribe():
         characteristic_id = ble["characteristicID"].lower()
 
         device = session.execute(
-            select(Device).filter_by(id=device_id)).scalar_one_or_none()
+            select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
 
         gatt_topic = GattTopic(
             topic, service_id, characteristic_id, data_format, [device])
@@ -591,7 +590,7 @@ def get_topics_by_data_app(data_app_id: str):
 @authenticate_user
 def get_topics_by_device_id(device_id: str):
     """ Fetch registered topics information """
-    device = session.scalar(select(Device).filter_by(id=device_id))
+    device = session.scalar(select(BleDevice).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST

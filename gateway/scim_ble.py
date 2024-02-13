@@ -51,7 +51,7 @@ def ble_create_device(request):
         pairing_oobrn = pairing.get("randNumber")
     device_id = request.json.get("id")
 
-    existing_device = Device.query.filter_by(
+    existing_device = BleDevice.query.filter_by(
         device_mac_address=device_mac_address).first()
 
     if existing_device:
@@ -83,8 +83,7 @@ def ble_create_device(request):
             pairing_pass_key=pairing_pass_key,
             pairing_oob_key=pairing_oob_key,
             pairing_oobrn=pairing_oobrn,
-            endpoint_apps=endpoint_apps,
-            created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+            endpoint_apps=endpoint_apps
         )
         session.add(entry)
 
@@ -97,11 +96,11 @@ def ble_update_device(request):
     """
     Update SCIM entry for BLE device.
     """
-    entry: BleDevice = BleDevice.query.get(entry_id)
+    entry: BleDevice = BleDevice.query.get(request.json["id"])
     # if ble is added, just add it.
     if not entry:
-        return create_ble_device(request)
-    
+        return ble_create_device(request)
+
     entry.version_support = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
         "versionSupport")

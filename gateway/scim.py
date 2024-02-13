@@ -17,7 +17,7 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from database import session
-from models import EndpointApp, CoreDevice, OnboardingAppKey
+from models import EndpointApp, BleDevice, CoreDevice, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
 from scim_error import blow_an_error
@@ -78,7 +78,7 @@ def scim_addusers():
         core.update(ble_extensions)
     else:
         return blow_an_error("Extension not implemented.",501)
-        
+
     return make_response(jsonify(core),200)
 
 
@@ -135,7 +135,7 @@ def get_devices():
         ble_entry=BleDevice.query.get(entry.device_id)
         if ble_entry:
             serialized_entry.update(ble_entry.serialize())
-        serialized_entries.append(serialized.entry)
+        serialized_entries.append(serialized_entry)
 
 
     return make_response(
@@ -192,9 +192,9 @@ def update_user(entry_id):
 @authenticate_user
 def delete_device(entry_id):
     """Delete SCIM User"""
-    entry = Device.query.get(entry_id)
-    if not user:
-        return blow_an_error("User not found",404)
+    entry = CoreDevice.query.get(entry_id)
+    if not entry:
+        return blow_an_error("Device not found",404)
     session.delete(entry)
     ble_entry = BleDevice.query.get(entry_id)
     if ble_entry:
