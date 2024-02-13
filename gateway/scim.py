@@ -74,7 +74,7 @@ def scim_addusers():
 
     # Dispatch to appropriate function
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        ble_extensions= ble_create_device(request)
+        ble_extensions= ble_create_device(request,core)
         core.update(ble_extensions)
     else:
         return blow_an_error("Extension not implemented.",501)
@@ -154,7 +154,7 @@ def get_devices():
 
 @scim_app.route("/Devices/<string:entry_id>", methods=["PUT"])
 @authenticate_user
-def update_user(entry_id):
+def update_entry(entry_id):
     """
     Function to retrieve SCIM device data based on parameters like start
     index, count, and filters.
@@ -184,7 +184,7 @@ def update_user(entry_id):
     else:
         return blow_an_error("Extension not implemented.",501)
 
-    ble_extension=ble_entry.serialize()
+    ble_extension=ble_entry.serialize(core)
     core.update(ble_extension)
     return make_response(jsonify(core),200)
 

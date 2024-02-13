@@ -163,7 +163,7 @@ class BleDevice(db.Model):
     def __repr__(self):
         return f"<id {self.id}>"
 
-    def serialize(self):
+    def serialize(self,core):
         """serialize function"""
         response = {
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
@@ -171,10 +171,7 @@ class BleDevice(db.Model):
                 "deviceMacAddress": self.device_mac_address,
                 "isRandom": self.is_random,
                 "pairingMethods": self.pairing_methods,
-            },
-            "meta": {"resourceType": "Device",
-                     "created": self.created_time,
-                     "lastModified": self.modified_time},
+            }
         }
 
         if self.irk:
@@ -205,9 +202,9 @@ class BleDevice(db.Model):
             }
 
         if self.endpoint_apps is not None:
-            response["schemas"].append(
+            core["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
-            response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
+            core["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
                 "applications": [{"value": app.id,
                                   "$ref":  f"https://{EXTERNAL_HOST}:"
