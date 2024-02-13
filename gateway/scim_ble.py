@@ -91,14 +91,14 @@ def ble_create_device(request,core):
     except Exception as e:
         return blow_an_error(str(e),400)
 
-def ble_update_device(request):
+def ble_update_device(request,core):
     """
     Update SCIM entry for BLE device.
     """
     entry: BleDevice = BleDevice.query.get(request.json["id"])
     # if ble is added, just add it.
     if not entry:
-        return ble_create_device(request)
+        return ble_create_device(request,core)
 
     entry.version_support = request.json[
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"].get(
