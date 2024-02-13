@@ -84,7 +84,7 @@ def scim_addusers():
 
 @scim_app.route("/Devices/<string:device_id>", methods=["GET"])
 @authenticate_user
-def get_user(device_id):
+def get_entry(device_id):
     """
     SCIM API: Retrieve user data by ID and onboardApp parameters.
     If not found, a "User not found" response with a status code of 404
