@@ -190,10 +190,10 @@ def delete_device(entry_id):
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
 @authenticate_user
-def get_endpoint(device_id):
+def get_endpoint(endpoint_id):
     """Get SCIM Endpoint"""
     endpoint_app = session.scalar(
-        select(EndpointApp).filter_by(id=device_id))
+        select(EndpointApp).filter_by(id=endpoint_id))
     if not endpoint_app:
         return blow_an_error("Endpoint App not found",404)
 
