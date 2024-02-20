@@ -17,10 +17,11 @@ from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from database import session
-from models import EndpointApp, BleDevice, CoreDevice, OnboardingAppKey
+from models import EndpointApp, BleExtension, Device, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
 from scim_error import blow_an_error
+from tiedie_exceptions import DeviceExists
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
 
@@ -46,7 +47,7 @@ def authenticate_user(func):
 
 @scim_app.route('/Devices', methods=['POST'])
 @authenticate_user
-def scim_addusers():
+def add_scim_entry():
     """
     This code defines a SCIM API endpoint for creating users,
     extracts data from the request JSON, and stores user information in a database.
@@ -56,28 +57,29 @@ def scim_addusers():
         return blow_an_error("Request body is not valid JSON.",400)
 
     schemas = request.json.get("schemas")
+    device_id=request.json.get("id")
 
     # Add device core object
     try:
-        entry = CoreDevice(
-            device_id=request.json.get("id"),
+        entry = Device(
+            device_id=device_id,
             schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
+        # Dispatch to appropriate function
+        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
+            ble_create_device(request)
         session.add(entry)
         session.commit()
+
         core=entry.serialize()
+
+    except DeviceExists:
+        return blow_an_error("Device already exists", 500)
     except Exception as e:
         return blow_an_error(str(e),400)
-
-    # Dispatch to appropriate function
-    if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        ble_extensions= ble_create_device(request,core)
-        core.update(ble_extensions)
-    else:
-        return blow_an_error("Extension not implemented.",501)
 
     return make_response(jsonify(core),201)
 
@@ -90,15 +92,11 @@ def get_entry(device_id):
     If not found, a "User not found" response with a status code of 404
     is returned.
     """
-    entry = session.get(CoreDevice,device_id)
+    entry = session.get(Device,device_id)
     if not entry:
         return blow_an_error("Device not found",404)
 
-    core=entry.serialize()
-    entry = session.get(BleDevice,device_id)
-    if entry:
-        core.update(entry.serialize())
-    return jsonify(core)
+    return jsonify(entry.serialize())
 
 
 @scim_app.route("/Devices", methods=["GET"])
@@ -118,23 +116,19 @@ def get_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        entries = CoreDevice.query.filter_by(device_mac_address=filter_value).first()
+        ble_entries = BleExtension.query.filter_by(device_mac_address=filter_value).first()
 
-        if not entries:
-            entries = []
-        else:
-            entries = [entries]
-
+        entries = []
+        if ble_entries:
+            for ble_entry in ble_entries:
+                entries.update(ble_entry.device)
     else:
-        entries = CoreDevice.query.paginate(
+        entries = Device.query.paginate(
             page=start_index, per_page=count, error_out=False).items
 
     serialized_entries=[]
     for entry in entries:
         serialized_entry=entry.serialize()
-        ble_entry=session.get(BleDevice,entry.id)
-        if ble_entry:
-            serialized_entry.update(ble_entry.serialize())
         serialized_entries.append(serialized_entry)
 
 
@@ -164,7 +158,7 @@ def update_entry(entry_id):
     if not request.json:
         return blow_an_error("Request body is not valid JSON.",400)
 
-    entry: CoreDevice = session.get(CoreDevice,entry_id)
+    entry: Device = session.get(Device,entry_id)
 
     if not entry:
         return blow_an_error("Device not found",404)
@@ -174,31 +168,22 @@ def update_entry(entry_id):
     entry.admin_state = request.json.get("adminState")
     entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     session.commit()
-    core=entry.serialize()
     schemas = request.json["schemas"]
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-
-        ble_json=request.json[
-            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
-        ble_entry=ble_update_device(ble_json,core)
-    else:
-        return blow_an_error("Extension not implemented.",501)
-
-    ble_extension=ble_entry.serialize(core)
-    core.update(ble_extension)
-    return make_response(jsonify(core),200)
+        ble_update_device(request)
+    return make_response(jsonify(entry.serialize()),200)
 
 @scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
 @authenticate_user
 def delete_device(entry_id):
     """Delete SCIM User"""
-    entry = session.get(CoreDevice,entry_id)
+    entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
-    session.delete(entry)
-    ble_entry = session.get(BleDevice,entry_id)
+    ble_entry = session.get(BleExtension,entry_id)
     if ble_entry:
         session.delete(ble_entry)
+    session.delete(entry)
     session.commit()
     return make_response("", 204)
 

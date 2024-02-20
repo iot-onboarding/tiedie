@@ -15,7 +15,8 @@ from datetime import datetime
 from typing import Any, List, Optional
 
 import uuid
-from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, \
+    ForeignKey, Integer, String, ARRAY, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT
@@ -61,15 +62,17 @@ devices_endpoint_apps = db.Table(
 )
 
 
-class CoreDevice(db.Model):
+class Device(db.Model):
     """ Core elements of Tiedie devices."""
-    __tablename__ = "coreschema"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    schemas = db.Column(db.String())
-    device_display_name = db.Column(db.String())
-    admin_state = db.Column(db.Boolean())
-    created_time = db.Column(db.String())
-    modified_time = db.Column(db.String())
+    __tablename__ = "devices"
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    schemas = mapped_column(String)
+    device_display_name = mapped_column(String)
+    admin_state = mapped_column(Boolean)
+    created_time = mapped_column(String)
+    modified_time = mapped_column(String)
+
+    ble_extension: Mapped[Optional["BleExtension"]] = relationship(back_populates="device")
 
     def __init__(
             self,
@@ -89,7 +92,7 @@ class CoreDevice(db.Model):
     def serialize(self):
         """serialize function"""
         response = {
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device"],
+            "schemas" : self.schemas,
             "id": self.id,
             "deviceDisplayName": self.device_display_name,
             "adminState": self.admin_state,
@@ -97,24 +100,26 @@ class CoreDevice(db.Model):
                      "created": self.created_time,
                      "lastModified": self.modified_time},
             }
+        if self.ble_extension:
+            response.update(self.ble_extension.serialize())
         return response
 
-class BleDevice(db.Model):
+class BleExtension(db.Model):
     """ Represent BLE device information and associated data fields. """
     __tablename__ = "bledevices"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    version_support = db.Column(db.ARRAY(db.String()))
-    device_mac_address = db.Column(db.String())
-    is_random = db.Column(db.Boolean())
-    separate_broadcast_address = db.Column(db.ARRAY(db.String()))
-    irk = db.Column(db.String())
-    pairing_methods = db.Column(db.ARRAY(db.String()))
-    pairing_null = db.Column(db.String())
-    pairing_just_works_key = db.Column(db.Integer())
-    pairing_pass_key = db.Column(db.Integer())
-    pairing_oob_key = db.Column(db.String())
-    pairing_oobrn = db.Column(db.BigInteger())
+    device_id = mapped_column(ForeignKey("devices.id"),primary_key=True)
+    device_mac_address = mapped_column(String)
+    version_support = mapped_column(ARRAY(String))
+    is_random = mapped_column(Boolean())
+    separate_broadcast_address = mapped_column(ARRAY(String))
+    irk = mapped_column(String)
+    pairing_methods = mapped_column(ARRAY(String))
+    pairing_null = mapped_column(String)
+    pairing_just_works_key = mapped_column(Integer)
+    pairing_pass_key = mapped_column(Integer)
+    pairing_oob_key = mapped_column(String)
+    pairing_oobrn = mapped_column(BigInteger)
 
     endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
         "EndpointApp", secondary=devices_endpoint_apps)
@@ -128,12 +133,13 @@ class BleDevice(db.Model):
     connection_topics: Mapped[List["ConnectionTopic"]] = \
         relationship("ConnectionTopic", secondary=connection_topic_devices,
                      back_populates="devices")
+    device: Mapped[Device] = relationship(back_populates="ble_extension")
 
     def __init__(
         self,
         device_id,
-        version_support,
         device_mac_address,
+        version_support,
         is_random,
         separate_broadcast_address,
         irk,
@@ -146,8 +152,8 @@ class BleDevice(db.Model):
         endpoint_apps,
     ):
         self.id = device_id
-        self.version_support = version_support
         self.device_mac_address = device_mac_address
+        self.version_support = version_support
         self.is_random = is_random
         self.separate_broadcast_address = separate_broadcast_address
         self.irk = irk
@@ -163,17 +169,18 @@ class BleDevice(db.Model):
     def __repr__(self):
         return f"<id {self.id}>"
 
-    def serialize(self,core):
+    def serialize(self):
         """serialize function"""
         response = {
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": self.version_support,
-                "deviceMacAddress": self.device_mac_address,
                 "isRandom": self.is_random,
                 "pairingMethods": self.pairing_methods,
             }
         }
 
+        if self.device_mac_address:
+            response['device_mac_address'] = self.device_mac_address
         if self.irk:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "irk"] = self.irk
@@ -200,11 +207,10 @@ class BleDevice(db.Model):
                     "key": self.pairing_oob_key,
                     "randNumber": self.pairing_oobrn
             }
-        core["schemas"].append("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
         if self.endpoint_apps is not None:
-            core["schemas"].append(
+            self.device["schemas"].append(
                 "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
-            core["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
+            self.device["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
                 "applications": [{"value": app.id,
                                   "$ref":  f"https://{EXTERNAL_HOST}:"
@@ -279,7 +285,7 @@ class GattTopic(db.Model):
     characteristic_uuid = Column(String())
     data_format = Column(Enum("default", "payload", name="data_format"))
 
-    devices: Mapped[List[BleDevice]] = relationship(
+    devices: Mapped[List[BleExtension]] = relationship(
         secondary=gatt_topic_devices, back_populates="gatt_topics")
 
     def __init__(self, topic, service_uuid, characteristic_uuid, data_format, devices):
@@ -319,7 +325,7 @@ class AdvTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[BleDevice]] = relationship(
+    devices: Mapped[List[BleExtension]] = relationship(
         secondary=adv_topic_devices, back_populates="adv_topics")
     onboarded = Column(Boolean, default=False)
     filter_type = Column(String())
@@ -347,7 +353,7 @@ class ConnectionTopic(db.Model):
 
     topic = Column(String(), primary_key=True, unique=True)
     data_format = Column(Enum("default", "payload", name="data_format"))
-    devices: Mapped[List[BleDevice]] = relationship(
+    devices: Mapped[List[BleExtension]] = relationship(
         secondary=connection_topic_devices, back_populates="connection_topics")
 
     def __init__(self, topic: str, data_format, devices: Any):
