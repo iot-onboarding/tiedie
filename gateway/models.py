@@ -28,7 +28,7 @@ gatt_topic_devices = db.Table(
         "topic", String(), db.ForeignKey("gatt_topics.topic"), primary_key=True
     ),
     Column(
-        "device_id", UUID(as_uuid=True), db.ForeignKey("bledevices.id"), primary_key=True
+        "device_id", UUID(as_uuid=True), db.ForeignKey("devices.id"), primary_key=True
     ),
 )
 
@@ -38,7 +38,7 @@ adv_topic_devices = db.Table(
         "topic", String(), db.ForeignKey("adv_topics.topic"), primary_key=True
     ),
     Column(
-        "device_id", UUID(as_uuid=True), db.ForeignKey("bledevices.id"), primary_key=True
+        "device_id", UUID(as_uuid=True), db.ForeignKey("devices.id"), primary_key=True
     ),
 )
 
@@ -48,7 +48,7 @@ connection_topic_devices = db.Table(
         "topic", String(), db.ForeignKey("connection_topics.topic"), primary_key=True
     ),
     Column(
-        "device_id", UUID(as_uuid=True), db.ForeignKey("bledevices.id"), primary_key=True
+        "device_id", UUID(as_uuid=True), db.ForeignKey("devices.id"), primary_key=True
     ),
 )
 
@@ -57,7 +57,7 @@ devices_endpoint_apps = db.Table(
     Column("endpoint_app_id", UUID(as_uuid=True),
            ForeignKey("endpoint_app.id"), primary_key=True),
     Column(
-        "device_id", UUID(as_uuid=True), ForeignKey("bledevices.id"), primary_key=True
+        "device_id", UUID(as_uuid=True), ForeignKey("devices.id"), primary_key=True
     ),
 )
 
