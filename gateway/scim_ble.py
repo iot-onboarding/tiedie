@@ -8,9 +8,9 @@ This module implements BLE dispatch for SCIM.
 """
 
 from sqlalchemy import select
+from tiedie_exceptions import DeviceExists
 from models import EndpointApp, BleExtension
 from database import session
-from tiedie_exceptions import DeviceExists
 
 def ble_create_device(request):
     """
