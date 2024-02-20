@@ -65,7 +65,7 @@ devices_endpoint_apps = db.Table(
 class Device(db.Model):
     """ Core elements of Tiedie devices."""
     __tablename__ = "devices"
-    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    device_id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     schemas = mapped_column(String)
     device_display_name = mapped_column(String)
     admin_state = mapped_column(Boolean)
@@ -82,7 +82,7 @@ class Device(db.Model):
             admin_state,
             created_time
     ):
-        self.id = device_id
+        self.device_id = device_id
         self.schemas = schemas
         self.device_display_name = device_display_name
         self.admin_state = admin_state
@@ -93,7 +93,7 @@ class Device(db.Model):
         """serialize function"""
         response = {
             "schemas" : self.schemas,
-            "id": self.id,
+            "id": self.device_id,
             "deviceDisplayName": self.device_display_name,
             "adminState": self.admin_state,
             "meta": {"resourceType": "Device",
@@ -108,7 +108,8 @@ class BleExtension(db.Model):
     """ Represent BLE device information and associated data fields. """
     __tablename__ = "bledevices"
 
-    device_id = mapped_column(ForeignKey("devices.id"),primary_key=True)
+    device_id = mapped_column(UUID(as_uuid=True),ForeignKey("devices.device_id"),
+                              primary_key=True)
     device_mac_address = mapped_column(String)
     version_support = mapped_column(ARRAY(String))
     is_random = mapped_column(Boolean())
@@ -151,7 +152,7 @@ class BleExtension(db.Model):
         pairing_oobrn,
         endpoint_apps,
     ):
-        self.id = device_id
+        self.device_id = device_id
         self.device_mac_address = device_mac_address
         self.version_support = version_support
         self.is_random = is_random
@@ -167,7 +168,7 @@ class BleExtension(db.Model):
             self.endpoint_apps.extend(endpoint_apps)
 
     def __repr__(self):
-        return f"<id {self.id}>"
+        return f"<id {self.device_id}>"
 
     def serialize(self):
         """serialize function"""
