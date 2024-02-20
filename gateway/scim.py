@@ -69,7 +69,7 @@ def add_scim_entry():
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         # Dispatch to appropriate function
-        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device:NOTHERE' in schemas:
+        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             ble_create_device(request)
         session.add(entry)
         session.commit()
