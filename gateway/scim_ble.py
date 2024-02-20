@@ -53,8 +53,9 @@ def ble_create_device(request):
         device_mac_address=device_mac_address).first()
 
     if existing_device:
-        raise DeviceExists
-
+        raise DeviceExists("Device Exists")
+    if device_id:
+        return
     entry = BleExtension(
         device_id=device_id,
         version_support = ble_json.get("versionSupport"),
