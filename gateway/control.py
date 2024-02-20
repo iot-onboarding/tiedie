@@ -29,7 +29,7 @@ from models import (
     DataAppTopic,
     EndpointApp,
     GattTopic,
-    BleDevice,
+    BleExtension,
     AdvFilter
 )
 
@@ -92,7 +92,7 @@ def get_connection():
 def get_connection_by_id(device_id: str):
     """ Get connection state for a device """
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     conn = ble_ap().get_connection(device.device_mac_address)
 
@@ -107,7 +107,7 @@ def get_connection_by_id(device_id: str):
 def connect_by_id(device_id: str):
     """ Connect API """
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     return ble_ap().connect(device.device_mac_address,
                             BleConnectOptions(
@@ -131,7 +131,7 @@ def connect():
     cache_idle_purge = ble.get("cacheIdlePurge", 3600)
 
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     resp, respcode = ble_ap().connect(device.device_mac_address,
                                       BleConnectOptions(
@@ -146,7 +146,7 @@ def connect():
 def disconnect_by_id(device_id: str):
     """ Disconnect API """
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     return ble_ap().disconnect(device.device_mac_address)
 
@@ -158,7 +158,7 @@ def disconnect():
     device_id = request.args.get("id")
 
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     return ble_ap().disconnect(device.device_mac_address)
 
@@ -168,7 +168,7 @@ def disconnect():
 def discover_by_id(device_id: str):
     """ Service discovery API """
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     return ble_ap().discover(device.device_mac_address,
                              BleConnectOptions(
@@ -185,7 +185,7 @@ def discover():
     device_id = request.args.get("id")
 
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     services = request.args.getlist("ble[services][serviceID]")
     cached = request.args.get("ble[cached]", False)
@@ -211,7 +211,7 @@ def read():
     characteristic_id = request.args["ble[characteristicID]"].lower()
 
     device = session.execute(
-        select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+        select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
     resp, respcode = ble_ap().read(
         device.device_mac_address, service_id, characteristic_id)
@@ -233,7 +233,7 @@ def write():
     characteristic_id = ble["characteristicID"].lower()
     value = request.json["value"].lower()
 
-    device = session.scalar(select(BleDevice).filter_by(id=device_id))
+    device = session.scalar(select(BleExtension).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -257,7 +257,7 @@ def subscribe():
     service_id = ble["serviceID"].lower()
     characteristic_id = ble["characteristicID"].lower()
 
-    device = session.scalar(select(BleDevice).filter_by(id=device_id))
+    device = session.scalar(select(BleExtension).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -275,7 +275,7 @@ def subscribe():
         characteristic_id = ble["characteristicID"].lower()
 
         device = session.execute(
-            select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+            select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
         gatt_topic = GattTopic(
             topic, service_id, characteristic_id, data_format, [device])
@@ -298,7 +298,7 @@ def unsubscribe():
     service_id = ble["serviceID"].lower()
     characteristic_id = ble["characteristicID"].lower()
 
-    device = session.scalar(select(BleDevice).filter_by(id=device_id))
+    device = session.scalar(select(BleExtension).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -331,7 +331,7 @@ def register_topic():
         characteristic_id = ble["characteristicID"].lower()
 
         device = session.execute(
-            select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+            select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
         gatt_topic = GattTopic(
             topic, service_id, characteristic_id, data_format, [device])
@@ -339,7 +339,7 @@ def register_topic():
         session.commit()
     elif ad_type == "connection_events":
         device = session.execute(
-            select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+            select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
         if not device:
             return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -351,7 +351,7 @@ def register_topic():
     elif ad_type == "advertisements":
         if device_id is not None:
             device = session.execute(
-                select(BleDevice).filter_by(id=device_id)).scalar_one_or_none()
+                select(BleExtension).filter_by(id=device_id)).scalar_one_or_none()
 
             if device is None:
                 return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -590,7 +590,7 @@ def get_topics_by_data_app(data_app_id: str):
 @authenticate_user
 def get_topics_by_device_id(device_id: str):
     """ Fetch registered topics information """
-    device = session.scalar(select(BleDevice).filter_by(id=device_id))
+    device = session.scalar(select(BleExtension).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
@@ -618,7 +618,7 @@ def get_topics_by_device_id(device_id: str):
 @authenticate_user
 def delete_topics_by_device_id(device_id: str):
     """ Function to unregister topic """
-    device = session.scalar(select(BleDevice).filter_by(id=device_id))
+    device = session.scalar(select(BleExtension).filter_by(id=device_id))
 
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
