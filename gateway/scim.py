@@ -16,12 +16,12 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
+from tiedie_exceptions import DeviceExists
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
 from scim_error import blow_an_error
-from tiedie_exceptions import DeviceExists
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
 
