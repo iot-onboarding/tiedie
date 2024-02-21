@@ -12,11 +12,10 @@ from tiedie_exceptions import DeviceExists
 from models import EndpointApp, BleExtension
 from database import session
 
-def ble_create_device(request):
+def ble_create_device(request,device_id):
     """
     Process BLE SCIM creation request.  No return value.
     """
-    device_id= request.json.get("id")
     ble_json = request.json.get("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
     device_mac_address = ble_json.get("deviceMacAddress")
 
@@ -36,7 +35,7 @@ def ble_create_device(request):
         # Select all endpoint apps from the database
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
-
+    
     if pairing_just_works:
         pairing_just_works_key = pairing_just_works.get("key")
     pairing_pass = ble_json.get(
@@ -54,8 +53,7 @@ def ble_create_device(request):
 
     if existing_device:
         raise DeviceExists("Device Exists")
-    if device_id:
-        return
+
     entry = BleExtension(
         device_id=device_id,
         version_support = ble_json.get("versionSupport"),
@@ -73,7 +71,7 @@ def ble_create_device(request):
         endpoint_apps=endpoint_apps
     )
     session.add(entry)
-    session.commit()
+
 
 
 def ble_update_device(request):
@@ -83,7 +81,8 @@ def ble_update_device(request):
     entry: BleExtension = session.get(BleExtension,request.json["id"])
     # if ble is added in update, just add it.
     if not entry:
-        ble_create_device(request)
+        ble_create_device(request,request.json["id"])
+        session.commit()
         return
 
     ble_json=request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]

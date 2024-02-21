@@ -16,7 +16,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from tiedie_exceptions import DeviceExists
+from tiedie_exceptions import DeviceExists,IDNotAllowedOnCreate
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey
 from util import make_hash
@@ -59,10 +59,15 @@ def add_scim_entry():
     schemas = request.json.get("schemas")
     device_id=request.json.get("id")
 
+    if device_id:
+        return(blow_an_error("Specifying id on create not permitted", 400))
+        
+    device_id = uuid.uuid4()
+
     # Add device core object
     try:
         entry = Device(
-            device_id=device_id,
+#            device_id=device_id,
             schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
@@ -70,7 +75,7 @@ def add_scim_entry():
         )
         # Dispatch to appropriate function
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-            ble_create_device(request)
+            ble_create_device(request,device_id)
         session.add(entry)
         session.commit()
 
@@ -163,14 +168,17 @@ def update_entry(entry_id):
     if not entry:
         return blow_an_error("Device not found",404)
 
-    entry.id = request.json.get("id")
-    entry.device_display_name = request.json.get("deviceDisplayName")
-    entry.admin_state = request.json.get("adminState")
-    entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    session.commit()
-    schemas = request.json["schemas"]
-    if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        ble_update_device(request)
+    try:
+        entry.device_id = request.json.get("id")
+        entry.device_display_name = request.json.get("deviceDisplayName")
+        entry.admin_state = request.json.get("adminState")
+        entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        schemas = request.json["schemas"]
+        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
+            ble_update_device(request)
+            session.commit()
+    except Exception as e:
+        return(blow_an_error(str(e),404)) # intentionally using a different error
     return make_response(jsonify(entry.serialize()),200)
 
 @scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
