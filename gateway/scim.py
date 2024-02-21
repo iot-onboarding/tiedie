@@ -81,16 +81,15 @@ def add_scim_entry():
     # Add device core object
     try:
         entry = Device(
-            device_id=device_id,
             schemas=schemas,
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
             endpoint_apps=endpoint_apps,
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
-        # Dispatch to appropriate function
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-            ble_create_device(request,device_id)
+            entry.ble_extension = ble_create_device(request,device_id)
+        # Dispatch to appropriate function
         session.add(entry)
         session.commit()
 

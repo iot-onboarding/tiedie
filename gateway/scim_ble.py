@@ -58,7 +58,7 @@ def ble_create_device(request,device_id):
         pairing_oob_key=pairing_oob_key,
         pairing_oobrn=pairing_oobrn,
     )
-    session.add(entry)
+    return entry
 
 
 
@@ -69,7 +69,7 @@ def ble_update_device(request):
     entry: BleExtension = session.get(BleExtension,request.json["id"])
     # if ble is added in update, just add it.
     if not entry:
-        ble_create_device(request,request.json["id"])
+        entry = ble_create_device(request,request.json["id"])
         session.commit()
         return
 

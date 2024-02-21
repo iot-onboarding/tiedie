@@ -78,14 +78,13 @@ class Device(db.Model):
 
     def __init__(
             self,
-            device_id,
             schemas,
             device_display_name,
             admin_state,
             endpoint_apps,
             created_time
     ):
-        self.device_id = device_id
+
         self.schemas = schemas
         self.device_display_name = device_display_name
         self.admin_state = admin_state
