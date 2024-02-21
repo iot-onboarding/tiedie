@@ -57,7 +57,7 @@ devices_endpoint_apps = db.Table(
     Column("endpoint_app_id", UUID(as_uuid=True),
            ForeignKey("endpoint_app.id"), primary_key=True),
     Column(
-        "device_id", UUID(as_uuid=True), ForeignKey("bledevices.device_id"), primary_key=True
+        "device_id", UUID(as_uuid=True), ForeignKey("devices.device_id"), primary_key=True
     ),
 )
 
@@ -66,12 +66,14 @@ class Device(db.Model):
     """ Core elements of Tiedie devices."""
     __tablename__ = "devices"
     device_id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    schemas = mapped_column(String)
+    schemas = mapped_column(ARRAY(String))
     device_display_name = mapped_column(String)
     admin_state = mapped_column(Boolean)
     created_time = mapped_column(String)
     modified_time = mapped_column(String)
 
+    endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
+        "EndpointApp", secondary=devices_endpoint_apps)
     ble_extension: Mapped[Optional["BleExtension"]] = relationship(back_populates="device")
 
     def __init__(
@@ -80,14 +82,18 @@ class Device(db.Model):
             schemas,
             device_display_name,
             admin_state,
+            endpoint_apps,
             created_time
     ):
         self.device_id = device_id
         self.schemas = schemas
         self.device_display_name = device_display_name
         self.admin_state = admin_state
+        if endpoint_apps:
+            self.endpoint_apps.extend(endpoint_apps)
         self.created_time = created_time
         self.modified_time = created_time
+
 
     def serialize(self):
         """serialize function"""
@@ -102,6 +108,22 @@ class Device(db.Model):
             }
         if self.ble_extension:
             response.update(self.ble_extension.serialize())
+        if self.endpoint_apps is not None:
+#            self.device["schemas"].append(
+#                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
+            response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
+                {
+                "applications": [{"value": app.id,
+                                  "$ref":  f"https://{EXTERNAL_HOST}:"
+                                  f"{EXTERNAL_PORT}/scim/v2/EndpointApps/"
+                                  f"{app.id}"
+                                  } for app in self.endpoint_apps],
+                "deviceControlEnterpriseEndpoint":
+                    f"https://{EXTERNAL_HOST}:"
+                    f"{EXTERNAL_PORT}/control",
+                "telemetryEnterpriseEndpoint":
+                    f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
+            }
         return response
 
 class BleExtension(db.Model):
@@ -121,9 +143,6 @@ class BleExtension(db.Model):
     pairing_pass_key = mapped_column(Integer)
     pairing_oob_key = mapped_column(String)
     pairing_oobrn = mapped_column(BigInteger)
-
-    endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
-        "EndpointApp", secondary=devices_endpoint_apps)
 
     gatt_topics = relationship("GattTopic",
                                secondary=gatt_topic_devices, back_populates="devices")
@@ -150,7 +169,6 @@ class BleExtension(db.Model):
         pairing_pass_key,
         pairing_oob_key,
         pairing_oobrn,
-        endpoint_apps,
     ):
         self.device_id = device_id
         self.device_mac_address = device_mac_address
@@ -164,8 +182,6 @@ class BleExtension(db.Model):
         self.pairing_pass_key = pairing_pass_key
         self.pairing_oob_key = pairing_oob_key
         self.pairing_oobrn = pairing_oobrn
-        if endpoint_apps:
-            self.endpoint_apps.extend(endpoint_apps)
 
     def __repr__(self):
         return f"<id {self.device_id}>"
@@ -207,22 +223,6 @@ class BleExtension(db.Model):
                 "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"] = {
                     "key": self.pairing_oob_key,
                     "randNumber": self.pairing_oobrn
-            }
-        if self.endpoint_apps is not None:
-            self.device["schemas"].append(
-                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
-            self.device["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
-                {
-                "applications": [{"value": app.id,
-                                  "$ref":  f"https://{EXTERNAL_HOST}:"
-                                  f"{EXTERNAL_PORT}/scim/v2/EndpointApps/"
-                                  f"{app.id}"
-                                  } for app in self.endpoint_apps],
-                "deviceControlEnterpriseEndpoint":
-                    f"https://{EXTERNAL_HOST}:"
-                    f"{EXTERNAL_PORT}/control",
-                "telemetryEnterpriseEndpoint":
-                    f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
         return response
 
