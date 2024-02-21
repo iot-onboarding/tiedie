@@ -7,9 +7,8 @@
 This module implements BLE dispatch for SCIM.
 """
 
-from sqlalchemy import select
 from tiedie_exceptions import DeviceExists
-from models import EndpointApp, BleExtension
+from models import BleExtension
 from database import session
 
 def ble_create_device(request,device_id):
@@ -25,16 +24,6 @@ def ble_create_device(request,device_id):
     pairing_pass_key = None
     pairing_oob_key = None
     pairing_oobrn = None
-
-    endpoint_apps = None
-    endpoint_apps_ext = request.json.get(
-        "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device", None)
-    if endpoint_apps_ext:
-        applications = endpoint_apps_ext.get("applications")
-        endpoint_app_ids = [app.get("value") for app in applications]
-        # Select all endpoint apps from the database
-        endpoint_apps = session.scalars(select(EndpointApp).filter(
-            EndpointApp.id.in_(endpoint_app_ids))).all()
 
     if pairing_just_works:
         pairing_just_works_key = pairing_just_works.get("key")
@@ -68,7 +57,6 @@ def ble_create_device(request,device_id):
         pairing_pass_key=pairing_pass_key,
         pairing_oob_key=pairing_oob_key,
         pairing_oobrn=pairing_oobrn,
-        endpoint_apps=endpoint_apps
     )
     session.add(entry)
 

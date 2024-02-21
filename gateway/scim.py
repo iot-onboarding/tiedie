@@ -64,13 +64,28 @@ def add_scim_entry():
 
     device_id = uuid.uuid4()
 
+    endpoint_apps = None
+    appextschema = \
+        'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
+    endpoint_apps_ext = request.json.get(appextschema, None)
+    if not appextschema in schemas:
+        schemas.append(appextschema)
+    if endpoint_apps_ext:
+        applications = endpoint_apps_ext.get("applications")
+        endpoint_app_ids = [app.get("value") for app in applications]
+        # Select all endpoint apps from the database
+        endpoint_apps = session.scalars(select(EndpointApp).filter(
+            EndpointApp.id.in_(endpoint_app_ids))).all()
+
+
     # Add device core object
     try:
         entry = Device(
             device_id=device_id,
-            schemas=request.json["schemas"],
+            schemas=schemas,
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
+            endpoint_apps=endpoint_apps,
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
         # Dispatch to appropriate function
@@ -178,7 +193,8 @@ def update_entry(entry_id):
             ble_update_device(request)
             session.commit()
     except Exception as e:
-        return(blow_an_error(str(e),404)) # intentionally using a different error
+        return blow_an_error(str(e),400)
+
     return make_response(jsonify(entry.serialize()),200)
 
 @scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
