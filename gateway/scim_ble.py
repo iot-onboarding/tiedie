@@ -35,7 +35,7 @@ def ble_create_device(request,device_id):
         # Select all endpoint apps from the database
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
-    
+
     if pairing_just_works:
         pairing_just_works_key = pairing_just_works.get("key")
     pairing_pass = ble_json.get(

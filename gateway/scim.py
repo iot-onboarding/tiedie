@@ -16,7 +16,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from tiedie_exceptions import DeviceExists,IDNotAllowedOnCreate
+from tiedie_exceptions import DeviceExists
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey
 from util import make_hash
@@ -60,14 +60,14 @@ def add_scim_entry():
     device_id=request.json.get("id")
 
     if device_id:
-        return(blow_an_error("Specifying id on create not permitted", 400))
-        
+        return blow_an_error("Specifying id on create not permitted", 400)
+
     device_id = uuid.uuid4()
 
     # Add device core object
     try:
         entry = Device(
-#            device_id=device_id,
+            device_id=device_id,
             schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
