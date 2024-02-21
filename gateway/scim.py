@@ -68,9 +68,9 @@ def add_scim_entry():
     appextschema = \
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     endpoint_apps_ext = request.json.get(appextschema, None)
-    if not appextschema in schemas:
-        schemas.append(appextschema)
     if endpoint_apps_ext:
+        if not appextschema in schemas:
+            schemas.append(appextschema)
         applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database

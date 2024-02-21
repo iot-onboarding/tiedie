@@ -79,7 +79,6 @@ def test_create_device(client: FlaskClient, api_key: str):
     assert response.json["schemas"] == [
         'urn:ietf:params:scim:schemas:core:2.0:Device',
         'urn:ietf:params:scim:schemas:extension:ble:2.0:Device',
-        'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     ]
 
 
