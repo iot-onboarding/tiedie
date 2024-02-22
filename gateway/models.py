@@ -196,7 +196,7 @@ class BleExtension(db.Model):
         }
 
         if self.device_mac_address:
-            response['device_mac_address'] = self.device_mac_address
+            response['deviceMacAddress'] = self.device_mac_address
         if self.irk:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "irk"] = self.irk
