@@ -11,7 +11,7 @@ Simple error formating routine for scim.
 
 from flask import jsonify,make_response
 
-def blow_an_error(e,code):
+def blow_an_error(e,code,scim_code = "invalidSyntax"):
     """
     Simple formating handling routine"
     """
@@ -20,7 +20,7 @@ def blow_an_error(e,code):
         jsonify(
             {
                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "scimType": "invalidSyntax",
+                "scimType": scim_code,
                 "detail": e,
                 "status": code,
                 }

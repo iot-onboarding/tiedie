@@ -13,7 +13,7 @@ from database import session
 
 def ble_create_device(request,device_id):
     """
-    Process BLE SCIM creation request.  No return value.
+    Process BLE SCIM creation request.  Return a BleExtension()
     """
     ble_json = request.json.get("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
     device_mac_address = ble_json.get("deviceMacAddress")
@@ -69,9 +69,8 @@ def ble_update_device(request):
     entry: BleExtension = session.get(BleExtension,request.json["id"])
     # if ble is added in update, just add it.
     if not entry:
-        entry = ble_create_device(request,request.json["id"])
-        session.commit()
-        return
+        return ble_create_device(request,request.json["id"])
+
 
     ble_json=request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
     entry.version_support = ble_json.get("versionSupport")
@@ -89,5 +88,4 @@ def ble_update_device(request):
     entry.pairing_oobrn = ble_json.get(
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device").get("randNumber")
 
-    session.commit()
-    return
+    return entry
