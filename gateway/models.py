@@ -190,13 +190,11 @@ class BleExtension(db.Model):
         response = {
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": self.version_support,
+                "deviceMacAddress": self.device_mac_address,
                 "isRandom": self.is_random,
                 "pairingMethods": self.pairing_methods,
             }
         }
-
-        if self.device_mac_address:
-            response['deviceMacAddress'] = self.device_mac_address
         if self.irk:
             response["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"][
                 "irk"] = self.irk
