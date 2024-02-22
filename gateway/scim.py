@@ -135,7 +135,7 @@ def read_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        ble_entries = BleExtension.query.filter_by(device_mac_address=filter_value).first()
+        ble_entries = BleExtension.query.filter_by(device_mac_address=filter_value).all()
 
         entries = []
         if ble_entries:
