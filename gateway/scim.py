@@ -47,7 +47,7 @@ def authenticate_user(func):
 
 @scim_app.route('/Devices', methods=['POST'])
 @authenticate_user
-def add_scim_entry():
+def create_device():
     """
     This code defines a SCIM API endpoint for creating users,
     extracts data from the request JSON, and stores user information in a database.
@@ -96,7 +96,7 @@ def add_scim_entry():
         core=entry.serialize()
 
     except DeviceExists:
-        return blow_an_error("Device already exists", 500)
+        return blow_an_error("Device already exists", 409,"uniqueness")
     except Exception as e:
         return blow_an_error(str(e),400)
 
@@ -105,7 +105,7 @@ def add_scim_entry():
 
 @scim_app.route("/Devices/<string:device_id>", methods=["GET"])
 @authenticate_user
-def get_entry(device_id):
+def read_device(device_id):
     """
     SCIM API: Retrieve user data by ID and onboardApp parameters.
     If not found, a "User not found" response with a status code of 404
@@ -120,7 +120,7 @@ def get_entry(device_id):
 
 @scim_app.route("/Devices", methods=["GET"])
 @authenticate_user
-def get_devices():
+def read_devices():
     """Get SCIM Devices"""
     start_index = 1
     count = None
@@ -140,7 +140,7 @@ def get_devices():
         entries = []
         if ble_entries:
             for ble_entry in ble_entries:
-                entries.update(ble_entry.device)
+                entries.append(ble_entry.device)
     else:
         entries = Device.query.paginate(
             page=start_index, per_page=count, error_out=False).items
@@ -167,7 +167,7 @@ def get_devices():
 
 @scim_app.route("/Devices/<string:entry_id>", methods=["PUT"])
 @authenticate_user
-def update_entry(entry_id):
+def update_device(entry_id):
     """
     Function to retrieve SCIM device data based on parameters like start
     index, count, and filters.
@@ -213,7 +213,7 @@ def delete_device(entry_id):
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
 @authenticate_user
-def get_endpoint(endpoint_id):
+def read_endpoint(endpoint_id):
     """Get SCIM Endpoint"""
     endpoint_app = session.scalar(
         select(EndpointApp).filter_by(id=endpoint_id))
@@ -225,7 +225,7 @@ def get_endpoint(endpoint_id):
 
 @scim_app.route("/EndpointApps", methods=["GET"])
 @authenticate_user
-def get_endpoints():
+def read_endpoints():
     """Get SCIM Endpoint"""
     start_index = 1
     count = None
