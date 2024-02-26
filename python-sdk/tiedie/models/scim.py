@@ -189,5 +189,5 @@ class Device(BaseModel):
                 "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device")
         if self.endpoint_apps_extension is not None:
             _schemas.append(
-                "urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device")
+                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
         return _schemas

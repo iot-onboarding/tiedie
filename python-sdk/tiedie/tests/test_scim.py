@@ -234,7 +234,7 @@ def test_endpoint_extension():
         "schemas": [
             "urn:ietf:params:scim:schemas:core:2.0:Device",
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
-            "urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device"
+            "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"
         ]
     }, separators=(',', ':'))
 
