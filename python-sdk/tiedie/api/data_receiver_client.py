@@ -29,7 +29,7 @@ class DataReceiverClient:
         self.host = host
         self.port = port
         self.authenticator = authenticator
-        self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1,
+        self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
             client_id=authenticator.get_client_id(), clean_session=True)
         self.authenticator.set_auth_options_mqtt(self.mqtt_client, disable_tls, insecure_tls)
         self.mqtt_client.on_connect = self.__on_connect
@@ -74,16 +74,16 @@ class DataReceiverClient:
         """
         self.mqtt_client.unsubscribe(topic)
 
-    def __on_message(self, message):
+    def __on_message(self, _userdata, message):
         print("Received message: " + str(message.payload))
 
-    def __on_connect(self, _client, _userdata, _flags, rc):
-        if rc == 0:
+    def __on_connect(self, _client, _userdata, _connect_flags, reason_code, _properties):
+        if reason_code == 0:
             print("Connected to broker")
             self.connected = True
         else:
-            print("Connection failed with error code " + str(rc))
+            print("Connection failed with error code " + str(reason_code))
 
-    def __on_disconnect(self, _client, _userdata, _rc):
+    def __on_disconnect(self, _client, _userdata, _flags, _reason_code, _properties):
         print("Disconnected from broker")
         self.connected = False
