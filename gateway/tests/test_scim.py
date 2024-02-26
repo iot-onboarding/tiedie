@@ -79,7 +79,6 @@ def test_create_device(client: FlaskClient, api_key: str):
     assert response.json["schemas"] == [
         'urn:ietf:params:scim:schemas:core:2.0:Device',
         'urn:ietf:params:scim:schemas:extension:ble:2.0:Device',
-        'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     ]
 
 
@@ -142,6 +141,18 @@ def test_get_device(client: FlaskClient, api_key):
     assert response.json["schemas"] == [
         "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
     assert len(response.json["Resources"]) == 1
+    assert response.json["Resources"][0]["id"] == device_id
+
+    # Test filter
+    response = client.get(
+        "/scim/v2/Devices?filter=deviceMacAddress eq \"AA:BB:CC:11:22:33\"",
+        headers={
+            "x-api-key": api_key
+        })
+
+    print(response.json)
+    assert response.status_code == 200
+    assert response.json["totalResults"] == 1
     assert response.json["Resources"][0]["id"] == device_id
 
 
