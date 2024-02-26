@@ -16,11 +16,12 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from tiedie_exceptions import DeviceExists
+from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError
 from database import session
-from models import EndpointApp, BleExtension, Device, OnboardingAppKey
+from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device
+from scim_ethermab import ethermab_create_device,ethermab_update_device
 from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
@@ -89,18 +90,24 @@ def create_device():
         )
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             entry.ble_extension = ble_create_device(request,device_id)
+        if 'urn:ietf:params:scim"schemas:extensions:ethernet-mab:2.0:Device' in schemas:
+            entry.ethermab_extension = ethermab_create_device(request,device_id)
         # Dispatch to appropriate function
         session.add(entry)
         session.commit()
 
         core=entry.serialize()
+        return make_response(jsonify(core),201)
 
     except DeviceExists:
-        return blow_an_error("Device already exists", 409,"uniqueness")
+        response= blow_an_error("Device already exists", 409,"uniqueness")
+    except MABNotSupported:
+        response = blow_an_error("MAB not supported.", 403,scim_code = None)
+    except SchemaError:
+        response = blow_an_error(str(e),400)
     except Exception as e:
-        return blow_an_error(str(e),400)
-
-    return make_response(jsonify(core),201)
+        response = blow_an_error(str(e),400)
+    return response
 
 
 @scim_app.route("/Devices/<string:device_id>", methods=["GET"])
@@ -190,7 +197,9 @@ def update_device(entry_id):
         schemas = request.json["schemas"]
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             ble_update_device(request)
-            session.commit()
+        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
+            ethermab_update_device(request)
+        session.commit()
     except Exception as e:
         return blow_an_error(str(e),400)
 
@@ -206,6 +215,9 @@ def delete_device(entry_id):
     ble_entry = session.get(BleExtension,entry_id)
     if ble_entry:
         session.delete(ble_entry)
+    mab_entry = session.get(EtherMABExtension,entry_id)
+    if mab_entry:
+        session.delete(mab_entry)
     session.delete(entry)
     session.commit()
     return make_response("", 204)
