@@ -25,3 +25,4 @@ typing_extensions>=4.5.0
 Werkzeug>=2.2.3
 pytest>=7.4
 testcontainers-postgres>=0.0.1rc1
+ciscoisesdk>=2.1.2
