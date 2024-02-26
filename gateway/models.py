@@ -143,10 +143,10 @@ class BleExtension(db.Model):
     pairing_oob_key = mapped_column(String)
     pairing_oobrn = mapped_column(BigInteger)
 
-    gatt_topics = relationship("GattTopic",
+    gatt_topics: Mapped[List["GattTopic"]] = relationship("GattTopic",
                                secondary=gatt_topic_devices, back_populates="devices")
 
-    adv_topics = relationship("AdvTopic",
+    adv_topics: Mapped[List["AdvTopic"]] = relationship("AdvTopic",
                               secondary=adv_topic_devices, back_populates="devices")
 
     connection_topics: Mapped[List["ConnectionTopic"]] = \

@@ -115,21 +115,21 @@ class DataProducer:
                              value: bytes):
         """ Publish GATT notifications/indications to registered MQTT topics """
         with self.app.app_context():
-            user = session.scalar(select(BleExtension)
+            device = session.scalar(select(BleExtension)
                                   .join(GattTopic, BleExtension.gatt_topics)
                                   .where(and_(BleExtension.device_mac_address == mac_address,
                                               GattTopic.service_uuid == service_uuid,
                                               GattTopic.characteristic_uuid == char_uuid)))
 
-            if user is None:
+            if device is None:
                 return
 
-            for topic in user.gatt_topics:
+            for topic in device.gatt_topics:
                 ble_sub = data_app_pb2.DataSubscription()  # pylint: disable=no-member
                 ble_sub.data = value
 
                 if topic.data_format == "default":
-                    ble_sub.device_id = str(user.id)
+                    ble_sub.device_id = str(device.device_id)
                     # pylint: disable-next=no-member
                     ble_subscription = data_app_pb2.DataSubscription.BLESubscription()
                     ble_subscription.service_uuid = service_uuid
@@ -142,7 +142,7 @@ class DataProducer:
     def publish_advertisement(self, evt):
         """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
         with self.app.app_context():
-            user = session.scalar(select(BleExtension).filter(
+            device = session.scalar(select(BleExtension).filter(
                 func.lower(BleExtension.device_mac_address) == func.lower(evt.address)))
 
             adv_topics = list(session.scalars(
@@ -158,9 +158,9 @@ class DataProducer:
 
             adv_fields = AdvField.from_bytes(evt.data)
 
-            if user is not None:
-                ble_adv.device_id = str(user.id)
-                adv_topics.extend(user.adv_topics)
+            if device is not None:
+                ble_adv.device_id = str(device.device_id)
+                adv_topics.extend(device.adv_topics)
 
             for topic in adv_topics:
                 if is_adv_allowed(topic, adv_fields, evt.address):
@@ -170,14 +170,14 @@ class DataProducer:
     def publish_connection_status(self, evt, address, connected: bool):
         """ Publishes BLE connection status updates to MQTT topics based on conditions. """
         with self.app.app_context():
-            user = session.scalar(select(BleExtension).filter(
+            device = session.scalar(select(BleExtension).filter(
                 func.lower(BleExtension.device_mac_address) == func.lower(address)))
 
-            if user is None:
+            if device is None:
                 return
 
             ble_connection = data_app_pb2.DataSubscription()  # pylint: disable=no-member
-            ble_connection.device_id = str(user.id)
+            ble_connection.device_id = str(device.device_id)
             # pylint: disable-next=no-member
             ble_connection_status = data_app_pb2.DataSubscription.BLEConnectionStatus()
             ble_connection_status.mac_address = address
@@ -188,7 +188,7 @@ class DataProducer:
             ble_connection.ble_connection_status.CopyFrom(
                 ble_connection_status)
 
-            for connection_topic in user.connection_topics:
+            for connection_topic in device.connection_topics:
                 self.mqtt_client.publish(
                     topic=str(connection_topic.topic),
                     payload=ble_connection.SerializeToString(),
