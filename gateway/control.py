@@ -56,7 +56,7 @@ def authenticate_user(func):
 
     @wraps(func)
     def check_apikey(*args, **kwargs):
-        client_cert = request.environ['peercert']
+        client_cert = request.environ.get('peercert')
         if client_cert:
             if session.scalar(
                 select(EndpointApp)

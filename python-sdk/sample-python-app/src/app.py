@@ -24,7 +24,7 @@ from tiedie.models import (Device, DataFormat, BleDataParameter,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
-from tiedie.models.scim import Application
+from tiedie.models.scim import Application, PairingPassKey
 import configuration
 
 
@@ -149,7 +149,8 @@ class ConnectionStatusHandler(Namespace):
                 print(e)
 
         print("message: ", message)
-        data_receiver_client.subscribe(message, callback)
+        if len(message) != 0:
+            data_receiver_client.subscribe(message, callback)
 
 
 socketio.on_namespace(ConnectionStatusHandler('/connectionstatus'))
@@ -216,7 +217,7 @@ def add_device():
             device_mac_address=content['deviceMacAddress'],
             version_support=version_support,
             is_random=is_random,
-            pass_key=int(content['passKey'])
+            pairing_pass_key=PairingPassKey(key=int(content['passKey']))
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
