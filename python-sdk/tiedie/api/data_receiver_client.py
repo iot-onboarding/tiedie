@@ -64,7 +64,7 @@ class DataReceiverClient:
             callback(data_subscription)
 
         self.mqtt_client.subscribe(topic, qos=0)
-        self.mqtt_client.on_message = on_message
+        self.mqtt_client.message_callback_add(topic, on_message)
 
     def unsubscribe(self, topic: str):
         """ Unsubscribe from a topic.
