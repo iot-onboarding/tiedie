@@ -103,7 +103,7 @@ def create_device():
         response= blow_an_error("Device already exists", 409,"uniqueness")
     except MABNotSupported:
         response = blow_an_error("MAB not supported.", 403,scim_code = None)
-    except SchemaError:
+    except SchemaError as e:
         response = blow_an_error(str(e),400)
     except Exception as e:
         response = blow_an_error(str(e),400)
