@@ -19,8 +19,10 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, \
     ForeignKey, Integer, String, ARRAY, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT
+from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT, WANT_ETHER_MAB
 from database import db
+from tiedie_exceptions import MABNotSupported
+
 
 gatt_topic_devices = db.Table(
     "gatt_topic_devices",
@@ -75,6 +77,8 @@ class Device(db.Model):
     endpoint_apps: Mapped[List["EndpointApp"]] = relationship(
         "EndpointApp", secondary=devices_endpoint_apps)
     ble_extension: Mapped[Optional["BleExtension"]] = relationship(back_populates="device")
+    ethermab_extension: Mapped[Optional["EtherMABExtension"]] =  relationship(
+        back_populates="device")
 
     def __init__(
             self,
@@ -107,9 +111,9 @@ class Device(db.Model):
             }
         if self.ble_extension:
             response.update(self.ble_extension.serialize())
+        if self.ethermab_extension:
+            response.update(self.ethermab_extension.serialize())
         if self.endpoint_apps is not None:
-#            self.device["schemas"].append(
-#                "urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device")
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
                 "applications": [{"value": app.id,
@@ -124,6 +128,43 @@ class Device(db.Model):
                     f"ssl://{EXTERNAL_HOST}:{MQTT_PORT}",
             }
         return response
+
+class EtherMABExtension(db.Model):
+    """
+    MAC Authenticated Bypass Extension.  Use this for 802.3 devices that
+    support no other form of authentication.  Yes, Yuck.
+    """
+    __tablename__ = "ethernetmab"
+
+    device_id = mapped_column(UUID(as_uuid=True),ForeignKey("devices.device_id"),
+                              primary_key=True)
+    device_mac_address = mapped_column(String)
+    device: Mapped[Device] = relationship(back_populates="ethermab_extension")
+
+    def __init__(
+	self,
+        device_id,
+        device_mac_address):
+        """
+        Populate Object with the two required attributes.
+        """
+
+        if not WANT_ETHER_MAB:
+            raise MABNotSupported
+
+        self.device_id = device_id
+        self.device_mac_address = device_mac_address
+
+    def serialize(self):
+        """Serialize output"""
+
+        return {
+            'urn:ietf:params:scim"schemas:extensions:ethernet-mab:2.0:Device' : {
+                'mac_address' : self.device_mac_address
+            }
+        }
+
+
 
 class BleExtension(db.Model):
     """ Represent BLE device information and associated data fields. """
