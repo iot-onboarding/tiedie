@@ -143,6 +143,18 @@ def test_get_device(client: FlaskClient, api_key):
     assert len(response.json["Resources"]) == 1
     assert response.json["Resources"][0]["id"] == device_id
 
+    # Test filter
+    response = client.get(
+        "/scim/v2/Devices?filter=deviceMacAddress eq \"AA:BB:CC:11:22:33\"",
+        headers={
+            "x-api-key": api_key
+        })
+
+    print(response.json)
+    assert response.status_code == 200
+    assert response.json["totalResults"] == 1
+    assert response.json["Resources"][0]["id"] == device_id
+
 
 def test_delete_device(client: FlaskClient, api_key):
     """ Test DELETE device """
