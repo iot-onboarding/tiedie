@@ -234,7 +234,7 @@ def add_device():
 
     control_client.register_topic(
         topic,
-        device,
+        response.body,
         ConnectionRegistrationOptions(
             data_format=DataFormat.DEFAULT,
             data_apps=[app.config['DATA_APP_ID']]
