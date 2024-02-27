@@ -113,7 +113,7 @@ class Device(db.Model):
             response.update(self.ble_extension.serialize())
         if self.ethermab_extension:
             response.update(self.ethermab_extension.serialize())
-        if self.endpoint_apps is not None:
+        if self.endpoint_apps:
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
                 "applications": [{"value": app.id,
@@ -159,10 +159,12 @@ class EtherMABExtension(db.Model):
         """Serialize output"""
 
         return {
-            'urn:ietf:params:scim"schemas:extensions:ethernet-mab:2.0:Device' : {
-                'mac_address' : self.device_mac_address
+            "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" : {
+                "deviceMacAddress" : self.device_mac_address
             }
         }
+    def __repr__(self):
+        return f"<id {self.device_id}>"
 
 
 

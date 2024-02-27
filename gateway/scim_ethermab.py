@@ -60,9 +60,7 @@ def ethermab_create_device(request,device_id):
     api=init_ise()
     if api:
         api.endpoint.create_endpoint(mac=device_mac_address)
-
     return EtherMABExtension(device_id=device_id,device_mac_address=device_mac_address)
-
 
 def ethermab_update_device(request):
     """
@@ -88,3 +86,8 @@ def ethermab_update_device(request):
         api.endpoint.create_endpoint(mac=mac_addr)
         api.endpoint.delete_endpoint(mac=old_mac)
     return entry
+
+def ethermab_get_filtered_entries(mac_address):
+    """ Return Ethernet MAB filtered entries """
+
+    return EtherMABExtension.query.filter_by(device_mac_address=mac_address).all()
