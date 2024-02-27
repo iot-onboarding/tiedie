@@ -20,8 +20,9 @@ from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension
 from util import make_hash
-from scim_ble import ble_create_device,ble_update_device
-from scim_ethermab import ethermab_create_device,ethermab_update_device
+from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
+from scim_ethermab import ethermab_create_device,ethermab_update_device,\
+    ethermab_get_filtered_entries
 from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
@@ -69,9 +70,7 @@ def create_device():
     appextschema = \
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     endpoint_apps_ext = request.json.get(appextschema, None)
-    if endpoint_apps_ext:
-        if not appextschema in schemas:
-            schemas.append(appextschema)
+    if appextschema in schemas and endpoint_apps_ext:
         applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database
@@ -88,11 +87,11 @@ def create_device():
             endpoint_apps=endpoint_apps,
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
+
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             entry.ble_extension = ble_create_device(request,device_id)
-        if 'urn:ietf:params:scim"schemas:extensions:ethernet-mab:2.0:Device' in schemas:
+        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
             entry.ethermab_extension = ethermab_create_device(request,device_id)
-        # Dispatch to appropriate function
         session.add(entry)
         session.commit()
 
@@ -142,12 +141,16 @@ def read_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        ble_entries = BleExtension.query.filter_by(device_mac_address=filter_value).all()
+        ble_entries = ble_get_filtered_entries(filter_value)
+        mab_entries = ethermab_get_filtered_entries(filter_value)
 
         entries = []
         if ble_entries:
             for ble_entry in ble_entries:
                 entries.append(ble_entry.device)
+        if mab_entries:
+            for mab_entry in mab_entries:
+                entries.append(mab_entry.device)
     else:
         entries = Device.query.paginate(
             page=start_index, per_page=count, error_out=False).items
