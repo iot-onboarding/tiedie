@@ -89,3 +89,8 @@ def ble_update_device(request):
         "urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device").get("randNumber")
 
     return entry
+
+def ble_get_filtered_entries(mac_address):
+    """ returned filtered list """
+
+    return BleExtension.query.filter_by(device_mac_address=mac_address).all()
