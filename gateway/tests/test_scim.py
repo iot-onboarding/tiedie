@@ -308,6 +308,57 @@ def test_get_mab_device(client: FlaskClient, api_key):
     assert "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" \
         in response.json["Resources"][0]
 
+def test_delete_mab_device(client: FlaskClient, api_key):
+    """ Test DELETE device """
+    device_id = uuid.uuid4()
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device"],
+            "deviceDisplayName": "Generic MAB Device",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
+                "deviceMacAddress": "AA:BB:CC:00:22:33"
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+
+    device_id = response.json["id"]
+
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 204
+
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 0
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 0
+
+
+
 def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
     """ Test POST Endpoint Apps """
     response = client.post(
