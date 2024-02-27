@@ -30,10 +30,6 @@ CDKM_ENDPOINT = os.getenv("CDKM_ENDPOINT", None )
 ISE_USERNAME = os.getenv('ISE_USERNAME',None)
 ISE_PASSWORD = os.getenv('ISE_PASSWD',None)
 ISE_HOST = os.getenv('ISE_HOST', None)
-WANT_ETHER_MAP = os.getenv('WANT_ETHERNET_MAB',None)
+WANT_ETHER_MAB = os.getenv('WANT_ETHERNET_MAB',"Enabled")
 
-if ISE_USERNAME and ISE_PASSWORD and ISE_HOST:
-    ISE_SUPPORT = True
-else:
-    ISE_SUPPORT = False
-    WANT_ETHER_MAB = False
+ISE_SUPPORT = ISE_USERNAME and ISE_PASSWORD and ISE_HOST
