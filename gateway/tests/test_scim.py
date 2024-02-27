@@ -82,6 +82,29 @@ def test_create_device(client: FlaskClient, api_key: str):
     ]
     assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json
 
+def test_unsupported_schema(client: FlaskClient, api_key: str):
+    """ Test POST Device """
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"
+                        "urn:ietf:params:scim:schemas:extension:nosuchshema:2.0:Device"],
+            "deviceDisplayName": "BLE Heart Monitor",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
+                "versionSupport": ["5.3"],
+                "deviceMacAddress": "AA:BB:CC:11:22:33",
+                "isRandom": False,
+                "mobility": True
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+    print(response.json)
+    assert response.status_code == 501
+
 def test_get_device(client: FlaskClient, api_key):
     """ Test GET device """
     device_id = uuid.uuid4()

@@ -58,8 +58,13 @@ def create_device():
     if not request.json:
         return blow_an_error("Request body is not valid JSON.",400)
 
-    schemas = request.json.get("schemas")
+    schemas = request.json.get("schemas").copy()
     device_id=request.json.get("id")
+
+    if "urn:ietf:params:scim:schemas:core:2.0:Device" in schemas:
+        schemas.remove("urn:ietf:params:scim:schemas:core:2.0:Device")
+    else:
+        return blow_an_error("SCIM Device Schema Required", 400)
 
     if device_id:
         return blow_an_error("Specifying id on create not permitted", 400)
@@ -71,6 +76,7 @@ def create_device():
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     endpoint_apps_ext = request.json.get(appextschema, None)
     if appextschema in schemas and endpoint_apps_ext:
+        schemas.remove(appextschema)
         applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database
@@ -81,7 +87,7 @@ def create_device():
     # Add device core object
     try:
         entry = Device(
-            schemas=schemas,
+            schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
             endpoint_apps=endpoint_apps,
@@ -90,8 +96,13 @@ def create_device():
 
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             entry.ble_extension = ble_create_device(request,device_id)
+            schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
         if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
             entry.ethermab_extension = ethermab_create_device(request,device_id)
+            schemas.remove('urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
+
+        if schemas:
+            return blow_an_error("Unsupported Schema",501,scim_code = None)
         session.add(entry)
         session.commit()
 
