@@ -7,13 +7,11 @@
 This module implements Ethernet MAB dispatch for SCIM.
 """
 
-import importlib.util
-
+import ciscoisesdk
 from models import EtherMABExtension
 from database import session
 from config import ISE_SUPPORT, ISE_HOST, ISE_USERNAME, ISE_PASSWORD
 from tiedie_exceptions import SchemaError,DeviceExists
-import ciscoisesdk
 
 
 def init_ise():
