@@ -22,7 +22,8 @@ from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMAB
     FDOExtension
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
-from scim_ethermab import ethermab_create_device,ethermab_update_device,\
+from scim_ethermab import ethermab_create_device,ethermab_update_device, \
+    ethermab_delete_device, ethermab_get_filtered_entries
 from scim_fdo import fdo_create_device, fdo_update_device
 from scim_error import blow_an_error
 
@@ -242,6 +243,7 @@ def delete_device(entry_id):
         sub_entry = session.get(cls,entry_id)
         if sub_entry:
             session.delete(sub_entry)
+            session.commit()
     session.delete(entry)
     session.commit()
     return make_response("", 204)

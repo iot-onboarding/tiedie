@@ -432,7 +432,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
     assert response.status_code == 200
     assert response.json["totalResults"] == 0
 
-def test_get_gdo_device(client: FlaskClient, api_key):
+def test_get_fdo_device(client: FlaskClient, api_key):
     """ Test GET device """
     device_id = uuid.uuid4()
     response = client.get(f"/scim/v2/Devices/{device_id}", headers={
