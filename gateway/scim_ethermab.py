@@ -13,11 +13,8 @@ from models import EtherMABExtension
 from database import session
 from config import ISE_SUPPORT, ISE_HOST, ISE_USERNAME, ISE_PASSWORD
 from tiedie_exceptions import SchemaError,DeviceExists
+import ciscoisesdk
 
-if importlib.util.find_spec("ciscoisesdk"):
-    import ciscoisesdk
-else:
-    ISE_SUPPORT=False
 
 def init_ise():
     """
