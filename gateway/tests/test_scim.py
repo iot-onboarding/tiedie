@@ -7,7 +7,6 @@
 Test SCIM server implementation
 """
 
-import os
 import uuid
 from flask import Flask
 from flask.testing import FlaskClient
@@ -16,8 +15,6 @@ from testcontainers.postgres import PostgresContainer
 from app_factory import create_app
 from models import OnboardingAppKey
 from database import db
-
-os.environ['WANT_ETHERNET_MAB'] = 'yesplease'
 
 @pytest.fixture(name="postgres")
 def fixture_postgres():
