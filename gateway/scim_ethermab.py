@@ -13,7 +13,6 @@ from database import session
 from config import ISE_SUPPORT, ISE_HOST, ISE_USERNAME, ISE_PASSWORD
 from tiedie_exceptions import SchemaError,DeviceExists
 
-
 def init_ise():
     """
     This sets up the ERS API.  Goes to the environment for inputs.
