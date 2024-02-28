@@ -236,7 +236,7 @@ def delete_device(entry_id):
     for cls in [ BleExtension, EtherMABExtension, FDOExtension ]:
         sub_entry = session.get(cls,entry_id)
         if sub_entry:
-           session.delete(sub_entry)
+            session.delete(sub_entry)
     session.delete(entry)
     session.commit()
     return make_response("", 204)
