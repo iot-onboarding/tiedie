@@ -18,11 +18,13 @@ from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError
 from database import session
-from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension
+from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension, \
+    FDOExtension
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
 from scim_ethermab import ethermab_create_device,ethermab_update_device,\
     ethermab_get_filtered_entries
+from scim_fdo import fdo_create_device, fdo_update_device
 from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
@@ -100,6 +102,9 @@ def create_device():
         if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
             entry.ethermab_extension = ethermab_create_device(request,device_id)
             schemas.remove('urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
+        if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' in schemas:
+            entry.fdo_extension = fdo_create_device(request,device_id)
+            schemas.remove('urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device')
 
         if schemas:
             return blow_an_error("Unsupported Schema",501,scim_code = None)
@@ -213,6 +218,8 @@ def update_device(entry_id):
             ble_update_device(request)
         if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
             ethermab_update_device(request)
+        if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' in schemas:
+            fdo_update_device(request)
         session.commit()
     except Exception as e:
         return blow_an_error(str(e),400)
@@ -226,12 +233,10 @@ def delete_device(entry_id):
     entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
-    ble_entry = session.get(BleExtension,entry_id)
-    if ble_entry:
-        session.delete(ble_entry)
-    mab_entry = session.get(EtherMABExtension,entry_id)
-    if mab_entry:
-        session.delete(mab_entry)
+    for cls in [ BleExtension, EtherMABExtension, FDOExtension ]:
+        sub_entry = session.get(cls,entry_id)
+        if sub_entry:
+           session.delete(sub_entry)
     session.delete(entry)
     session.commit()
     return make_response("", 204)

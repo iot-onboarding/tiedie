@@ -31,5 +31,6 @@ ISE_USERNAME = os.getenv('ISE_USERNAME',None)
 ISE_PASSWORD = os.getenv('ISE_PASSWD',None)
 ISE_HOST = os.getenv('ISE_HOST', None)
 WANT_ETHER_MAB = os.getenv('WANT_ETHERNET_MAB',"Enabled")
+WANT_FDO = os.getenv('WANT_FDO',"Enabled")
 
 ISE_SUPPORT = ISE_USERNAME and ISE_PASSWORD and ISE_HOST
