@@ -93,7 +93,7 @@ def ethermab_delete_device(entry):
 
     if not ISE_SUPPORT:
         return
-    
+
     api=init_ise()
     if api:
         api.endpoint.delete_endpoint(mac=entry.device_mac_address)
