@@ -16,11 +16,13 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from tiedie_exceptions import DeviceExists
+from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError
 from database import session
-from models import EndpointApp, BleExtension, Device, OnboardingAppKey
+from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension
 from util import make_hash
-from scim_ble import ble_create_device,ble_update_device
+from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
+from scim_ethermab import ethermab_create_device,ethermab_update_device,\
+    ethermab_get_filtered_entries, ethermab_delete_device
 from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
@@ -53,11 +55,19 @@ def create_device():
     extracts data from the request JSON, and stores user information in a database.
     """
     # Get the request json and check if it is valid
-    if not request.json:
-        return blow_an_error("Request body is not valid JSON.",400)
+    try:
+        if not isinstance(request.json["schemas"],list):
+            return blow_an_error("schemas is not a list",400)
+    except KeyError:
+        return blow_an_error("Schema Error",400)
 
-    schemas = request.json.get("schemas")
+    schemas = request.json["schemas"].copy()
     device_id=request.json.get("id")
+
+    if "urn:ietf:params:scim:schemas:core:2.0:Device" in schemas:
+        schemas.remove("urn:ietf:params:scim:schemas:core:2.0:Device")
+    else:
+        return blow_an_error("SCIM Device Schema Required", 400)
 
     if device_id:
         return blow_an_error("Specifying id on create not permitted", 400)
@@ -68,39 +78,50 @@ def create_device():
     appextschema = \
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     endpoint_apps_ext = request.json.get(appextschema, None)
-    if endpoint_apps_ext:
-        if not appextschema in schemas:
-            schemas.append(appextschema)
+    if endpoint_apps_ext and appextschema in schemas:
+        schemas.remove(appextschema)
         applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
-
+    elif appextschema in schemas:
+        return blow_an_error("endpointAppExt in schema, but no associated object.", 400)
 
     # Add device core object
     try:
         entry = Device(
-            schemas=schemas,
+            schemas=request.json["schemas"],
             device_display_name=request.json["deviceDisplayName"],
             admin_state=request.json["adminState"],
             endpoint_apps=endpoint_apps,
             created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         )
+
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             entry.ble_extension = ble_create_device(request,device_id)
-        # Dispatch to appropriate function
+            schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
+        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
+            entry.ethermab_extension = ethermab_create_device(request,device_id)
+            schemas.remove('urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
+
+        if schemas:
+            return blow_an_error("Unsupported Schema",501,scim_code = None)
         session.add(entry)
         session.commit()
 
         core=entry.serialize()
+        return make_response(jsonify(core),201)
 
     except DeviceExists:
-        return blow_an_error("Device already exists", 409,"uniqueness")
+        response= blow_an_error("Device already exists", 409,"uniqueness")
+    except MABNotSupported:
+        response = blow_an_error("MAB not supported.", 403,scim_code = None)
+    except SchemaError as e:
+        response = blow_an_error(str(e),400)
     except Exception as e:
-        return blow_an_error(str(e),400)
-
-    return make_response(jsonify(core),201)
+        response = blow_an_error(str(e),400)
+    return response
 
 
 @scim_app.route("/Devices/<string:device_id>", methods=["GET"])
@@ -135,12 +156,16 @@ def read_devices():
         single_filter = request.args["filter"].split(" ")
         filter_value = single_filter[2].strip('"')
 
-        ble_entries = BleExtension.query.filter_by(device_mac_address=filter_value).all()
+        ble_entries = ble_get_filtered_entries(filter_value)
+        mab_entries = ethermab_get_filtered_entries(filter_value)
 
         entries = []
         if ble_entries:
             for ble_entry in ble_entries:
                 entries.append(ble_entry.device)
+        if mab_entries:
+            for mab_entry in mab_entries:
+                entries.append(mab_entry.device)
     else:
         entries = Device.query.paginate(
             page=start_index, per_page=count, error_out=False).items
@@ -190,7 +215,9 @@ def update_device(entry_id):
         schemas = request.json["schemas"]
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             ble_update_device(request)
-            session.commit()
+        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
+            ethermab_update_device(request)
+        session.commit()
     except Exception as e:
         return blow_an_error(str(e),400)
 
@@ -199,17 +226,20 @@ def update_device(entry_id):
 @scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
 @authenticate_user
 def delete_device(entry_id):
-    """Delete SCIM User"""
+    """Delete SCIM Device"""
     entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
     ble_entry = session.get(BleExtension,entry_id)
     if ble_entry:
         session.delete(ble_entry)
+    mab_entry = session.get(EtherMABExtension,entry_id)
+    if mab_entry:
+        session.delete(mab_entry)
+        ethermab_delete_device(mab_entry)
     session.delete(entry)
     session.commit()
     return make_response("", 204)
-
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
 @authenticate_user

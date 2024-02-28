@@ -16,14 +16,12 @@ def blow_an_error(e,code,scim_code = "invalidSyntax"):
     Simple formating handling routine"
     """
 
-    return make_response(
-        jsonify(
-            {
+    response  = {
                 "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Error"],
-                "scimType": scim_code,
                 "detail": e,
-                "status": code,
+                "status": code
                 }
-        ),
-        code,
-    )
+    if scim_code:
+        response["scimType"] = scim_code
+
+    return make_response(jsonify(response), code)
