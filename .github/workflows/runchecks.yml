@@ -4,8 +4,8 @@ on: [push]
 
 jobs:
   build:
-    variables:
-       WANT_MAB_ETHERNET: "yes"
+    env:
+      WANT_ETHERNET_MAB: True
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
