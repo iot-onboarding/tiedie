@@ -27,3 +27,9 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "tiedie")
 EXTERNAL_HOST = os.getenv("EXTERNAL_HOST", "localhost")
 EXTERNAL_PORT = os.getenv("EXTERNAL_PORT", "8080")
 CDKM_ENDPOINT = os.getenv("CDKM_ENDPOINT", None )
+ISE_USERNAME = os.getenv('ISE_USERNAME',None)
+ISE_PASSWORD = os.getenv('ISE_PASSWD',None)
+ISE_HOST = os.getenv('ISE_HOST', None)
+WANT_ETHER_MAB = os.getenv('WANT_ETHERNET_MAB', None)
+
+ISE_SUPPORT = ISE_USERNAME and ISE_PASSWORD and ISE_HOST
