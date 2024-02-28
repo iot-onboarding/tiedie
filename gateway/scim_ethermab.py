@@ -91,3 +91,15 @@ def ethermab_get_filtered_entries(mac_address):
     """ Return Ethernet MAB filtered entries """
 
     return EtherMABExtension.query.filter_by(device_mac_address=mac_address).all()
+
+def ethermab_delete_device(entry):
+    """
+    delete from ISE database if necessary
+    """
+
+    if not ISE_SUPPORT:
+        return
+
+    api=init_ise()
+    if api:
+        api.endpoint.delete_endpoint(mac=entry.device_mac_address)
