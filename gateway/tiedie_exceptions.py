@@ -17,6 +17,11 @@ class MABNotSupported(Exception):
     Throw this if MAB is not permitted in this environment.
     """
 
+class FDONotSupported(Exception):
+    """
+    Throw this if FDO is not permitted in this environment.
+    """
+
 class SchemaError(Exception):
     """
     Something is wrong with the request due to a schema error.
