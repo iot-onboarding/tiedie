@@ -23,7 +23,6 @@ from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMAB
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
 from scim_ethermab import ethermab_create_device,ethermab_update_device,\
-    ethermab_get_filtered_entries
 from scim_fdo import fdo_create_device, fdo_update_device
 from scim_error import blow_an_error
 
@@ -57,10 +56,13 @@ def create_device():
     extracts data from the request JSON, and stores user information in a database.
     """
     # Get the request json and check if it is valid
-    if not request.json:
-        return blow_an_error("Request body is not valid JSON.",400)
+    try:
+        if not isinstance(request.json["schemas"],list):
+            return blow_an_error("schemas is not a list",400)
+    except KeyError:
+        return blow_an_error("Schema Error",400)
 
-    schemas = request.json.get("schemas").copy()
+    schemas = request.json["schemas"].copy()
     device_id=request.json.get("id")
 
     if "urn:ietf:params:scim:schemas:core:2.0:Device" in schemas:
@@ -77,14 +79,15 @@ def create_device():
     appextschema = \
         'urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device'
     endpoint_apps_ext = request.json.get(appextschema, None)
-    if appextschema in schemas and endpoint_apps_ext:
+    if endpoint_apps_ext and appextschema in schemas:
         schemas.remove(appextschema)
         applications = endpoint_apps_ext.get("applications")
         endpoint_app_ids = [app.get("value") for app in applications]
         # Select all endpoint apps from the database
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
-
+    elif appextschema in schemas:
+        return blow_an_error("endpointAppExt in schema, but no associated object.", 400)
 
     # Add device core object
     try:
@@ -229,10 +232,12 @@ def update_device(entry_id):
 @scim_app.route("/Devices/<string:entry_id>", methods=["DELETE"])
 @authenticate_user
 def delete_device(entry_id):
-    """Delete SCIM User"""
+    """Delete SCIM Device"""
     entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
+    if entry.ethermab_extension:
+        ethermab_delete_device(entry.ethermab_extension)
     for cls in [ BleExtension, EtherMABExtension, FDOExtension ]:
         sub_entry = session.get(cls,entry_id)
         if sub_entry:
@@ -240,7 +245,6 @@ def delete_device(entry_id):
     session.delete(entry)
     session.commit()
     return make_response("", 204)
-
 
 @scim_app.route("/EndpointApps/<string:id>", methods=["GET"])
 @authenticate_user
