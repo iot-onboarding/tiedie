@@ -106,3 +106,29 @@ If you want to use certificates to authenticate the endpoint apps, you can gener
 cd certs
 ./gen_cert <client_name>
 ```
+
+# MAB Support
+
+MAC Authentication Bypass is a primative and weak form of authentication
+that just checks against MAC addresses.  Use at your own risk.  Any device
+can fake a MAC address.  However, sometimes it is useful for bootstrapping
+stronger trust.
+
+If you want MAB support, you must indicate that by setting appropriate
+environment variables in the docker-compose.yml file as follows:
+
+
+```
+WANT_ETHERNET_MAB=True
+
+ISE_HOST={ISE ERS endpoint hostname}
+ISE_USERNAME=user
+ISE_PASSWORD={whateversecret}
+'''
+
+By default MAB is not supported.  If all three of the ISE environment
+variables are not set, the SCIM database will be updated, but nothing
+else will be done.  In the future, one might expect support for AAA
+services other than ISE.
+
+
