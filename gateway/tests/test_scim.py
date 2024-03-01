@@ -347,7 +347,7 @@ def test_delete_mab_device(client: FlaskClient, api_key):
             "deviceDisplayName": "Generic MAB Device",
             "adminState": True,
             "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
-                "deviceMacAddress": "AA:BB:CC:00:22:33"
+                "deviceMacAddress": "AA:BB:CC:11:22:33"
             }
         }, headers={
             "x-api-key": api_key

@@ -16,7 +16,8 @@ from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
-from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError
+from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError, \
+    ISEError
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension, \
     FDOExtension
@@ -124,6 +125,8 @@ def create_device():
         response = blow_an_error("MAB not supported.", 403,scim_code = None)
     except SchemaError as e:
         response = blow_an_error(str(e),400)
+    except ISEError as e:
+        response = blow_an_error(str(e), 400)
     except Exception as e:
         response = blow_an_error(str(e),400)
     return response
@@ -239,6 +242,7 @@ def delete_device(entry_id):
         return blow_an_error("Device not found",404)
     if entry.ethermab_extension:
         ethermab_delete_device(entry.ethermab_extension)
+
     for cls in [ BleExtension, EtherMABExtension, FDOExtension ]:
         sub_entry = session.get(cls,entry_id)
         if sub_entry:
