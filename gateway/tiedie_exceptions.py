@@ -31,3 +31,8 @@ class SchemaError(Exception):
     """
     Something is wrong with the request due to a schema error.
     """
+
+class ISEError(Exception):
+    """
+    Something went wrong with ISE
+    """
