@@ -124,7 +124,7 @@ WANT_ETHERNET_MAB=True
 ISE_HOST={ISE ERS endpoint hostname}
 ISE_USERNAME=user
 ISE_PASSWORD={whateversecret}
-'''
+```
 
 By default MAB is not supported.  If all three of the ISE environment
 variables are not set, the SCIM database will be updated, but nothing
