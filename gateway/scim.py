@@ -12,12 +12,13 @@ app management, authentication, and error handling.
 
 import uuid
 import datetime
+import json
 from functools import wraps
 from flask import Blueprint, jsonify, make_response, request, current_app
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError, \
-    ISEError
+    ISEError, FDONotSupported
 from database import session
 from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension, \
     FDOExtension
@@ -46,6 +47,41 @@ def authenticate_user(func):
         return make_response(jsonify({"error": "Unauthorized"}), 403)
 
     return check_apikey
+
+
+def create_device_object(req,endpoint_apps,schemas,dev_id):
+    """
+    Create an object and return it to the main create routine.
+    This is split because pylint doesn't like long routines.
+    Sigh.
+    """
+
+    entry = Device(
+        schemas=req.json["schemas"],
+        device_display_name=req.json["deviceDisplayName"],
+        admin_state=req.json["adminState"],
+        endpoint_apps=endpoint_apps,
+        created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
+
+    if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
+        entry.ble_extension = ble_create_device(req,dev_id)
+        schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
+    if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' \
+       in schemas:
+        entry.ethermab_extension = ethermab_create_device(req,dev_id)
+        schemas.remove(
+            'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
+    if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' \
+       in schemas:
+        entry.fdo_extension = fdo_create_device(req,dev_id)
+        schemas.remove(
+            'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device')
+
+    if schemas:
+        raise SchemaError("not supported: " + json.dumps(schemas))
+    return entry
+
 
 # SCIM Implementation
 
@@ -89,42 +125,25 @@ def create_device():
         endpoint_apps = session.scalars(select(EndpointApp).filter(
             EndpointApp.id.in_(endpoint_app_ids))).all()
     elif appextschema in schemas:
-        return blow_an_error("endpointAppExt in schema, but no associated object.", 400)
+        return blow_an_error(
+            "endpointAppExt in schema, but no associated object.", 400)
 
     # Add device core object
     try:
-        entry = Device(
-            schemas=request.json["schemas"],
-            device_display_name=request.json["deviceDisplayName"],
-            admin_state=request.json["adminState"],
-            endpoint_apps=endpoint_apps,
-            created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        )
-
-        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-            entry.ble_extension = ble_create_device(request,device_id)
-            schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
-        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
-            entry.ethermab_extension = ethermab_create_device(request,device_id)
-            schemas.remove('urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
-        if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' in schemas:
-            entry.fdo_extension = fdo_create_device(request,device_id)
-            schemas.remove('urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device')
-
-        if schemas:
-            return blow_an_error("Unsupported Schema",501,scim_code = None)
+        entry = create_device_object(request,endpoint_apps,schemas,device_id)
         session.add(entry)
         session.commit()
 
         core=entry.serialize()
         return make_response(jsonify(core),201)
-
     except DeviceExists:
         response= blow_an_error("Device already exists", 409,"uniqueness")
     except MABNotSupported:
         response = blow_an_error("MAB not supported.", 403,scim_code = None)
+    except FDONotSupported:
+        response = blow_an_error("FDO not supported", 403, scim_code = None)
     except SchemaError as e:
-        response = blow_an_error(str(e),400)
+        response = blow_an_error(str(e),501)
     except ISEError as e:
         response = blow_an_error(str(e), 400)
     except Exception as e:
@@ -395,8 +414,8 @@ def bulk_command():
                 response = current_app.process_response(response)
 
             if response.json is not None:
-                json = dict(response.json)
-                json["operation"] = op["operation"]
+                jn = dict(response.json)
+                jn["operation"] = op["operation"]
                 if bulk_id is not None:
                     results.append({bulk_id: json})
                 results.append(json)

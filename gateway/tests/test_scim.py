@@ -396,6 +396,8 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
             "x-api-key": api_key
         }
     )
+
+    assert response.status_code in (200,201)
     device_id = response.json["id"]
 
     response = client.get(f"/scim/v2/Devices/{device_id}", headers={

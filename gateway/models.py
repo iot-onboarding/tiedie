@@ -19,7 +19,8 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, \
     ForeignKey, Integer, String, ARRAY, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT, WANT_ETHER_MAB, WANT_FDO
+from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT,\
+    WANT_ETHER_MAB, WANT_FDO
 from database import db
 from tiedie_exceptions import MABNotSupported, FDONotSupported
 

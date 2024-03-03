@@ -6,6 +6,7 @@ jobs:
   build:
     env:
       WANT_ETHERNET_MAB: True
+      WANT_FDO: True
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
