@@ -28,8 +28,13 @@ EXTERNAL_HOST = os.getenv("EXTERNAL_HOST", "localhost")
 EXTERNAL_PORT = os.getenv("EXTERNAL_PORT", "8080")
 CDKM_ENDPOINT = os.getenv("CDKM_ENDPOINT", None )
 ISE_USERNAME = os.getenv('ISE_USERNAME',None)
-ISE_PASSWORD = os.getenv('ISE_PASSWD',None)
+ISE_PASSWORD = os.getenv('ISE_PASSWORD',None)
 ISE_HOST = os.getenv('ISE_HOST', None)
 WANT_ETHER_MAB = os.getenv('WANT_ETHERNET_MAB', None)
+WANT_FDO = os.getenv('WANT_FDO',None)
+FDO_OWNER_URI = os.getenv('FDO_OWNER_URI',None)
 
-ISE_SUPPORT = ISE_USERNAME and ISE_PASSWORD and ISE_HOST
+FDO_SUPPORT = FDO_OWNER_URI is not None
+
+ISE_SUPPORT = ISE_USERNAME is not None and ISE_PASSWORD is not None and \
+    ISE_HOST is not None
