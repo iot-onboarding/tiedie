@@ -16,7 +16,6 @@ from app_factory import create_app
 from models import OnboardingAppKey
 from database import db
 
-
 @pytest.fixture(name="postgres")
 def fixture_postgres():
     """ Postgres container """
@@ -348,7 +347,179 @@ def test_delete_mab_device(client: FlaskClient, api_key):
             "deviceDisplayName": "Generic MAB Device",
             "adminState": True,
             "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
-                "deviceMacAddress": "AA:BB:CC:00:22:33"
+                "deviceMacAddress": "AA:BB:CC:11:22:33"
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+
+    device_id = response.json["id"]
+
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 204
+
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 0
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 0
+
+
+def test_create_fdo_device(client: FlaskClient, api_key: str):
+    """ Test POST Device """
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
+            "deviceDisplayName": "Generic FDO Device",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
+                "fdoVoucher": "there-should-be-a-voucher-here"
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+
+    assert response.status_code in (200,201)
+    device_id = response.json["id"]
+
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+
+    assert response.json["id"] == device_id
+    assert response.json["meta"] is not None
+    assert "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device" in response.json
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 1
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 1
+    assert response.json["Resources"][0]["id"] == device_id
+
+    # Test filter
+    response = client.get(
+        "/scim/v2/Devices?filter=deviceMacAddress eq \"AA:BB:CC:00:22:33\"",
+        headers={
+            "x-api-key": api_key
+        })
+
+    print(response.json)
+    assert response.status_code == 200
+    assert response.json["totalResults"] == 0
+
+def test_get_fdo_device(client: FlaskClient, api_key):
+    """ Test GET device """
+    device_id = uuid.uuid4()
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    assert response.json["totalResults"] == 0
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 0
+
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
+            "deviceDisplayName": "Generic MAB Device",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
+                "fdoVoucher": "there-should-be-a-voucher-here"
+            }
+        }, headers={
+            "x-api-key": api_key
+        }
+    )
+    device_id = response.json["id"]
+
+    response = client.get(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+
+    assert response.json["id"] == device_id
+    assert response.json["meta"] is not None
+    assert "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device" in response.json
+
+    response = client.get("/scim/v2/Devices", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 200
+    print(response.json)
+    assert response.json["totalResults"] == 1
+    assert response.json["schemas"] == [
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+    assert len(response.json["Resources"]) == 1
+    assert response.json["Resources"][0]["id"] == device_id
+
+    # Test filter
+    response = client.get(
+        "/scim/v2/Devices?filter=deviceMacAddress eq \"AA:BB:CC:00:22:33\"",
+        headers={
+            "x-api-key": api_key
+        })
+
+    print(response.json)
+    assert response.status_code == 200
+    assert response.json["totalResults"] == 0
+
+
+def test_delete_fdo_device(client: FlaskClient, api_key):
+    """ Test DELETE device """
+    device_id = uuid.uuid4()
+    response = client.delete(f"/scim/v2/Devices/{device_id}", headers={
+        "x-api-key": api_key
+    })
+
+    assert response.status_code == 404
+
+    response = client.post(
+        "/scim/v2/Devices",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
+                        "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
+            "deviceDisplayName": "Generic FDO Device",
+            "adminState": True,
+            "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
+                "fdoVoucher": "there-should-be-a-voucher-here"
             }
         }, headers={
             "x-api-key": api_key
