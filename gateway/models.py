@@ -197,7 +197,7 @@ class FDOExtension(db.Model):
 
         return {
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device" : {
-                "fdoVoucher" : self.fdo_voucher
+                "fdoOwnerVoucher" : self.fdo_voucher
             }
         }
     def __repr__(self):
