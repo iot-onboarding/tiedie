@@ -19,14 +19,12 @@ from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError, \
     ISEError, FDONotSupported
+from scim_extensions import scim_ext_create, scim_ext_update, scim_ext_delete
 from database import session
-from models import EndpointApp, BleExtension, Device, OnboardingAppKey, EtherMABExtension, \
-    FDOExtension
+from models import EndpointApp, BleExtension, Device, OnboardingAppKey
 from util import make_hash
 from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
-from scim_ethermab import ethermab_create_device,ethermab_update_device, \
-    ethermab_delete_device, ethermab_get_filtered_entries
-from scim_fdo import fdo_create_device, fdo_update_device
+from scim_ethermab import ethermab_get_filtered_entries
 from scim_error import blow_an_error
 
 scim_app = Blueprint("scim", __name__, url_prefix="/scim/v2")
@@ -67,16 +65,9 @@ def create_device_object(req,endpoint_apps,schemas,dev_id):
     if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
         entry.ble_extension = ble_create_device(req,dev_id)
         schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
-    if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' \
-       in schemas:
-        entry.ethermab_extension = ethermab_create_device(req,dev_id)
-        schemas.remove(
-            'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device')
-    if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' \
-       in schemas:
-        entry.fdo_extension = fdo_create_device(req,dev_id)
-        schemas.remove(
-            'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device')
+
+    for ext in scim_ext_create:
+        ext(schemas, entry, req, dev_id)
 
     if schemas:
         raise SchemaError("not supported: " + json.dumps(schemas))
@@ -242,10 +233,9 @@ def update_device(entry_id):
         schemas = request.json["schemas"]
         if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
             ble_update_device(request)
-        if 'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device' in schemas:
-            ethermab_update_device(request)
-        if 'urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device' in schemas:
-            fdo_update_device(request)
+        for ext in scim_ext_update:
+            ext(entry,request)
+
         session.commit()
     except Exception as e:
         return blow_an_error(str(e),400)
@@ -259,14 +249,17 @@ def delete_device(entry_id):
     entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
-    if entry.ethermab_extension:
-        ethermab_delete_device(entry.ethermab_extension)
 
-    for cls in [ BleExtension, EtherMABExtension, FDOExtension ]:
+    for cls in [ BleExtension ]:
         sub_entry = session.get(cls,entry_id)
         if sub_entry:
             session.delete(sub_entry)
             session.commit()
+    try:
+        for ext in scim_ext_delete:
+            ext(entry_id)
+    except Exception as e:
+        return make_response(str(e),400)
     session.delete(entry)
     session.commit()
     return make_response("", 204)
