@@ -16,7 +16,8 @@ from scim_extensions import scim_ext_create, scim_ext_read, \
 from models import Device
 from database import session,db
 from tiedie_exceptions import SchemaError,DeviceExists,FDONotSupported
-from config import FDO_SUPPORT, FDO_OWNER_URI,WANT_FDO
+from config import FDO_SUPPORT, FDO_OWNER_URI, FDO_CA_CERT, FDO_CLIENT_CERT, \
+    WANT_FDO
 
 class FDOExtension(db.Model):
     """
@@ -55,9 +56,9 @@ def to_pem(vraw):
     """convert b64 voucher to PEM"""
     pem = "-----BEGIN OWNERSHIP VOUCHER-----"
     while len(vraw) > 65:
-        pem = pem + "\n" + vraw[:65]
-        vraw = vraw[65:]
-    pem = pem + "\n" + vraw + "\n----- END OWNERSHIP VOUCHER-----\n"
+        pem = pem + "\n" + vraw[:64]
+        vraw = vraw[64:]
+    pem = pem + "\n" + vraw + "\n-----END OWNERSHIP VOUCHER-----\n"
     return pem
 
 def fdo_create_device(schemas, entry, request,device_id,update=False):
@@ -90,6 +91,8 @@ def fdo_create_device(schemas, entry, request,device_id,update=False):
             res=requests.post(url=FDO_OWNER_URI,data=fdo_voucher,
                               headers={'Content-Type':
                                        'text/plain'},
+                              cert=FDO_CLIENT_CERT,
+                              verify=(FDO_CA_CERT is not None),
                               timeout=5)
         except Exception as e:
             raise FDONotSupported(str(e)) from e
