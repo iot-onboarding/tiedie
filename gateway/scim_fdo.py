@@ -11,7 +11,8 @@ import requests
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from scim_extensions import scim_ext_create, scim_ext_update,scim_ext_delete
+from scim_extensions import scim_ext_create, scim_ext_read, \
+    scim_ext_update,scim_ext_delete
 from models import Device
 from database import session,db
 from tiedie_exceptions import SchemaError,DeviceExists,FDONotSupported
@@ -97,6 +98,13 @@ def fdo_create_device(schemas, entry, request,device_id,update=False):
     entry.fdo_extension =  FDOExtension(device_id=device_id,
                                         fdo_voucher=fdo_voucherb64)
 
+def fdo_read_device(entry,response):
+    """
+    Just serialize ethermab object into the response
+    """
+    if entry.fdo_extension:
+        response.update(entry.fdo_extension.serialize())
+
 def fdo_update_device(parent,request):
     """
     update existing entry
@@ -141,5 +149,6 @@ def fdo_delete_device(entry_id):
 
 if WANT_FDO:
     scim_ext_create.append(fdo_create_device)
+    scim_ext_read.append(fdo_read_device)
     scim_ext_update.append(fdo_update_device)
     scim_ext_delete.append(fdo_delete_device)

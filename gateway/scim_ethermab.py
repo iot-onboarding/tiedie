@@ -12,7 +12,8 @@ from ciscoisesdk.exceptions import ApiError
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from scim_extensions import scim_ext_create, scim_ext_update, scim_ext_delete
+from scim_extensions import scim_ext_create, scim_ext_read, \
+    scim_ext_update, scim_ext_delete
 from models import Device
 from database import session,db
 from config import ISE_SUPPORT, ISE_HOST, ISE_USERNAME, ISE_PASSWORD, \
@@ -122,6 +123,12 @@ def ethermab_create_device(schemas,entry,request,device_id,update=False):
     entry.ethermab_extension = EtherMABExtension(
         device_id=device_id,device_mac_address=device_mac_address)
 
+def ethermab_read_device(entry,response):
+    """
+    Just serialize ethermab object into the response
+    """
+    if entry.ethermab_extension:
+        response.update(entry.ethermab_extension.serialize())
 
 def ethermab_update_device(parent,request):
     """
@@ -202,5 +209,6 @@ def ethermab_delete_device(entry_id):
 
 if WANT_ETHER_MAB:
     scim_ext_create.append(ethermab_create_device)
+    scim_ext_read.append(ethermab_read_device)
     scim_ext_update.append(ethermab_update_device)
     scim_ext_delete.append(ethermab_delete_device)

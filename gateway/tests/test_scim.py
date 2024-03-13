@@ -15,6 +15,8 @@ import pytest
 from testcontainers.postgres import PostgresContainer
 from app_factory import create_app
 from models import OnboardingAppKey
+from scim_fdo import FDOExtension
+from scim_ethermab import EtherMABExtension
 from database import db
 
 @pytest.fixture(name="postgres")
