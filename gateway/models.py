@@ -20,8 +20,8 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, \
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT
+from scim_extensions import scim_ext_read
 from database import db
-
 
 gatt_topic_devices = db.Table(
     "gatt_topic_devices",
@@ -111,10 +111,9 @@ class Device(db.Model):
             }
         if self.ble_extension:
             response.update(self.ble_extension.serialize())
-        if self.ethermab_extension:
-            response.update(self.ethermab_extension.serialize())
-        if self.fdo_extension:
-            response.update(self.fdo_extension.serialize())
+        for ext in scim_ext_read:
+            ext(self,response)
+
         if self.endpoint_apps:
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
