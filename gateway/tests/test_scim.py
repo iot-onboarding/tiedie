@@ -387,7 +387,7 @@ def test_delete_mab_device(client: FlaskClient, api_key):
 def test_create_fdo_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
 
-    voucher = open("tests/voucher.b64raw", encoding="utf-8").read()
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
     response = client.post(
         "/scim/v2/Devices",
         json={

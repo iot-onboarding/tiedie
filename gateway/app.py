@@ -28,7 +28,10 @@ from database import db, session
 from models import EndpointApp, OnboardingAppKey
 from util import make_hash
 from app_factory import create_app
-
+# pylint: disable-next=unused-import
+from scim_ethermab import EtherMABExtension
+# pylint: disable-next=unused-import
+from scim_fdo import FDOExtension
 
 app = create_app((
     'postgresql+psycopg2://'
