@@ -111,8 +111,8 @@ class Device(db.Model):
             }
         if self.ble_extension:
             response.update(self.ble_extension.serialize())
-        for ext in scim_ext_read:
-            ext(self,response)
+        for read_fn in scim_ext_read:
+            read_fn(self, response)
 
         if self.endpoint_apps:
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
