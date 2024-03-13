@@ -457,7 +457,7 @@ def test_get_fdo_device(client: FlaskClient, api_key):
     assert response.json["schemas"] == [
         "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
     assert len(response.json["Resources"]) == 0
-    voucher = open("tests/voucher.b64raw", encoding="utf-8").read()
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
 
     response = client.post(
         "/scim/v2/Devices",
@@ -517,7 +517,7 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
     })
 
     assert response.status_code == 404
-    voucher = open("tests/voucher.b64raw", encoding="utf-8").read()
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
 
     response = client.post(
         "/scim/v2/Devices",
