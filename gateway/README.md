@@ -15,7 +15,7 @@ The gateway also requires a Silabs Dev Kit (EFR32xG21) for the BLE functionality
 ## Setup
 
 Flash the **Bluetooth - NCP** demo binary using Simplicity Studio.  
-This was tested using Gecko SDK 4.2.1 and on the EFR32xG21 kit. 
+This was tested using Gecko SDK 4.4.1 and on the EFR32xG21 kit. 
 
 ### Configure the gateway
 

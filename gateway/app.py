@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     ble_ap.start_scan()
 
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.verify_mode = ssl.CERT_OPTIONAL
     context.load_verify_locations('ca_certificates/ca.pem')
     context.load_cert_chain('certs/server.crt', 'certs/server.key')
