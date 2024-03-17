@@ -2,6 +2,7 @@
 # All rights reserved.
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=consider-using-with
 
 """
 Test SCIM server implementation
@@ -14,6 +15,10 @@ import pytest
 from testcontainers.postgres import PostgresContainer
 from app_factory import create_app
 from models import OnboardingAppKey
+# pylint: disable-next=unused-import
+from scim_fdo import FDOExtension
+# pylint: disable-next=unused-import
+from scim_ethermab import EtherMABExtension
 from database import db
 
 @pytest.fixture(name="postgres")
@@ -49,7 +54,6 @@ def fixture_api_key(app):
         db.session.add(authkey)
         db.session.commit()
         yield key
-
 
 def test_create_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
@@ -382,6 +386,8 @@ def test_delete_mab_device(client: FlaskClient, api_key):
 
 def test_create_fdo_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
+
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
     response = client.post(
         "/scim/v2/Devices",
         json={
@@ -390,7 +396,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
             "deviceDisplayName": "Generic FDO Device",
             "adminState": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
-                "fdoVoucher": "there-should-be-a-voucher-here"
+                "fdoOwnerVoucher": voucher
             }
         }, headers={
             "x-api-key": api_key
@@ -451,6 +457,7 @@ def test_get_fdo_device(client: FlaskClient, api_key):
     assert response.json["schemas"] == [
         "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
     assert len(response.json["Resources"]) == 0
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
 
     response = client.post(
         "/scim/v2/Devices",
@@ -460,7 +467,7 @@ def test_get_fdo_device(client: FlaskClient, api_key):
             "deviceDisplayName": "Generic MAB Device",
             "adminState": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
-                "fdoVoucher": "there-should-be-a-voucher-here"
+                "fdoOwnerVoucher": voucher
             }
         }, headers={
             "x-api-key": api_key
@@ -510,6 +517,7 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
     })
 
     assert response.status_code == 404
+    voucher = open("tests/fdo-voucher.b64", encoding="utf-8").read()
 
     response = client.post(
         "/scim/v2/Devices",
@@ -519,7 +527,7 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
             "deviceDisplayName": "Generic FDO Device",
             "adminState": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
-                "fdoVoucher": "there-should-be-a-voucher-here"
+                "fdoOwnerVoucher": voucher
             }
         }, headers={
             "x-api-key": api_key
