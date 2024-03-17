@@ -33,8 +33,9 @@ ISE_HOST = os.getenv('ISE_HOST', None)
 WANT_ETHER_MAB = os.getenv('WANT_ETHERNET_MAB', None)
 WANT_FDO = os.getenv('WANT_FDO',None)
 FDO_OWNER_URI = os.getenv('FDO_OWNER_URI',None)
-
-FDO_SUPPORT = FDO_OWNER_URI is not None
+FDO_CLIENT_CERT = os.getenv('FDO_CLIENT_CERT',None)
+FDO_CA_CERT = os.getenv('FDO_SERVER_CERT',None)
+FDO_SUPPORT = FDO_OWNER_URI is not None and FDO_CLIENT_CERT is not None
 
 ISE_SUPPORT = ISE_USERNAME is not None and ISE_PASSWORD is not None and \
     ISE_HOST is not None

@@ -19,11 +19,9 @@ from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, \
     ForeignKey, Integer, String, ARRAY, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT,\
-    WANT_ETHER_MAB, WANT_FDO
+from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT
+from scim_extensions import scim_ext_read
 from database import db
-from tiedie_exceptions import MABNotSupported, FDONotSupported
-
 
 gatt_topic_devices = db.Table(
     "gatt_topic_devices",
@@ -113,10 +111,9 @@ class Device(db.Model):
             }
         if self.ble_extension:
             response.update(self.ble_extension.serialize())
-        if self.ethermab_extension:
-            response.update(self.ethermab_extension.serialize())
-        if self.fdo_extension:
-            response.update(self.fdo_extension.serialize())
+        for read_fn in scim_ext_read:
+            read_fn(self, response)
+
         if self.endpoint_apps:
             response["urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"] = \
                 {
@@ -133,75 +130,6 @@ class Device(db.Model):
             }
         return response
 
-class EtherMABExtension(db.Model):
-    """
-    MAC Authenticated Bypass Extension.  Use this for 802.3 devices that
-    support no other form of authentication.  Yes, Yuck.
-    """
-    __tablename__ = "ethernetmab"
-
-    device_id = mapped_column(UUID(as_uuid=True),ForeignKey("devices.device_id"),
-                              primary_key=True)
-    device_mac_address = mapped_column(String)
-    device: Mapped[Device] = relationship(back_populates="ethermab_extension")
-
-    def __init__(
-	self,
-        device_id,
-        device_mac_address):
-        """
-        Populate Object with the two required attributes.
-        """
-
-        if not WANT_ETHER_MAB:
-            raise MABNotSupported
-
-        self.device_id = device_id
-        self.device_mac_address = device_mac_address
-
-    def serialize(self):
-        """Serialize output"""
-
-        return {
-            "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" : {
-                "deviceMacAddress" : self.device_mac_address
-            }
-        }
-    def __repr__(self):
-        return f"<id {self.device_id}>"
-
-class FDOExtension(db.Model):
-    """
-    Implements Fido Device Onboarding Object
-    """
-    __tablename__ = "scim_fdo"
-
-    device_id = mapped_column(UUID(as_uuid=True),ForeignKey("devices.device_id"),
-                              primary_key=True)
-    fdo_voucher = mapped_column(String)
-    device: Mapped[Device] = relationship(back_populates="fdo_extension")
-
-    def __init__(self, device_id, fdo_voucher):
-        """
-        Populate Object with the two required attributes.
-        """
-
-        if not WANT_FDO:
-            raise FDONotSupported
-
-        self.device_id = device_id
-        self.fdo_voucher = fdo_voucher
-
-    def serialize(self):
-        """Serialize output"""
-
-        return {
-            "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device" : {
-                "fdoVoucher" : self.fdo_voucher
-            }
-        }
-    def __repr__(self):
-        return f"<id {self.device_id}>"
 
 
 
