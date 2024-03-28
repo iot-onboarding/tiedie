@@ -8,14 +8,22 @@ This module implements BLE dispatch for SCIM.
 """
 
 from tiedie_exceptions import DeviceExists
-from models import BleExtension
+from ble_models import BleExtension
 from database import session
+from scim_extensions import scim_ext_create, scim_ext_read, \
+    scim_ext_update, scim_ext_delete
 
-def ble_create_device(request,device_id):
+def ble_create_device(schemas,entry,request,device_id,update=False):
     """
     Process BLE SCIM creation request.  Return a BleExtension()
     """
-    ble_json = request.json.get("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
+    ble_schema="urn:ietf:params:scim:schemas:extension:ble:2.0:Device"
+    if not update:
+        if not ble_schema in schemas:
+            return
+        schemas.remove(ble_schema)
+
+    ble_json = request.json.get(ble_schema)
     device_mac_address = ble_json.get("deviceMacAddress")
 
     pairing_just_works = ble_json.get(
@@ -43,7 +51,7 @@ def ble_create_device(request,device_id):
     if existing_device:
         raise DeviceExists("Device Exists")
 
-    entry = BleExtension(
+    entry.ble_extension = BleExtension(
         device_id=device_id,
         version_support = ble_json.get("versionSupport"),
         device_mac_address=device_mac_address,
@@ -58,18 +66,16 @@ def ble_create_device(request,device_id):
         pairing_oob_key=pairing_oob_key,
         pairing_oobrn=pairing_oobrn,
     )
-    return entry
 
-
-
-def ble_update_device(request):
+def ble_update_device(parent,request):
     """
     Update SCIM entry for BLE device.
     """
     entry: BleExtension = session.get(BleExtension,request.json["id"])
     # if ble is added in update, just add it.
     if not entry:
-        return ble_create_device(request,request.json["id"])
+        return ble_create_device(None, parent, request, request.json["id"],
+                                 update=True)
 
 
     ble_json=request.json["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
@@ -94,3 +100,26 @@ def ble_get_filtered_entries(mac_address):
     """ returned filtered list """
 
     return BleExtension.query.filter_by(device_mac_address=mac_address).all()
+
+def ble_read_device(entry,response):
+    """
+    Serialize BLE entry.
+    """
+    if entry.ble_extension:
+        response.update(entry.ble_extension.serialize())
+
+def ble_delete_device(entry_id):
+    """
+    Delete a BLE Entry.
+    """
+
+    entry=session.get(BleExtension,entry_id)
+    if not entry:
+        return
+    session.delete(entry)
+    session.commit()
+
+scim_ext_create.append(ble_create_device)
+scim_ext_update.append(ble_update_device)
+scim_ext_read.append(ble_read_device)
+scim_ext_delete.append(ble_delete_device)
