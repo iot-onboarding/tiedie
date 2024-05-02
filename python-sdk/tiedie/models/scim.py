@@ -54,10 +54,10 @@ class BleExtension:
         if just_works:
             self.pairing_methods.append("urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device")
             self.pairing_just_works = PairingJustWorks()
-        if pass_key:
+        if pass_key and pass_key > 0:
             self.pairing_methods.append("urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device")
             self.pairing_pass_key = PairingPassKey(pass_key)
-        if oob_key:
+        if oob_key and oob_random_number:
             self.pairing_methods.append("urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device")
             self.pairing_oob = PairingOOB(oob_key, oob_random_number)
 
@@ -96,7 +96,7 @@ class BleExtension:
             "pairingMethods": self.pairing_methods
         }
         if self.null_pairing:
-            data["urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"] = "null"
+            data["urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"] = None
         if self.pairing_just_works:
             data["urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"] = self.pairing_just_works.__dict__
         if self.pairing_pass_key:
