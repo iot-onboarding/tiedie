@@ -43,6 +43,14 @@ SPDX-License-Identifier: Apache-2.0
                 <label class="form-check-label" for="isRandom">Random Address</label>
             </div>
 
+            <div class="mb-3">
+                <label for="pairingMethod" class="form-label">Pairing Method</label>
+                <select class="form-select" name="pairingMethod">
+                    <option value="null">None</option>
+                    <option value="justWorks">Just Works</option>
+                </select>
+            </div>
+
             <!-- <div class="mb-3">
                 <label for="passKey" class="form-label">Device Pass Key</label>
                 <input type="text" required class="form-control" id="passKey" name="passKey" placeholder="Device Pass Key" />

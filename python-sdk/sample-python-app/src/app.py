@@ -148,12 +148,20 @@ def add_device():
     admin_state = True if content.get('adminState', 'off') == 'on' else False
     is_random = True if content.get('isRandom', 'off') == 'on' else False
     version_support = content.getlist('versionSupport')
-    device = Device(content['deviceDisplayName'], 
+
+    pairing_method = content.get('pairingMethod')
+
+    device = Device(content['deviceDisplayName'],
                     admin_state,
-                    BleExtension(content['deviceMacAddress'], 
-                                version_support,
-                                is_random),
+                    BleExtension(content['deviceMacAddress'],
+                                 version_support,
+                                 is_random,
+                                 pairing_method == 'null',
+                                 pairing_method == 'justWorks',
+                                 ),
                     endpointAppsExtension=EndpointAppsExtension(app.config['ONBOARDING_APP_ID'], [app.config['CONTROL_APP_ID']], [app.config['DATA_APP_ID']]))
+    
+    print(device.to_dict())
 
     response = onboarding_client.createDevice(device)
 
