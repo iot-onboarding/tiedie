@@ -23,11 +23,11 @@ import OpenSSL
 from access_point import BleConnectOptions
 from ap_factory import ble_ap
 from database import session
-from models import (
+from models import EndpointApp
+from ble_models import (
     AdvTopic,
     ConnectionTopic,
     DataAppTopic,
-    EndpointApp,
     GattTopic,
     BleExtension,
     AdvFilter
@@ -322,7 +322,6 @@ def register_topic():
         characteristic_id = ble["characteristicID"].lower()
 
         device = session.get(BleExtension, device_id)
-
         gatt_topic = GattTopic(
             topic, service_id, characteristic_id, data_format, [device])
         session.merge(gatt_topic)
