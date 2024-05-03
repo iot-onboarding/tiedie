@@ -6,7 +6,7 @@
 """
 
 Configures Flask with SQLAlchemy for database
-perations and initializes a session.
+operations and initializes a session.
 
 """
 
