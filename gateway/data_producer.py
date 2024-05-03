@@ -15,7 +15,7 @@ from flask import Flask
 import paho.mqtt.client as mqtt
 from sqlalchemy import Column, func, and_, select
 from database import session
-from models import AdvTopic, GattTopic, BleExtension
+from ble_models import AdvTopic, GattTopic, BleExtension
 from proto import data_app_pb2
 
 

@@ -21,9 +21,9 @@ from tiedie_exceptions import DeviceExists, MABNotSupported, SchemaError, \
     ISEError, FDONotSupported
 from scim_extensions import scim_ext_create, scim_ext_update, scim_ext_delete
 from database import session
-from models import EndpointApp, BleExtension, Device, OnboardingAppKey
+from models import EndpointApp, Device, OnboardingAppKey
 from util import make_hash
-from scim_ble import ble_create_device,ble_update_device,ble_get_filtered_entries
+from scim_ble import ble_get_filtered_entries
 from scim_ethermab import ethermab_get_filtered_entries
 from scim_error import blow_an_error
 
@@ -61,10 +61,6 @@ def create_device_object(req,endpoint_apps,schemas,dev_id):
         endpoint_apps=endpoint_apps,
         created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     )
-
-    if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-        entry.ble_extension = ble_create_device(req,dev_id)
-        schemas.remove('urn:ietf:params:scim:schemas:extension:ble:2.0:Device')
 
     for ext in scim_ext_create:
         ext(schemas, entry, req, dev_id)
@@ -230,9 +226,6 @@ def update_device(entry_id):
         entry.device_display_name = request.json.get("deviceDisplayName")
         entry.admin_state = request.json.get("adminState")
         entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-        schemas = request.json["schemas"]
-        if 'urn:ietf:params:scim:schemas:extension:ble:2.0:Device' in schemas:
-            ble_update_device(request)
         for ext in scim_ext_update:
             ext(entry,request)
 
@@ -249,12 +242,6 @@ def delete_device(entry_id):
     entry = session.get(Device,entry_id)
     if not entry:
         return blow_an_error("Device not found",404)
-
-    for cls in [ BleExtension ]:
-        sub_entry = session.get(cls,entry_id)
-        if sub_entry:
-            session.delete(sub_entry)
-            session.commit()
     try:
         for ext in scim_ext_delete:
             ext(entry_id)

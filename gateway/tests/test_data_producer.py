@@ -20,7 +20,10 @@ from testcontainers.postgres import PostgresContainer
 from app_factory import create_app
 from data_producer import DataProducer
 from database import db
-from models import OnboardingAppKey
+# pylint: disable-next=unused-import
+from models import OnboardingAppKey, Device
+# pylint: disable-next=unused-import
+from ble_models import BleExtension, GattTopic
 from proto import data_app_pb2
 from tests.mosquitto_container import MosquittoContainer
 
