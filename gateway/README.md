@@ -35,7 +35,7 @@ cd certs
 
 ```bash
 cd certs
-./gen_cert server
+./gen_cert.sh server
 ```
 
 ### Start the gateway
@@ -100,11 +100,11 @@ To register a control or data app, you can use the `EndpointApps` SCIM APIs.
 
 ## Generate client private key and certificate
 
-If you want to use certificates to authenticate the endpoint apps, you can generate them using the same `gen_cert` script. 
+If you want to use certificates to authenticate the endpoint apps, you can generate them using the same `gen_cert.sh` script. 
 
 ```bash
 cd certs
-./gen_cert <client_name>
+./gen_cert.sh <client_name>
 ```
 
 # MAB Support
