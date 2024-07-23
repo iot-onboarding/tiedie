@@ -107,8 +107,8 @@ print(response.body.client_token)
 from tiedie.models.scim import Device, BleExtension, PairingPassKey
 
 device = Device(
-    device_display_name="BLE Monitor",
-    admin_state=False,
+    display_name="BLE Monitor",
+    active=False,
     ble_extension=BleExtension(
         device_mac_address="AA:BB:CC:11:22:33",
         is_random=False,

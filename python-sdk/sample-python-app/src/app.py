@@ -206,13 +206,13 @@ def add_device():
 
     content = request.form.to_dict()
     print(content)
-    admin_state = content.get('adminState', 'off') == 'on'
+    active = content.get('active', 'off') == 'on'
     is_random = content.get('isRandom', 'off') == 'on'
     version_support = content['versionSupport'].split(',')
 
     device = Device(
-        device_display_name=content['deviceDisplayName'],
-        admin_state=admin_state,
+        display_name=content['displayName'],
+        active=active,
         ble_extension=BleExtension(
             device_mac_address=content['deviceMacAddress'],
             version_support=version_support,
