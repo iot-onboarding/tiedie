@@ -36,8 +36,8 @@ class Device(db.Model):
     __tablename__ = "devices"
     device_id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     schemas = mapped_column(ARRAY(String))
-    device_display_name = mapped_column(String)
-    admin_state = mapped_column(Boolean)
+    display_name = mapped_column(String)
+    active = mapped_column(Boolean)
     created_time = mapped_column(String)
     modified_time = mapped_column(String)
 
@@ -51,15 +51,15 @@ class Device(db.Model):
     def __init__(
             self,
             schemas,
-            device_display_name,
-            admin_state,
+            display_name,
+            active,
             endpoint_apps,
             created_time
     ):
 
         self.schemas = schemas
-        self.device_display_name = device_display_name
-        self.admin_state = admin_state
+        self.display_name = display_name
+        self.active = active
         if endpoint_apps:
             self.endpoint_apps.extend(endpoint_apps)
         self.created_time = created_time
@@ -71,8 +71,8 @@ class Device(db.Model):
         response = {
             "schemas" : self.schemas,
             "id": self.device_id,
-            "deviceDisplayName": self.device_display_name,
-            "adminState": self.admin_state,
+            "displayName": self.display_name,
+            "active": self.active,
             "meta": {"resourceType": "Device",
                      "created": self.created_time,
                      "lastModified": self.modified_time},
