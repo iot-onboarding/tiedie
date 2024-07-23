@@ -24,14 +24,14 @@ import java.util.List;
  * To create a device:
  * <pre>{@code var device = Device.builder()
  *         .displayName("BLE Monitor")
- *         .adminState(false)
+ *         .active(false)
  *         .build();
  * }</pre>
  * <p>
  * To create a BLE device, add the BLE extension with the necessary fields:
  * <pre>{@code var device = Device.builder()
  *         .displayName("BLE Monitor")
- *         .adminState(false)
+ *         .active(false)
  *         .bleExtension(BleExtension.builder()
  *                 .deviceMacAddress("AA:BB:CC:11:22:33")
  *                 .addressType(false)
@@ -55,11 +55,11 @@ public class Device {
     @JsonProperty("id")
     private String id;
 
-    @JsonProperty("deviceDisplayName")
-    private String deviceDisplayName;
+    @JsonProperty("displayName")
+    private String displayName;
 
-    @JsonProperty("adminState")
-    private boolean adminState;
+    @JsonProperty("active")
+    private boolean active;
 
     @JsonProperty("urn:ietf:params:scim:schemas:extension:ble:2.0:Device")
     private BleExtension bleExtension;

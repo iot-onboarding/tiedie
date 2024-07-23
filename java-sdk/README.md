@@ -109,8 +109,8 @@ var authenticator = ApiKeyAuthenticator.create(caStream, dataAppId, endpointApp.
 
 ```java
 Device device = Device.builder()
-        .deviceDisplayName("BLE Monitor")
-        .adminState(false)
+        .displayName("BLE Monitor")
+        .active(false)
         .bleExtension(BleExtension.builder()
             .deviceMacAddress("AA:BB:CC:11:22:33")
             .isRandom(false)
