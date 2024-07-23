@@ -31,8 +31,8 @@ class DeviceTest {
     @DisplayName("Device creation using builder")
     void testDeviceCreationUsingBuilder() throws JsonProcessingException {
         var device = Device.builder()
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -46,8 +46,8 @@ class DeviceTest {
         String expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"BLE Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
                 "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
                 +
@@ -62,8 +62,8 @@ class DeviceTest {
         assertEquals(expected, json);
 
         device = Device.builder()
-                .deviceDisplayName("Zigbee Monitor")
-                .adminState(false)
+                .displayName("Zigbee Monitor")
+                .active(false)
                 .zigbeeExtension(ZigbeeExtension.builder()
                         .versionSupport(List.of("3.0"))
                         .deviceEui64Address("50325FFFFEE76728")
@@ -75,8 +75,8 @@ class DeviceTest {
         expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"Zigbee Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
                 "    \"versionSupport\" : [ \"3.0\" ],\n" +
                 "    \"deviceEui64Address\" : \"50325FFFFEE76728\"\n" +
@@ -85,8 +85,8 @@ class DeviceTest {
         assertEquals(expected, json);
 
         device = Device.builder()
-                .deviceDisplayName("DPP Monitor")
-                .adminState(false)
+                .displayName("DPP Monitor")
+                .active(false)
                 .dppExtension(DppExtension.builder()
                         .dppVersion(2)
                         .bootstrappingMethod(List.of("QR"))
@@ -103,8 +103,8 @@ class DeviceTest {
         expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"DPP Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
@@ -122,8 +122,8 @@ class DeviceTest {
     @DisplayName("Device creation")
     void testDeviceCreation() throws JsonProcessingException {
         var device = new Device();
-        device.setDeviceDisplayName("BLE Monitor");
-        device.setAdminState(false);
+        device.setDisplayName("BLE Monitor");
+        device.setActive(false);
         var bleExtension = new BleExtension();
         bleExtension.setDeviceMacAddress("AA:BB:CC:11:22:33");
         bleExtension.setRandom(false);
@@ -136,8 +136,8 @@ class DeviceTest {
         String expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"BLE Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
                 "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
                 +
@@ -152,7 +152,7 @@ class DeviceTest {
         assertEquals(expected, json);
 
         device.setBleExtension(null);
-        device.setDeviceDisplayName("Zigbee Monitor");
+        device.setDisplayName("Zigbee Monitor");
         var zigbeeExtension = new ZigbeeExtension();
         zigbeeExtension.setVersionSupport(List.of("3.0"));
         zigbeeExtension.setDeviceEui64Address("50325FFFFEE76728");
@@ -163,8 +163,8 @@ class DeviceTest {
         expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"Zigbee Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
                 "    \"versionSupport\" : [ \"3.0\" ],\n" +
                 "    \"deviceEui64Address\" : \"50325FFFFEE76728\"\n" +
@@ -173,7 +173,7 @@ class DeviceTest {
         assertEquals(expected, json);
 
         device.setZigbeeExtension(null);
-        device.setDeviceDisplayName("DPP Monitor");
+        device.setDisplayName("DPP Monitor");
         var dppExtension = new DppExtension();
         dppExtension.setDppVersion(2);
         dppExtension.setBootstrappingMethod(List.of("QR"));
@@ -188,8 +188,8 @@ class DeviceTest {
         expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"DPP Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
@@ -209,8 +209,8 @@ class DeviceTest {
         String json = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"BLE Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
                 "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
                 +
@@ -226,8 +226,8 @@ class DeviceTest {
         var device = mapper.readValue(json, Device.class);
 
         var expected = Device.builder()
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -241,8 +241,8 @@ class DeviceTest {
         json = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"Zigbee Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"Zigbee Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device\" : {\n" +
                 "    \"versionSupport\" : [ \"3.0\" ],\n" +
                 "    \"deviceEui64Address\" : \"50325FFFFEE76728\"\n" +
@@ -252,8 +252,8 @@ class DeviceTest {
         device = mapper.readValue(json, Device.class);
 
         expected = Device.builder()
-                .deviceDisplayName("Zigbee Monitor")
-                .adminState(false)
+                .displayName("Zigbee Monitor")
+                .active(false)
                 .zigbeeExtension(ZigbeeExtension.builder()
                         .versionSupport(List.of("3.0"))
                         .deviceEui64Address("50325FFFFEE76728")
@@ -265,8 +265,8 @@ class DeviceTest {
         json = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"DPP Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"DPP Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:dpp:2.0:Device\" : {\n" +
                 "    \"dppVersion\" : 2,\n" +
                 "    \"bootstrappingMethod\" : [ \"QR\" ],\n" +
@@ -281,8 +281,8 @@ class DeviceTest {
         device = mapper.readValue(json, Device.class);
 
         expected = Device.builder()
-                .deviceDisplayName("DPP Monitor")
-                .adminState(false)
+                .displayName("DPP Monitor")
+                .active(false)
                 .dppExtension(DppExtension.builder()
                         .dppVersion(2)
                         .bootstrappingMethod(List.of("QR"))
@@ -304,8 +304,8 @@ class DeviceTest {
         var dataAppId = UUID.randomUUID().toString();
 
         var device = Device.builder()
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -322,8 +322,8 @@ class DeviceTest {
         var expected = "{\n" +
                 "  \"schemas\" : [ \"urn:ietf:params:scim:schemas:core:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\", \"urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device\" ],\n"
                 +
-                "  \"deviceDisplayName\" : \"BLE Monitor\",\n" +
-                "  \"adminState\" : false,\n" +
+                "  \"displayName\" : \"BLE Monitor\",\n" +
+                "  \"active\" : false,\n" +
                 "  \"urn:ietf:params:scim:schemas:extension:ble:2.0:Device\" : {\n" +
                 "    \"pairingMethods\" : [ \"urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device\" ],\n"
                 +
