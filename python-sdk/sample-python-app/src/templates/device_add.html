@@ -12,12 +12,12 @@ SPDX-License-Identifier: Apache-2.0
         <h1>{% block title %}Add device{% endblock %}</h1>
         <form class="col-4" action="{{ url_for('add_device') }}" method="post">
             <div class="mb-3">
-                <label for="deviceDisplayName" class="form-label">Device Display name</label>
-                <input type="text" required class="form-control" id="deviceDisplayName" name="deviceDisplayName" placeholder="Device Display name" />
+                <label for="displayName" class="form-label">Device Display name</label>
+                <input type="text" required class="form-control" id="displayName" name="displayName" placeholder="Device Display name" />
             </div>
             <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="adminState" name="adminState">
-                <label class="form-check-label" for="adminState">Admin State</label>
+                <input type="checkbox" class="form-check-input" id="active" name="active">
+                <label class="form-check-label" for="active">Admin State</label>
             </div>
 
             <div class="mb-3">
