@@ -50,19 +50,19 @@ class BleExtension(BaseModel):
     is_random: bool = False
     irk: Optional[str] = None
     null_pairing: Optional[NullPairing] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"),
         default=None)
     pairing_just_works: Optional[PairingJustWorks] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device"),
         default=None)
     pairing_pass_key: Optional[PairingPassKey] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device"),
         default=None)
     pairing_oob: Optional[PairingOOB] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:pairingOOB:2.0:Device"),
         default=None)
 
-    @computed_field(alias="pairingMethods")
+    @computed_field(alias=str("pairingMethods"))
     @property
     def pairing_methods(self) -> List[str]:
         """ Returns a list of pairing methods.
@@ -118,7 +118,7 @@ class AppCertificateInfo(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    root_cn: str = Field(alias="rootCN")
+    root_cn: str = Field(alias=str("rootCN"))
     subject_name: str
     subject_alternative_name: Optional[List[str]] = None
 
@@ -127,7 +127,7 @@ class EndpointApp(BaseModel):
     """ Stores information about an endpoint application. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    application_id: Optional[str] = Field(alias="id", default=None)
+    application_id: Optional[str] = Field(alias=str("id"), default=None)
     application_type: EndpointAppType
     application_name: str
     client_token: Optional[str] = None
@@ -137,7 +137,7 @@ class EndpointApp(BaseModel):
 class Application(BaseModel):
     """ Represents an application. """
     value: str
-    ref: Optional[str] = Field(alias="$ref", default=None)
+    ref: Optional[str] = Field(alias=str("$ref"), default=None)
 
 
 class EndpointAppsExtension(BaseModel):
@@ -153,20 +153,20 @@ class Device(BaseModel):
     """ Represents a device with extensions and schema handling. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    device_id: Optional[str] = Field(alias="id", default=None)
+    device_id: Optional[str] = Field(alias=str("id"), default=None)
     display_name: str
     active: bool
     ble_extension: Optional[BleExtension] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:ble:2.0:Device"),
         default=None)
     zigbee_extension: Optional[ZigbeeExtension] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device"),
         default=None)
     dpp_extension: Optional[DppExtension] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:dpp:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:dpp:2.0:Device"),
         default=None)
     endpoint_apps_extension: Optional[EndpointAppsExtension] = Field(
-        alias="urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device",
+        alias=str("urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device"),
         default=None)
 
     @computed_field

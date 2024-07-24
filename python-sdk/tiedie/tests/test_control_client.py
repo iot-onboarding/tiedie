@@ -15,13 +15,13 @@ from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 from tiedie.api.control_client import ControlClient
 from tiedie.models.ble import (AdvertisementRegistrationOptions,
                                BleAdvertisementFilter,
-                               BleAdvertisementFilterType,
+                               BleAdvertisementFilterType, BleBondingOptions,
                                BleConnectRequest,
                                BleDataParameter,
                                BleService)
 from tiedie.models.common import ConnectionRegistrationOptions, DataRegistrationOptions
-from tiedie.models.responses import TiedieStatus
-from tiedie.models.scim import BleExtension, Device, PairingPassKey
+from tiedie.models.responses import MultiConnectionsResponse, TiedieStatus
+from tiedie.models.scim import BleExtension, Device, PairingJustWorks, PairingPassKey
 
 
 @pytest.fixture(name="mock_server")
@@ -60,48 +60,6 @@ def mock_control_client(request: pytest.FixtureRequest):
         base_url="https://control.example.com/nipc",
         authenticator=request.getfixturevalue(request.param)
     )
-
-
-def test_create_binding(mock_server: responses.RequestsMock,
-                        control_client: ControlClient):
-    """ Test create binding """
-
-    device_id = str(uuid4())
-
-    body = json.dumps({
-        "status": "SUCCESS",
-    }, separators=(',', ':'))
-
-    mock_server.post(
-        "https://control.example.com/nipc/connectivity/binding",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-            }),
-        ],
-        content_type="application/json",
-    )
-
-    device = Device(
-        display_name="BLE Monitor",
-        active=False,
-        device_id=device_id,
-        ble_extension=BleExtension(
-            device_mac_address="AA:BB:CC:11:22:33",
-            is_random=False,
-            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
-        )
-    )
-
-    response = control_client.create_binding(device)
-
-    assert response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is None
 
 
 def test_connect(mock_server: responses.RequestsMock,
@@ -175,10 +133,9 @@ def test_connect(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble": {
-                    "retries": 3,
-                    "retryMultipleAPs": True,
-                }
+                "ble": {},
+                "retries": 3,
+                "retryMultipleAPs": True,
             }),
         ],
         content_type="application/json",
@@ -199,10 +156,35 @@ def test_connect(mock_server: responses.RequestsMock,
                         {
                             "serviceID": "1801"
                         }
+                    ]
+                },
+                "retries": 5,
+                "retryMultipleAPs": False,
+            })
+        ],
+        content_type="application/json",
+    )
+    mock_server.post(
+        "https://control.example.com/nipc/connectivity/connection",
+        body=body,
+        status=200,
+        match=[
+            matchers.json_params_matcher({
+                "id": device_id,
+                "technology": "ble",
+                "ble": {
+                    "services": [
+                        {
+                            "serviceID": "1800"
+                        },
+                        {
+                            "serviceID": "1801"
+                        }
                     ],
-                    "retries": 5,
-                    "retryMultipleAPs": False,
-                }
+                    "bonding": "justworks"
+                },
+                "retries": 5,
+                "retryMultipleAPs": False,
             })
         ],
         content_type="application/json",
@@ -216,13 +198,14 @@ def test_connect(mock_server: responses.RequestsMock,
             device_mac_address="AA:BB:CC:11:22:33",
             is_random=False,
             version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
+            pairing_pass_key=PairingPassKey(key=123456),
+            pairing_just_works=PairingJustWorks(key=0),
         )
     )
 
     response = control_client.connect(device)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is not None
     assert isinstance(response.body[0], BleDataParameter)
@@ -243,15 +226,31 @@ def test_connect(mock_server: responses.RequestsMock,
     assert response.body[3].flags == ["read"]
 
     response = control_client.connect(device,
-                                      BleConnectRequest(retries=5,
-                                                        services=[
-                                                            BleService(
-                                                                service_id="1800"),
-                                                            BleService(
-                                                                service_id="1801")],
-                                                        retry_multiple_aps=False))
+                                      BleConnectRequest(services=[
+                                          BleService(service_id="1800"),
+                                          BleService(service_id="1801")
+                                      ],
+                                          bonding=BleBondingOptions.JUST_WORKS),
+                                      retries=5,
+                                      retry_multiple_aps=False)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
+    assert response.status == TiedieStatus.SUCCESS
+    assert response.body is not None
+    assert isinstance(response.body[0], BleDataParameter)
+    assert response.body[0].service_id == "1800"
+    assert response.body[0].characteristic_id == "2a00"
+    assert response.body[0].flags == ["read", "write"]
+
+    response = control_client.connect(device,
+                                      BleConnectRequest(services=[
+                                          BleService(service_id="1800"),
+                                          BleService(service_id="1801")
+                                      ]),
+                                      retries=5,
+                                      retry_multiple_aps=False)
+
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is not None
     assert isinstance(response.body[0], BleDataParameter)
@@ -265,9 +264,31 @@ def test_disconnect(mock_server: responses.RequestsMock,
     """ Test disconnect """
 
     device_id = str(uuid4())
+    device_id2 = str(uuid4())
 
     body = json.dumps({
         "status": "SUCCESS",
+        "connections": [
+            {
+                "status": "SUCCESS",
+                "id": device_id
+            }
+        ]
+    }, separators=(',', ':'))
+
+    body2 = json.dumps({
+        "status": "SUCCESS",
+        "connections": [
+            {
+                "status": "SUCCESS",
+                "id": device_id
+            },
+            {
+                "status": "FAILURE",
+                "reason": "Device not connected",
+                "id": device_id2
+            }
+        ]
     }, separators=(',', ':'))
 
     mock_server.delete(
@@ -275,6 +296,14 @@ def test_disconnect(mock_server: responses.RequestsMock,
         body=body,
         status=200,
         match=[matchers.query_param_matcher({"id": device_id})],
+        content_type="application/json",
+    )
+    mock_server.delete(
+        "https://control.example.com/nipc/connectivity/connection",
+        body=body2,
+        status=200,
+        match=[matchers.query_param_matcher(
+            {"id": f"{device_id},{device_id2}"})],
         content_type="application/json",
     )
 
@@ -292,9 +321,37 @@ def test_disconnect(mock_server: responses.RequestsMock,
 
     response = control_client.disconnect(device)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
-    assert response.body is None
+    assert response.body is not None
+    assert isinstance(response.body, MultiConnectionsResponse)
+    assert response.body.connections[0].status == TiedieStatus.SUCCESS
+    assert response.body.connections[0].device_id == device_id
+
+    device1 = device
+    device2 = Device(
+        display_name="BLE Monitor",
+        active=False,
+        device_id=device_id2,
+        ble_extension=BleExtension(
+            device_mac_address="AA:BB:CC:11:22:33",
+            is_random=False,
+            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
+            pairing_pass_key=PairingPassKey(key=123456)
+        )
+    )
+
+    response = control_client.disconnect(device1, device2)
+
+    assert response.http and response.http.status_code == 200
+    assert response.status == TiedieStatus.SUCCESS
+    assert response.body is not None
+    assert isinstance(response.body, MultiConnectionsResponse)
+    assert response.body.connections[0].status == TiedieStatus.SUCCESS
+    assert response.body.connections[0].device_id == device_id
+    assert response.body.connections[1].status == TiedieStatus.FAILURE
+    assert response.body.connections[1].device_id == device_id2
+    assert response.body.connections[1].reason == "Device not connected"
 
 
 def test_discovery(mock_server: responses.RequestsMock,
@@ -360,36 +417,46 @@ def test_discovery(mock_server: responses.RequestsMock,
         ]
     }, separators=(',', ':'))
 
-    mock_server.get(
+    mock_server.post(
         "https://control.example.com/nipc/connectivity/services",
         body=body,
         status=200,
         match=[
-            matchers.query_param_matcher({
+            matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble[retries]": 3,
-                "ble[retryMultipleAPs]": "true"
+                "ble": {},
+                "retries": 3,
+                "retryMultipleAPs": True
             }),
         ],
         content_type="application/json",
     )
-    mock_server.get(
+    mock_server.post(
         "https://control.example.com/nipc/connectivity/services",
         body=body,
         status=200,
         match=[
-            matchers.query_param_matcher({
+            matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble[services][serviceID]": ["1800", "1801"],
-                "ble[retries]": 5,
-                "ble[retryMultipleAPs]": "false"
+                "ble": {
+                    "services": [
+                        {
+                            "serviceID": "1800"
+                        },
+                        {
+                            "serviceID": "1801"
+                        }
+                    ]
+                },
+                "retries": 5,
+                "retryMultipleAPs": False
             })
         ],
         content_type="application/json",
     )
-    mock_server.get(
+    mock_server.post(
         "https://control.example.com/nipc/connectivity/services",
         body=json.dumps({
             "status": "FAILURE",
@@ -397,12 +464,21 @@ def test_discovery(mock_server: responses.RequestsMock,
         }),
         status=400,
         match=[
-            matchers.query_param_matcher({
+            matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble[services][serviceID]": ["1800", "5555"],
-                "ble[retries]": 5,
-                "ble[retryMultipleAPs]": "false"
+                "ble": {
+                    "services": [
+                        {
+                            "serviceID": "1800"
+                        },
+                        {
+                            "serviceID": "5555"
+                        }
+                    ]
+                },
+                "retries": 5,
+                "retryMultipleAPs": False
             })
         ],
         content_type="application/json",
@@ -422,7 +498,7 @@ def test_discovery(mock_server: responses.RequestsMock,
 
     response = control_client.discover(device)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is not None
     assert isinstance(response.body[0], BleDataParameter)
@@ -443,15 +519,14 @@ def test_discovery(mock_server: responses.RequestsMock,
     assert response.body[3].flags == ["read"]
 
     response = control_client.discover(device,
-                                       BleConnectRequest(retries=5,
-                                                         services=[
-                                                             BleService(
-                                                                 service_id="1800"),
-                                                             BleService(
-                                                                 service_id="1801")],
-                                                         retry_multiple_aps=False))
+                                       BleConnectRequest(services=[
+                                           BleService(service_id="1800"),
+                                           BleService(service_id="1801")
+                                       ]),
+                                       retries=5,
+                                       retry_multiple_aps=False)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is not None
     assert isinstance(response.body[0], BleDataParameter)
@@ -460,15 +535,14 @@ def test_discovery(mock_server: responses.RequestsMock,
     assert response.body[0].flags == ["read", "write"]
 
     response = control_client.discover(device,
-                                       BleConnectRequest(retries=5,
-                                                         services=[
-                                                             BleService(
-                                                                 service_id="1800"),
-                                                             BleService(
-                                                                 service_id="5555")],
-                                                         retry_multiple_aps=False))
+                                       BleConnectRequest(services=[
+                                           BleService(service_id="1800"),
+                                           BleService(service_id="5555")
+                                       ]),
+                                       retries=5,
+                                       retry_multiple_aps=False)
 
-    assert response.http.status_code == 400
+    assert response.http and response.http.status_code == 400
     assert response.status == TiedieStatus.FAILURE
     assert response.body is None
 
@@ -484,16 +558,18 @@ def test_read(mock_server: responses.RequestsMock,
         "value": "00001111"
     }, separators=(',', ':'))
 
-    mock_server.get(
-        "https://control.example.com/nipc/data/attribute",
+    mock_server.post(
+        "https://control.example.com/nipc/data/attribute/read",
         body=body,
         status=200,
         match=[
-            matchers.query_param_matcher({
+            matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble[serviceID]": "1800",
-                "ble[characteristicID]": "2a00",
+                "ble": {
+                    "serviceID": "1800",
+                    "characteristicID": "2a00"
+                }
             }),
         ],
         content_type="application/json",
@@ -517,9 +593,10 @@ def test_read(mock_server: responses.RequestsMock,
         characteristic_id="2a00"
     ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
-    assert response.value == "00001111"
+    assert response.body is not None
+    assert response.body.value == "00001111"
 
 
 def test_write(mock_server: responses.RequestsMock,
@@ -534,7 +611,7 @@ def test_write(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/attribute",
+        "https://control.example.com/nipc/data/attribute/write",
         body=body,
         status=200,
         match=[
@@ -545,8 +622,7 @@ def test_write(mock_server: responses.RequestsMock,
                 "ble": {
                     "serviceID": "1800",
                     "characteristicID": "2a00"
-                },
-                "zigbee": None
+                }
             }),
         ],
         content_type="application/json",
@@ -573,9 +649,10 @@ def test_write(mock_server: responses.RequestsMock,
         ),
         "00001111")
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
-    assert response.value == "00001111"
+    assert response.body is not None
+    assert response.body.value == "00001111"
 
 
 def test_subscribe(mock_server: responses.RequestsMock,
@@ -589,7 +666,7 @@ def test_subscribe(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/subscription",
+        "https://control.example.com/nipc/data/attribute/subscription/start",
         body=body,
         status=200,
         match=[
@@ -599,8 +676,7 @@ def test_subscribe(mock_server: responses.RequestsMock,
                 "ble": {
                     "serviceID": "1800",
                     "characteristicID": "2a00"
-                },
-                "zigbee": None
+                }
             }),
         ],
         content_type="application/json",
@@ -626,7 +702,7 @@ def test_subscribe(mock_server: responses.RequestsMock,
             characteristic_id="2a00"
         ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is None
 
@@ -641,16 +717,18 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
         "status": "SUCCESS"
     }, separators=(',', ':'))
 
-    mock_server.delete(
-        "https://control.example.com/nipc/data/subscription",
+    mock_server.post(
+        "https://control.example.com/nipc/data/attribute/subscription/stop",
         body=body,
         status=200,
         match=[
-            matchers.query_param_matcher({
+            matchers.json_params_matcher({
                 "id": device_id,
                 "technology": "ble",
-                "ble[serviceID]": "1800",
-                "ble[characteristicID]": "2a00",
+                "ble": {
+                    "serviceID": "1800",
+                    "characteristicID": "2a00"
+                }
             }),
         ],
         content_type="application/json",
@@ -676,7 +754,7 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
             characteristic_id="2a00"
         ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
     assert response.body is None
 
@@ -714,8 +792,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
                     "type": "gatt",
                     "serviceID": "1800",
                     "characteristicID": "2a00"
-                },
-                "zigbee": None
+                }
             })
         ],
         content_type="application/json",
@@ -737,8 +814,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 }],
                 "ble": {
                     "type": "advertisements"
-                },
-                "zigbee": None
+                }
             }),
         ],
         content_type="application/json",
@@ -751,7 +827,6 @@ def test_register_topic(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "topic": topic,
-                "id": None,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": "app1"
@@ -770,8 +845,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
                         "adType": "2a01",
                         "adData": "0002"
                     }]
-                },
-                "zigbee": None
+                }
             }),
         ],
         content_type="application/json",
@@ -793,8 +867,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 }],
                 "ble": {
                     "type": "connection_events"
-                },
-                "zigbee": None
+                }
             }),
         ],
         content_type="application/json",
@@ -818,7 +891,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
             device_id=device_id, service_id="1800", characteristic_id="2a00")
     ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
     response = control_client.register_topic(
@@ -826,7 +899,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
             data_apps=["app1", "app2"]
         ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
     response = control_client.register_topic(topic, None, AdvertisementRegistrationOptions(
@@ -838,14 +911,14 @@ def test_register_topic(mock_server: responses.RequestsMock,
         ]
     ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
     response = control_client.register_topic(topic, device, ConnectionRegistrationOptions(
         data_apps=["app1", "app2"],
     ))
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
 
@@ -873,6 +946,5 @@ def test_unregister_topic(mock_server: responses.RequestsMock,
 
     response = control_client.unregister_topic(topic)
 
-    assert response.http.status_code == 200
+    assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
-    assert response.body is None
