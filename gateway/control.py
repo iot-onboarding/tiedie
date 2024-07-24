@@ -679,11 +679,11 @@ def bulk():
             response = current_app.process_response(response)
 
         if response.json is not None:
-            json = dict(response.json)
-            json["operation"] = operation["operation"]
-            responses.append(json)
+            jn = dict(response.json)
+            jn["operation"] = operation["operation"]
+            responses.append(jn)
 
-            if json["status"] == "FAILURE":
+            if jn["status"] == "FAILURE":
                 break
 
     return jsonify({"status": "SUCCESS", "operations": responses}), HTTPStatus.OK

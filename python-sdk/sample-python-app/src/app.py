@@ -16,7 +16,7 @@ import os
 
 import logging
 from flask import Flask, render_template, request, redirect, jsonify
-from flask_socketio import SocketIO, Namespace
+from flask_socketio import SocketIO, namespace
 from google.protobuf.json_format import MessageToJson
 from tiedie.models import (Device, DataFormat, BleDataParameter,
                            AdvertisementRegistrationOptions,
@@ -55,7 +55,7 @@ subscriptionTopics = set()
 advertisementTopics = set()
 
 
-class GattHandler(Namespace):
+class GattHandler(namespace.Namespace):
     """
     WebSocket handler for GATT (Bluetooth) connections and data
     subscriptions.
@@ -92,7 +92,7 @@ class GattHandler(Namespace):
 socketio.on_namespace(GattHandler('/subscription'))
 
 
-class AdvertisementHandler(Namespace):
+class AdvertisementHandler(namespace.Namespace):
     """ Handles BLE advertisement subscriptions and data stream management. """
 
     def on_connect(self):
@@ -126,7 +126,7 @@ class AdvertisementHandler(Namespace):
 socketio.on_namespace(AdvertisementHandler('/advertisements'))
 
 
-class ConnectionStatusHandler(Namespace):
+class ConnectionStatusHandler(namespace.Namespace):
     """ Manages WebSocket connections and connection status data streams. """
 
     def on_connect(self):
@@ -167,7 +167,7 @@ def get_all_devices():
     """ Displays a list of all IoT devices. """
     response = onboarding_client.get_devices()
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.body is None:
         return render_template("error.html", error="Failed to get devices")
 
     devices = response.body.resources
@@ -226,7 +226,7 @@ def add_device():
 
     response = onboarding_client.create_device(device)
 
-    if response.status_code != 201:
+    if response.status_code != 201 or response.body is None or response.body.device_id is None:
         return render_template("error.html", error="Failed to create device")
 
     print("body: ", response.body)
@@ -250,7 +250,7 @@ def get_device(device_id):
     """ function to get get device """
     response = onboarding_client.get_device(device_id)
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.body is None:
         return render_template("error.html", error="Failed to get device")
 
     device = response.body
@@ -258,7 +258,7 @@ def get_device(device_id):
     tiedie_response = control_client.discover(device)
     parameters = None
 
-    if tiedie_response.http.status_code == 200:
+    if tiedie_response.http and tiedie_response.http.status_code == 200 and tiedie_response.body:
         parameters = [
             p for p in tiedie_response.body if isinstance(p, BleDataParameter)
         ]
@@ -279,7 +279,7 @@ def connect_device(device_id):
 
     response = onboarding_client.get_device(device_id)
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.body is None:
         return render_template("error.html", error="Failed to get device")
 
     device = response.body
@@ -290,7 +290,7 @@ def connect_device(device_id):
                                                  for service in services
                                              ]))
 
-    if tiedie_response.http.status_code != 200:
+    if tiedie_response.http is None or tiedie_response.http.status_code != 200:
         return render_template("error.html",
                                error="Failed to connect to device")
 
@@ -302,14 +302,14 @@ def disconnect_device(device_id):
     """ function to disconnect a connected device """
     response = onboarding_client.get_device(device_id)
 
-    if response.status_code != 200:
+    if response.status_code != 200 or response.body is None:
         return render_template("error.html", error="Failed to get device")
 
     device = response.body
 
     tiedie_response = control_client.disconnect(device)
 
-    if tiedie_response.http.status_code != 200:
+    if tiedie_response.http is None or tiedie_response.http.status_code != 200:
         return render_template("error.html")
 
     return redirect(f"/devices/{device_id}")
@@ -331,6 +331,9 @@ def subscribe_advertisements(device_id):
     """ function to subscribe to device advertisements """
     response = onboarding_client.get_device(device_id)
 
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
     device = response.body
 
     topic = f'data-app/{device.device_id}/advertisements'
@@ -350,6 +353,10 @@ def subscribe_advertisements(device_id):
 def unsubscribe():
     """ Unsubscribes from a data stream topic. """
     topic = request.form.get('topic')
+
+    if topic is None:
+        return render_template("error.html", error="Invalid topic string")
+
     control_client.unregister_topic(topic)
     print("remove topic: ", topic)
     try:
@@ -364,8 +371,12 @@ def unsubscribe():
            methods=["POST"])
 def read_characteristic(device_id, service_id, char_id):
     """ Reads a GATT characteristic of an IoT device. """
+    response = onboarding_client.get_device(device_id)
 
-    device = onboarding_client.get_device(device_id).body
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
+    device = response.body
 
     parameter = BleDataParameter(
         device_id=device_id,
@@ -379,8 +390,12 @@ def read_characteristic(device_id, service_id, char_id):
            methods=["POST"])
 def write_characteristic(device_id, service_id, char_id):
     """ Writes a GATT characteristic of an IoT device. """
+    response = onboarding_client.get_device(device_id)
 
-    device = onboarding_client.get_device(device_id).body
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
+    device = response.body
 
     parameter = BleDataParameter(
         device_id=device_id,
@@ -399,8 +414,12 @@ def write_characteristic(device_id, service_id, char_id):
            methods=['POST'])
 def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
     """ Subscribes to a GATT characteristic of an IoT device. """
+    response = onboarding_client.get_device(device_id)
 
-    device = onboarding_client.get_device(device_id).body
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
+    device = response.body
 
     parameter = BleDataParameter(
         device_id=device_id,
@@ -418,12 +437,12 @@ def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
                                                        data_parameter=parameter)
                                                    )
 
-    if topic_response.http.status_code != 200:
+    if topic_response.http and topic_response.http.status_code != 200:
         return {"error": topic_response.body}, topic_response.http.status_code
 
     subscribe = control_client.subscribe(device, parameter)
 
-    if subscribe.http.status_code != 200:
+    if subscribe.http and subscribe.http.status_code != 200:
         return {"error": subscribe.body}, subscribe.http.status_code
     print("add topic: ", topic)
     subscriptionTopics.add(topic)

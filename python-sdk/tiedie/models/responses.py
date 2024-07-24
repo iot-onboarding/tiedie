@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from tiedie.models.ble import BleDataParameter, BleService
 
@@ -27,7 +27,7 @@ class TiedieStatus(Enum):
     SUCCESS = "SUCCESS"
 
 
-T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 
 
 class TiedieHTTP(BaseModel):
@@ -46,18 +46,18 @@ class TiedieRawResponse(BaseModel):
     http: Optional[TiedieHTTP] = None
 
 
-class TiedieResponse(TiedieRawResponse, Generic[T]):
+class TiedieResponse(TiedieRawResponse, Generic[T_co]):
     """ TieDie response """
-    body: Optional[T] = None
+    body: Optional[T_co] = None
 
 
 @dataclass
-class HttpResponse(Generic[T]):
+class HttpResponse(Generic[T_co]):
     """ class HttpResponse """
 
     status_code: int
     message: str
-    body: T
+    body: T_co
 
 
 class ValueResponse(TiedieRawResponse):
@@ -79,6 +79,8 @@ class BleDiscoverResponse(TiedieRawResponse):
         parameter_list: List[BleDataParameter] = []
 
         for service in self.services:
+            if service.characteristics is None:
+                continue
             for characteristic in service.characteristics:
                 parameter_list.append(BleDataParameter(
                     device_id=device_id,
@@ -88,3 +90,13 @@ class BleDiscoverResponse(TiedieRawResponse):
                 ))
 
         return parameter_list
+
+class TiedieDeviceResponse(TiedieRawResponse):
+    """ Represents a response for a single BLE device. """
+
+    device_id: Optional[str] = Field(alias=str("id"))
+
+class MultiConnectionsResponse(TiedieRawResponse):
+    """ Represents a response for connections from multiple BLE devices. """
+
+    connections: List[TiedieDeviceResponse]

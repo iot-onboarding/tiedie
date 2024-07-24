@@ -61,7 +61,7 @@ class ListResponse(BaseModel, Generic[Resource]):
     start_index: int
     items_per_page: int
 
-    resources: List[Resource] = Field(alias="Resources")
+    resources: List[Resource] = Field(alias=str("Resources"))
 
 
 class RegistrationOptions(BaseModel):
@@ -71,8 +71,8 @@ class RegistrationOptions(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     data_format: Optional[DataFormat] = Field(
-        alias="dataFormat", default=DataFormat.DEFAULT)
-    data_apps: Optional[List[str]] = Field(alias="dataApps", default=None)
+        alias=str("dataFormat"), default=DataFormat.DEFAULT)
+    data_apps: Optional[List[str]] = Field(alias=str("dataApps"), default=None)
 
 
 class DataRegistrationOptions(RegistrationOptions):
@@ -81,7 +81,7 @@ class DataRegistrationOptions(RegistrationOptions):
     """
 
     data_parameter: Optional[DataParameter] = Field(
-        alias="dataParameter", default=None)
+        alias=str("dataParameter"), default=None)
 
 
 class ConnectionRegistrationOptions(RegistrationOptions):
@@ -92,4 +92,4 @@ class DataApp(BaseModel):
     """ A class representing a data app. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    data_app_id: str = Field(alias="dataAppID")
+    data_app_id: str = Field(alias=str("dataAppID"))
