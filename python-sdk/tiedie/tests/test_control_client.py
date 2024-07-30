@@ -766,6 +766,9 @@ def test_register_topic(mock_server: responses.RequestsMock,
     topic = "enterprise/hospital/pulse_oximeter"
     device_id = str(uuid4())
 
+    data_app_1 = str(uuid4())
+    data_app_2 = str(uuid4())
+
     body = json.dumps({
         "status": "SUCCESS"
     }, separators=(',', ':'))
@@ -782,10 +785,10 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 "dataFormat": "default",
                 "dataApps": [
                     {
-                        "dataAppID": "app1"
+                        "dataAppID": data_app_1
                     },
                     {
-                        "dataAppID": "app2"
+                        "dataAppID": data_app_2
                     }
                 ],
                 "ble": {
@@ -808,9 +811,9 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 "topic": topic,
                 "dataFormat": "default",
                 "dataApps": [{
-                    "dataAppID": "app1"
+                    "dataAppID": data_app_1
                 }, {
-                    "dataAppID": "app2"
+                    "dataAppID": data_app_2
                 }],
                 "ble": {
                     "type": "advertisements"
@@ -829,9 +832,9 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 "topic": topic,
                 "dataFormat": "default",
                 "dataApps": [{
-                    "dataAppID": "app1"
+                    "dataAppID": data_app_1
                 }, {
-                    "dataAppID": "app2"
+                    "dataAppID": data_app_2
                 }],
                 "ble": {
                     "type": "advertisements",
@@ -861,9 +864,9 @@ def test_register_topic(mock_server: responses.RequestsMock,
                 "topic": topic,
                 "dataFormat": "default",
                 "dataApps": [{
-                    "dataAppID": "app1"
+                    "dataAppID": data_app_1
                 }, {
-                    "dataAppID": "app2"
+                    "dataAppID": data_app_2
                 }],
                 "ble": {
                     "type": "connection_events"
@@ -886,7 +889,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     )
 
     response = control_client.register_topic(topic, device, DataRegistrationOptions(
-        data_apps=["app1", "app2"],
+        data_apps=[data_app_1, data_app_2],
         data_parameter=BleDataParameter(
             device_id=device_id, service_id="1800", characteristic_id="2a00")
     ))
@@ -896,14 +899,14 @@ def test_register_topic(mock_server: responses.RequestsMock,
 
     response = control_client.register_topic(
         topic, device, AdvertisementRegistrationOptions(
-            data_apps=["app1", "app2"]
+            data_apps=[data_app_1, data_app_2]
         ))
 
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
     response = control_client.register_topic(topic, None, AdvertisementRegistrationOptions(
-        data_apps=["app1", "app2"],
+        data_apps=[data_app_1, data_app_2],
         advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
         advertisement_filter=[
             BleAdvertisementFilter(mac="1800", ad_type="2a00", ad_data="0001"),
@@ -915,7 +918,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     assert response.status == TiedieStatus.SUCCESS
 
     response = control_client.register_topic(topic, device, ConnectionRegistrationOptions(
-        data_apps=["app1", "app2"],
+        data_apps=[data_app_1, data_app_2],
     ))
 
     assert response.http and response.http.status_code == 200
