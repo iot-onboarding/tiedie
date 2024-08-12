@@ -154,8 +154,8 @@ class Device(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     device_id: Optional[str] = Field(alias="id", default=None)
-    device_display_name: str
-    admin_state: bool
+    display_name: str
+    active: bool
     ble_extension: Optional[BleExtension] = Field(
         alias="urn:ietf:params:scim:schemas:extension:ble:2.0:Device",
         default=None)

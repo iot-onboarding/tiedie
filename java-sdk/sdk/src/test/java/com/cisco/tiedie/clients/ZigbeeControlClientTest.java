@@ -43,8 +43,8 @@ class ZigbeeControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("Zigbee Monitor")
-                .adminState(false)
+                .displayName("Zigbee Monitor")
+                .active(false)
                 .zigbeeExtension(ZigbeeExtension.builder()
                         .versionSupport(List.of("3.0"))
                         .deviceEui64Address("50325FFFFEE76728")
@@ -122,8 +122,8 @@ class ZigbeeControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("Zigbee Monitor")
-                .adminState(false)
+                .displayName("Zigbee Monitor")
+                .active(false)
                 .zigbeeExtension(ZigbeeExtension.builder()
                         .versionSupport(List.of("3.0"))
                         .deviceEui64Address("50325FFFFEE76728")

@@ -86,8 +86,8 @@ def test_create_binding(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -209,8 +209,8 @@ def test_connect(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -279,8 +279,8 @@ def test_disconnect(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -409,8 +409,8 @@ def test_discovery(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -500,8 +500,8 @@ def test_read(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -553,8 +553,8 @@ def test_write(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -607,8 +607,8 @@ def test_subscribe(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -657,8 +657,8 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
@@ -801,8 +801,8 @@ def test_register_topic(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         device_id=device_id,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",

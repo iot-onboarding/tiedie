@@ -17,8 +17,8 @@ from tiedie.models.scim import (
 def test_ble_device_creation():
     """ Test the creation of a device """
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
             is_random=False,
@@ -30,8 +30,8 @@ def test_ble_device_creation():
     device_json = device.model_dump_json(by_alias=True, exclude_none=True)
 
     expected = json.dumps({
-        "deviceDisplayName": "BLE Monitor",
-        "adminState": False,
+        "displayName": "BLE Monitor",
+        "active": False,
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device":
         {
             "versionSupport": ["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
@@ -54,8 +54,8 @@ def test_ble_device_creation():
     assert device == device2
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
             is_random=False,
@@ -65,8 +65,8 @@ def test_ble_device_creation():
     )
 
     expected = json.dumps({
-        "deviceDisplayName": "BLE Monitor",
-        "adminState": False,
+        "displayName": "BLE Monitor",
+        "active": False,
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
             "versionSupport": [
                 "4.1",
@@ -99,8 +99,8 @@ def test_ble_device_creation():
 def test_zigbee_device_creation():
     """ Test the creation of a zigbee device """
     device = Device(
-        device_display_name="Zigbee Monitor",
-        admin_state=False,
+        display_name="Zigbee Monitor",
+        active=False,
         zigbee_extension=ZigbeeExtension(
             version_support=["3.0"],
             device_eui64_address="50325FFFFEE76728"
@@ -108,8 +108,8 @@ def test_zigbee_device_creation():
     )
 
     expected = json.dumps({
-        "deviceDisplayName": "Zigbee Monitor",
-        "adminState": False,
+        "displayName": "Zigbee Monitor",
+        "active": False,
         "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device": {
             "versionSupport": [
                 "3.0"
@@ -132,8 +132,8 @@ def test_zigbee_device_creation():
 def test_dpp_device_creation():
     """ Test the creation of a dpp device """
     device = Device(
-        device_display_name="DPP Monitor",
-        admin_state=False,
+        display_name="DPP Monitor",
+        active=False,
         dpp_extension=DppExtension(
             dpp_version=2,
             bootstrapping_method=["QR"],
@@ -146,8 +146,8 @@ def test_dpp_device_creation():
     )
 
     expected = json.dumps({
-        "deviceDisplayName": "DPP Monitor",
-        "adminState": False,
+        "displayName": "DPP Monitor",
+        "active": False,
         "urn:ietf:params:scim:schemas:extension:dpp:2.0:Device": {
             "dppVersion": 2,
             "bootstrappingMethod": [
@@ -182,8 +182,8 @@ def test_endpoint_extension():
     data_app_id = str(uuid4())
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
             is_random=False,
@@ -201,8 +201,8 @@ def test_endpoint_extension():
     device_json = device.model_dump_json(by_alias=True, exclude_none=True)
 
     expected = json.dumps({
-        "deviceDisplayName": "BLE Monitor",
-        "adminState": False,
+        "displayName": "BLE Monitor",
+        "active": False,
         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
             "versionSupport": [
                 "4.1",
