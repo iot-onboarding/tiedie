@@ -63,9 +63,9 @@ def test_device_creation(mock_server: responses.RequestsMock,
     mock_server.post(
         "https://onboarding.example.com/scim/v2/Devices",
         body=json.dumps({
-            "deviceDisplayName": "BLE Monitor",
+            "displayName": "BLE Monitor",
             "id": device_id,
-            "adminState": False,
+            "active": False,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device":
             {
                 "versionSupport": ["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
@@ -87,8 +87,8 @@ def test_device_creation(mock_server: responses.RequestsMock,
     )
 
     device = Device(
-        device_display_name="BLE Monitor",
-        admin_state=False,
+        display_name="BLE Monitor",
+        active=False,
         ble_extension=BleExtension(
             device_mac_address="AA:BB:CC:11:22:33",
             is_random=False,
@@ -100,7 +100,7 @@ def test_device_creation(mock_server: responses.RequestsMock,
     response = onboarding_client.create_device(device)
     assert response.status_code == 201
     assert response.body is not None
-    assert response.body.device_display_name == "BLE Monitor"
+    assert response.body.display_name == "BLE Monitor"
     assert response.body.device_id == device_id
 
 
@@ -113,9 +113,9 @@ def test_get_device(mock_server: responses.RequestsMock,
     mock_server.get(
         f"https://onboarding.example.com/scim/v2/Devices/{device_id}",
         body=json.dumps({
-            "deviceDisplayName": "BLE Monitor",
+            "displayName": "BLE Monitor",
             "id": device_id,
-            "adminState": False,
+            "active": False,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device":
             {
                 "versionSupport": ["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
@@ -138,7 +138,7 @@ def test_get_device(mock_server: responses.RequestsMock,
 
     response = onboarding_client.get_device(device_id)
     assert response.status_code == 200
-    assert response.body.device_display_name == "BLE Monitor"
+    assert response.body.display_name == "BLE Monitor"
     assert response.body.device_id == device_id
 
 
@@ -157,9 +157,9 @@ def test_get_devices(mock_server: responses.RequestsMock,
             "startIndex": 1,
             "Resources": [
                 {
-                    "deviceDisplayName": "BLE Monitor",
+                    "displayName": "BLE Monitor",
                     "id": device_id_1,
-                    "adminState": False,
+                    "active": False,
                     "urn:ietf:params:scim:schemas:extension:ble:2.0:Device":
                     {
                         "versionSupport": ["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
@@ -177,9 +177,9 @@ def test_get_devices(mock_server: responses.RequestsMock,
                     ],
                 },
                 {
-                    "deviceDisplayName": "Zigbee Monitor",
+                    "displayName": "Zigbee Monitor",
                     "id": device_id_2,
-                    "adminState": False,
+                    "active": False,
                     "urn:ietf:params:scim:schemas:extension:zigbee:2.0:Device": {
                         "versionSupport": [
                             "3.0"
@@ -204,9 +204,9 @@ def test_get_devices(mock_server: responses.RequestsMock,
     assert response.body.items_per_page == 2
     assert response.body.start_index == 1
     assert len(response.body.resources) == 2
-    assert response.body.resources[0].device_display_name == "BLE Monitor"
+    assert response.body.resources[0].display_name == "BLE Monitor"
     assert response.body.resources[0].device_id == device_id_1
-    assert response.body.resources[1].device_display_name == "Zigbee Monitor"
+    assert response.body.resources[1].display_name == "Zigbee Monitor"
     assert response.body.resources[1].device_id == device_id_2
 
 

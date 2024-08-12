@@ -26,7 +26,7 @@ SPDX-License-Identifier: Apache-2.0
             <tbody>
                 <tr th:each="device: ${devices}">
                     <td scope="row" th:text="${device.id}" />
-                    <td th:text="${device.deviceDisplayName}" />
+                    <td th:text="${device.displayName}" />
                     <td th:text="${device.bleExtension.deviceMacAddress}" />
                     <td>
                         <span th:id="${device.id} + '-connected'" class="badge rounded-pill text-bg-success d-none">Connected</span>

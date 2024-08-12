@@ -62,8 +62,8 @@ def test_create_device(client: FlaskClient, api_key: str):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
-            "deviceDisplayName": "BLE Heart Monitor",
-            "adminState": True,
+            "displayName": "BLE Heart Monitor",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
@@ -93,8 +93,8 @@ def test_unsupported_schema(client: FlaskClient, api_key: str):
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"
                         "urn:ietf:params:scim:schemas:extension:nosuchshema:2.0:Device"],
-            "deviceDisplayName": "BLE Heart Monitor",
-            "adminState": True,
+            "displayName": "BLE Heart Monitor",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
@@ -133,8 +133,8 @@ def test_get_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
-            "deviceDisplayName": "BLE Heart Monitor",
-            "adminState": True,
+            "displayName": "BLE Heart Monitor",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
@@ -198,8 +198,8 @@ def test_delete_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
-            "deviceDisplayName": "BLE Heart Monitor",
-            "adminState": True,
+            "displayName": "BLE Heart Monitor",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
@@ -243,8 +243,8 @@ def test_create_mab_device(client: FlaskClient, api_key: str):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device"],
-            "deviceDisplayName": "Generic MAB Device",
-            "adminState": True,
+            "displayName": "Generic MAB Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
                 "deviceMacAddress": "AA:BB:CC:11:22:33"
             }
@@ -287,8 +287,8 @@ def test_get_mab_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device"],
-            "deviceDisplayName": "Generic MAB Device",
-            "adminState": True,
+            "displayName": "Generic MAB Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
                 "deviceMacAddress": "AA:BB:CC:00:22:33"
             }
@@ -348,8 +348,8 @@ def test_delete_mab_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device"],
-            "deviceDisplayName": "Generic MAB Device",
-            "adminState": True,
+            "displayName": "Generic MAB Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device": {
                 "deviceMacAddress": "AA:BB:CC:11:22:33"
             }
@@ -393,8 +393,8 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
-            "deviceDisplayName": "Generic FDO Device",
-            "adminState": True,
+            "displayName": "Generic FDO Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
                 "fdoOwnerVoucher": voucher
             }
@@ -464,8 +464,8 @@ def test_get_fdo_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
-            "deviceDisplayName": "Generic MAB Device",
-            "adminState": True,
+            "displayName": "Generic MAB Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
                 "fdoOwnerVoucher": voucher
             }
@@ -524,8 +524,8 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device"],
-            "deviceDisplayName": "Generic FDO Device",
-            "adminState": True,
+            "displayName": "Generic FDO Device",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:fido-device-onboard:2.0:Device": {
                 "fdoOwnerVoucher": voucher
             }

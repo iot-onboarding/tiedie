@@ -107,8 +107,8 @@ class BLEControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -262,8 +262,8 @@ class BLEControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -351,8 +351,8 @@ class BLEControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)
@@ -589,8 +589,8 @@ class BLEControlClientTest extends ControlClientTest {
 
         var device = Device.builder()
                 .id(deviceId)
-                .deviceDisplayName("BLE Monitor")
-                .adminState(false)
+                .displayName("BLE Monitor")
+                .active(false)
                 .bleExtension(BleExtension.builder()
                         .deviceMacAddress("AA:BB:CC:11:22:33")
                         .isRandom(false)

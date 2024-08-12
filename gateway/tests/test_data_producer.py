@@ -132,8 +132,8 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
         json={
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:Device",
                         "urn:ietf:params:scim:schemas:extension:ble:2.0:Device"],
-            "deviceDisplayName": "BLE Heart Monitor",
-            "adminState": True,
+            "displayName": "BLE Heart Monitor",
+            "active": True,
             "urn:ietf:params:scim:schemas:extension:ble:2.0:Device": {
                 "versionSupport": ["5.3"],
                 "deviceMacAddress": "AA:BB:CC:11:22:33",

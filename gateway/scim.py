@@ -56,8 +56,8 @@ def create_device_object(req,endpoint_apps,schemas,dev_id):
 
     entry = Device(
         schemas=req.json["schemas"],
-        device_display_name=req.json["deviceDisplayName"],
-        admin_state=req.json["adminState"],
+        display_name=req.json["displayName"],
+        active=req.json["active"],
         endpoint_apps=endpoint_apps,
         created_time=datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
     )
@@ -223,8 +223,8 @@ def update_device(entry_id):
 
     try:
         entry.device_id = request.json.get("id")
-        entry.device_display_name = request.json.get("deviceDisplayName")
-        entry.admin_state = request.json.get("adminState")
+        entry.display_name = request.json.get("displayName")
+        entry.active = request.json.get("active")
         entry.modified_time = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         for ext in scim_ext_update:
             ext(entry,request)
