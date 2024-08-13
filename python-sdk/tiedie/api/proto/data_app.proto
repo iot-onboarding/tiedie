@@ -5,23 +5,27 @@
 
 syntax = "proto3";
 
-option java_package = "com.cisco.tiedie.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_package = "org.ietf.nipc.proto";
 option java_multiple_files = true;
 
-package tiedie;
+package nipc;
 
 message DataSubscription {
-    int64 timestamp = 1;
-    string ap_macaddr = 2;
-    optional string device_id = 3;
-    bytes data = 4;
+    optional string device_id = 1;
+    bytes data = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    optional string ap_mac_address = 4;
+
+    reserved 5 to 10;
 
     oneof subscription {
-        BLESubscription ble_subscription = 5;
-        BLEAdvertisement ble_advertisement = 6;
-        ZigbeeSubscription zigbee = 7;
-        RawPayload raw_payload = 8;
-        BLEConnectionStatus ble_connection_status = 9;
+        BLESubscription ble_subscription = 11;
+        BLEAdvertisement ble_advertisement = 12;
+        ZigbeeSubscription zigbee_subscription = 13;
+        RawPayload raw_payload = 14;
+        BLEConnectionStatus ble_connection_status = 15;
     }
 
     message BLESubscription {
@@ -51,3 +55,4 @@ message DataSubscription {
         optional string context_id = 1;
     }
 }
+
