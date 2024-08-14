@@ -150,12 +150,14 @@ def add_device():
     version_support = content.getlist('versionSupport')
 
     pairing_method = content.get('pairingMethod')
+    mobility = True if content.get('mobility', 'off') == 'on' else False
 
     device = Device(content['deviceDisplayName'],
                     admin_state,
                     BleExtension(content['deviceMacAddress'],
                                  version_support,
                                  is_random,
+                                 mobility,
                                  pairing_method == 'null',
                                  pairing_method == 'justWorks',
                                  ),
