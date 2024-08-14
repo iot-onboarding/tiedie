@@ -38,13 +38,15 @@ class BleExtension:
     pairing_just_works: PairingJustWorks = None
     pairing_pass_key: PairingPassKey = None
     pairing_oob: PairingOOB = None
+    mobility: bool = False
 
 
-    def __init__(self, device_mac_address: str, version_support: List[str], is_random: bool, null_pair: bool = False,
+    def __init__(self, device_mac_address: str, version_support: List[str], is_random: bool, mobility: bool, null_pair: bool = False,
                   just_works: bool = False, pass_key: int = None, oob_key: str = None, oob_random_number: str = None):
         self.schemas = ["urn:ietf:params:scim:schemas:extension:ble:2.0:Device"]
         self.device_mac_address = device_mac_address
         self.address_type = is_random
+        self.mobility = mobility
         self.version_support = version_support
         self.pairing_methods = []
         self.null_pairing = null_pair
@@ -83,6 +85,7 @@ class BleExtension:
         cls.version_support = data.pop("versionSupport", [])
         cls.device_mac_address = data.pop("deviceMacAddress", "")
         cls.address_type = data.pop("isRandom", "")
+        cls.mobility = data.pop("mobility", "")
         cls.pairing_methods = data.pop("pairingMethods", [])
 
         return cls
@@ -93,6 +96,7 @@ class BleExtension:
             "versionSupport": self.version_support,
             "deviceMacAddress": self.device_mac_address,
             "isRandom": self.address_type,
+            "mobility": self.mobility,
             "pairingMethods": self.pairing_methods
         }
         if self.null_pairing:
