@@ -84,7 +84,35 @@ def authenticate_user(func):
 @authenticate_user
 def get_connection():
     """ Get connection state for a device """
-    return redirect(url_for('control.get_connection_by_id', device_id=request.args.get('id')))
+    ids = request.args.get("id", "")
+    device_ids = ids.split(",")
+
+    # get all device objects
+    devices = session.execute(
+        select(BleExtension).filter(BleExtension.device_id.in_(device_ids))).scalars().all()
+
+    connections = []
+
+    for device_id in device_ids:
+        device = next((d for d in devices if str(
+            d.device_id) == device_id), None)
+
+        if device is None:
+            connections.append({"id": device_id, "status": "FAILURE"})
+            continue
+
+        conn = ble_ap().get_connection(device.device_mac_address)
+
+        if conn:
+            connections.append({"id": device_id, "status": "SUCCESS"})
+        else:
+            connections.append({"id": device_id, "status": "FAILURE"})
+
+    return jsonify({
+        "status": "SUCCESS",
+        "requestID": uuid4(),
+        "connections": connections
+    }), HTTPStatus.OK
 
 
 @control_app.route('/connectivity/connection/id/<device_id>', methods=['GET'])
@@ -96,7 +124,11 @@ def get_connection_by_id(device_id: str):
     conn = ble_ap().get_connection(device.device_mac_address)
 
     if conn:
-        return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
+        return jsonify({
+            "status": "SUCCESS",
+            "requestID": str(uuid4()),
+            "id": device_id
+        }), HTTPStatus.OK
 
     return jsonify({"status": "FAILURE", "reason": "Connection not found"}), HTTPStatus.OK
 
