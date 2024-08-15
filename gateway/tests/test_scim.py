@@ -77,6 +77,7 @@ def test_create_device(client: FlaskClient, api_key: str):
 
     assert response.status_code == 201
     print(response.json)
+    assert response.json is not None
     assert response.json["id"] is not None
     assert response.json["meta"] is not None
     assert response.json["schemas"] == [
@@ -255,6 +256,7 @@ def test_create_mab_device(client: FlaskClient, api_key: str):
 
     assert response.status_code == 201
     print(response.json)
+    assert response.json is not None
     assert response.json["id"] is not None
     assert response.json["meta"] is not None
     assert "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" in response.json
@@ -582,6 +584,7 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
     assert response.status_code == 201
     print(response.json)
 
+    assert response.json is not None
     assert response.json["id"] is not None
     assert response.json["meta"] is not None
     assert response.json["schemas"] == [
@@ -607,6 +610,7 @@ def test_create_endpoint_app_token(client: FlaskClient, api_key: str):
     assert response.status_code == 201
     print(response.json)
 
+    assert response.json is not None
     assert response.json["id"] is not None
     assert response.json["meta"] is not None
     assert response.json["schemas"] == [
