@@ -21,6 +21,7 @@ from scim_fdo import FDOExtension
 from scim_ethermab import EtherMABExtension
 from database import db
 
+
 @pytest.fixture(name="postgres")
 def fixture_postgres():
     """ Postgres container """
@@ -55,6 +56,7 @@ def fixture_api_key(app):
         db.session.commit()
         yield key
 
+
 def test_create_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -85,6 +87,7 @@ def test_create_device(client: FlaskClient, api_key: str):
     ]
     assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json
 
+
 def test_unsupported_schema(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -107,6 +110,7 @@ def test_unsupported_schema(client: FlaskClient, api_key: str):
     )
     print(response.json)
     assert response.status_code == 501
+
 
 def test_get_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -181,7 +185,8 @@ def test_get_device(client: FlaskClient, api_key):
     assert response.status_code == 200
     assert response.json["totalResults"] == 1
     assert response.json["Resources"][0]["id"] == device_id
-    assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json["Resources"][0]
+    assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json[
+        "Resources"][0]
 
 
 def test_delete_device(client: FlaskClient, api_key):
@@ -236,6 +241,7 @@ def test_delete_device(client: FlaskClient, api_key):
         "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
     assert len(response.json["Resources"]) == 0
 
+
 def test_create_mab_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -262,6 +268,7 @@ def test_create_mab_device(client: FlaskClient, api_key: str):
         'urn:ietf:params:scim:schemas:core:2.0:Device',
         'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device'
     ]
+
 
 def test_get_mab_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -334,6 +341,7 @@ def test_get_mab_device(client: FlaskClient, api_key):
     assert "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" \
         in response.json["Resources"][0]
 
+
 def test_delete_mab_device(client: FlaskClient, api_key):
     """ Test DELETE device """
     device_id = uuid.uuid4()
@@ -403,7 +411,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
         }
     )
 
-    assert response.status_code in (200,201)
+    assert response.status_code in (200, 201)
     device_id = response.json["id"]
 
     response = client.get(f"/scim/v2/Devices/{device_id}", headers={
@@ -438,6 +446,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
     print(response.json)
     assert response.status_code == 200
     assert response.json["totalResults"] == 0
+
 
 def test_get_fdo_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -560,7 +569,6 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
     assert len(response.json["Resources"]) == 0
 
 
-
 def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
     """ Test POST Endpoint Apps """
     response = client.post(
@@ -570,8 +578,15 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
             "applicationType": "deviceControl",
             "applicationName": "Device Control App 1",
             "certificateInfo": {
-                "rootCN": "DigiCert Global Root CA",
-                "subjectName": "wwww.example.com"
+                "rootPublicKey": 
+                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
+                "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
+                "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
+                "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
+                "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
+                "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+"
+                "DQIDAQAB",
+                "subjectName": "www.example.com"
             },
         },
         headers={
@@ -588,6 +603,17 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
         "urn:ietf:params:scim:schemas:core:2.0:EndpointApp"
     ]
     assert response.json["clientToken"] is None
+    assert response.json["certificateInfo"] == {
+        "rootPublicKey":
+        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
+        "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
+        "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
+        "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
+        "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
+        "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+"
+        "DQIDAQAB",
+        "subjectName": "www.example.com"
+    }
 
 
 def test_create_endpoint_app_token(client: FlaskClient, api_key: str):
