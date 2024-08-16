@@ -6,14 +6,16 @@
 """ this module configures the TieDie clients """
 
 
+import base64
 from flask import Flask
 
 import OpenSSL.crypto
+from cryptography.hazmat.primitives import serialization
 from tiedie.api.onboarding_client import OnboardingClient
 from tiedie.api.control_client import ControlClient
 from tiedie.api.data_receiver_client import DataReceiverClient
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
-from tiedie.models.scim import EndpointApp
+from tiedie.models.scim import AppCertificateInfo, EndpointApp, EndpointAppType
 
 
 class ClientConfig:
@@ -87,7 +89,7 @@ class ClientConfig:
                                   disable_tls=not self.data_app_tls_enabled,
                                   insecure_tls=self.data_app_tls_self_signed)
 
-    def get_root_cn(self):
+    def get_root_pubkey(self):
         """ Get the root CN from certificate. """
         with open(self.client_ca_path, 'rb') as ca_stream:
             cert = ca_stream.read()
@@ -95,7 +97,21 @@ class ClientConfig:
         cert = OpenSSL.crypto.load_certificate(
             OpenSSL.crypto.FILETYPE_PEM, cert)
 
-        return cert.get_subject().CN
+        # Get the public key
+        pubkey = cert.get_pubkey()
+
+        # Convert the public key to DER format
+        pubkey_der = pubkey.to_cryptography_key().public_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+        # Encode the DER byte string to a base64 string
+        pubkey_base64 = base64.b64encode(pubkey_der).decode('utf-8')
+
+        return pubkey_base64
+
+# Now pubkey_base64 contains the base64 encoded public key
 
     def get_endpoint_apps(self, onboarding_client: OnboardingClient):
         """ 
@@ -114,15 +130,15 @@ class ClientConfig:
             # create certificateInfo only if certs exist
             certificate_info = None
             if self.control_app_cert_path is not None and self.control_app_key_path is not None:
-                certificate_info = {
-                    "rootCN": self.get_root_cn(),
-                    "subjectName": self.control_app_id
-                }
+                certificate_info = AppCertificateInfo(
+                    root_public_key=self.get_root_pubkey(),
+                    subject_name=self.control_app_id
+                )
 
             endpoint_app_response = onboarding_client.create_endpoint_app(EndpointApp(
                 application_name=self.control_app_id,
                 certificate_info=certificate_info,
-                application_type="deviceControl"
+                application_type=EndpointAppType.DEVICE_CONTROL
             ))
             control_app = endpoint_app_response.body
 
@@ -132,7 +148,7 @@ class ClientConfig:
         if data_app is None:
             endpoint_app_response = onboarding_client.create_endpoint_app(EndpointApp(
                 application_name=self.data_app_id,
-                application_type="telemetry"
+                application_type=EndpointAppType.TELEMETRY
             ))
             data_app = endpoint_app_response.body
 

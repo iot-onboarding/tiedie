@@ -118,9 +118,8 @@ class AppCertificateInfo(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    root_cn: str = Field(alias="rootCN")
-    subject_name: str
-    subject_alternative_name: Optional[List[str]] = None
+    root_public_key: str = Field(alias=str("rootPublicKey"))
+    subject_name: str = Field(alias=str("subjectName"))
 
 
 class EndpointApp(BaseModel):
