@@ -8,6 +8,7 @@ package com.example.tiediesampleapp.config;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 import java.util.Enumeration;
 import java.util.Optional;
 
@@ -52,5 +53,26 @@ public abstract class ClientConfig {
         } catch (InvalidNameException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected String getPublicKeyFromKeyStore(KeyStore keyStore) {
+        try {
+            Enumeration<String> aliases = keyStore.aliases();
+            String alias = aliases.nextElement();
+
+            X509Certificate certificate = (X509Certificate) keyStore.getCertificate(alias);
+
+            return getPublicKeyFromCert(certificate);
+        } catch (KeyStoreException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected String getPublicKeyFromCert(X509Certificate certificate) {
+        var publicKey = certificate.getPublicKey();
+        byte[] encoded = publicKey.getEncoded();
+        byte[] b64Key = Base64.getEncoder().encode(encoded);
+
+        return new String(b64Key);
     }
 }

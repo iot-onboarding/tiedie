@@ -58,12 +58,12 @@ public class ControlAppConfig extends ClientConfig {
             CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
             X509Certificate caCert = (X509Certificate) certificateFactory.generateCertificate(caStream);
 
-            var rootCN = getCnFromCert(caCert);
+            var rootPublicKey = getPublicKeyFromCert(caCert);
             var cn = getCnFromKeyStore(keyStore);
 
             controlAppBuilder = controlAppBuilder
                     .certificateInfo(AppCertificateInfo.builder()
-                            .rootCN(rootCN)
+                            .rootPublicKey(rootPublicKey)
                             .subjectName(cn)
                             .build());
         }

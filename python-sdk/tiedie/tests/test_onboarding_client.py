@@ -262,7 +262,13 @@ def test_create_endpoint_apps(mock_server: responses.RequestsMock,
             "applicationName": "data-app",
             "applicationType": "telemetry",
             "certificateInfo": {
-                "rootCN": "Root CA",
+                "rootPublicKey": 
+                    "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
+                    "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
+                    "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
+                    "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
+                    "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
+                    "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+",
                 "subjectName": "telemetry.example.com"
             }
         }),
@@ -274,7 +280,13 @@ def test_create_endpoint_apps(mock_server: responses.RequestsMock,
         application_name="data-app",
         application_type=EndpointAppType.TELEMETRY,
         certificate_info=AppCertificateInfo(
-            root_cn="Root CA",
+            root_public_key=
+                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
+                "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
+                "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
+                "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
+                "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
+                "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+",
             subject_name="telemetry.example.com"
         )
     ))
@@ -336,7 +348,7 @@ def test_get_endpoint_apps(mock_server: responses.RequestsMock,
                     "applicationName": "data-app",
                     "applicationType": "telemetry",
                     "certificateInfo": {
-                        "rootCN": "Root CA",
+                        "rootPublicKey": "Root CA",
                         "subjectName": "telemetry.example.com"
                     }
                 }

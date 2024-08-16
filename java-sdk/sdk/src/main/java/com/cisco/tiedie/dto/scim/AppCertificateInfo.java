@@ -20,7 +20,6 @@ import java.util.List;
 @Jacksonized
 @Builder(builderClassName = "Builder")
 public class AppCertificateInfo {
-    private String rootCN;
+    private String rootPublicKey;
     private String subjectName;
-    private List<String> subjectAlternativeName;
 }
