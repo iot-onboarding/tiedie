@@ -325,11 +325,14 @@ def create_endpoint():
     endpoint_app = EndpointApp()
     endpoint_app.applicationType = request.json.get("applicationType")
     endpoint_app.applicationName = request.json.get("applicationName")
-    endpoint_app.certificateInfo = request.json.get("certificateInfo", None)
-    if endpoint_app.certificateInfo is None:
+    certificate_info = request.json.get("certificateInfo", None)
+    if certificate_info is None:
         endpoint_app.clientToken = uuid.uuid4()  # type: ignore
         if endpoint_app.applicationType == "telemetry":
             endpoint_app.password = make_hash(str(endpoint_app.clientToken))
+    else:
+        endpoint_app.rootPublicKey = certificate_info.get("rootPublicKey")
+        endpoint_app.subjectName = certificate_info.get("subjectName")
     endpoint_app.createdTime = datetime.datetime.now()
     endpoint_app.modifiedTime = datetime.datetime.now()
 
