@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import uuid
-from sqlalchemy import JSON, Boolean, Column, DateTime, \
+from sqlalchemy import Boolean, Column, DateTime, \
     ForeignKey, String, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
