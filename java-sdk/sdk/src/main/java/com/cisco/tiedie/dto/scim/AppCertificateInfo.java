@@ -12,14 +12,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.jackson.Jacksonized;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Jacksonized
 @Builder(builderClassName = "Builder")
 public class AppCertificateInfo {
-    private String rootPublicKey;
+    private String rootCA;
     private String subjectName;
 }

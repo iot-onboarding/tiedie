@@ -105,7 +105,7 @@ class EndpointApp(db.Model):
     applicationType: Mapped[str] = mapped_column(String())
     applicationName: Mapped[str] = mapped_column(
         String(), unique=True, nullable=False)
-    rootPublicKey: Mapped[Optional[str]] = mapped_column(String())
+    rootCA: Mapped[Optional[str]] = mapped_column(String())
     subjectName: Mapped[Optional[str]] = mapped_column(String())
     clientToken: Mapped[Optional[UUID]] = mapped_column(String())
     createdTime: Mapped[datetime] = mapped_column(DateTime())
@@ -120,9 +120,9 @@ class EndpointApp(db.Model):
         """ Serialize function """
         certificateInfo = None
 
-        if self.rootPublicKey:
+        if self.rootCA:
             certificateInfo = {
-                "rootPublicKey": self.rootPublicKey,
+                "rootCA": self.rootCA,
                 "subjectName": self.subjectName
             }
 

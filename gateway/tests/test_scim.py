@@ -578,14 +578,37 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
             "applicationType": "deviceControl",
             "applicationName": "Device Control App 1",
             "certificateInfo": {
-                "rootPublicKey": 
-                "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
-                "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
-                "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
-                "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
-                "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
-                "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+"
-                "DQIDAQAB",
+                "rootCA":
+                "MIIFhjCCA26gAwIBAgIUHDSTmhKfAyFd6AswCPyJ1OfjhVAwDQYJKoZIhvcNAQEL"
+                "BQAwSTEXMBUGA1UEAwwOVGllRGllIFRlc3QgQ0ExCzAJBgNVBAYTAlVTMQ4wDAYD"
+                "VQQKDAVNeU9yZzERMA8GA1UECwwIQ0EuNDgxODEwHhcNMjMxMDIzMjIyNzMzWhcN"
+                "MjQxMDIyMjIyNzMzWjBJMRcwFQYDVQQDDA5UaWVEaWUgVGVzdCBDQTELMAkGA1UE"
+                "BhMCVVMxDjAMBgNVBAoMBU15T3JnMREwDwYDVQQLDAhDQS40ODE4MTCCAiIwDQYJ"
+                "KoZIhvcNAQEBBQADggIPADCCAgoCggIBAM9MtDrSIIBU2o3DgrJ8wy7JNTsVoOJM"
+                "BTJ1/jg20U5s/txX0qs0Jtx2EQOGQsvLlPaB9LHWPycUIz4rGl3B+kfsly3rQFfV"
+                "q2Ff/y8RkXwCF77aauua+yXmFw3ct+bgy2vSjAMzbRXA958HIameWQC0VOLzpCAF"
+                "hgKyjLwR/YCpZxX0TOlFpN9DrfhSCUItSNTivPh3bHtdcbr5QRfbnH9OQ3lHKr+g"
+                "SNzjrxQSmFQrtqpCtqVdg7O3oOnehHlEm1l8WBgdk0AdGYZ5TpUu/sxdi8h25xrw"
+                "Cq8Lytv9zC9yCszTFqHDM8ralulVLizTznvGJNVg6utWmbmd8nMeYh0Ii3oQ9QHB"
+                "FSbHR3njD4TR8nR7UXaf02BmTH7BrrSp81ALvjWQWAGqvHT6ORD93Jz2E7pRmfk1"
+                "Lmw7Zniglg2ur+zOmRdAJUoEEJKh9G9sdzEm+kPtkBV15mVkBAbaRG2KMBdiiqm/"
+                "MAuUaaWvcUrBH65gQBUTabb7fV9/iA13B7DlyYPFN+h/RBpnUSBTv2pr7ugdlbjk"
+                "CUwvyCjLrMCMJ5tRqtM4Lj5RKXJ2haUG+am570e7MV8gfwmcYfvO0YjI7qoNAVNI"
+                "jim+OLENWUWEHk60Tywo3+SvWllZDCAk1cihzeKggObNiZD72YCOmvO4D5+ebJgo"
+                "chdaY7nu+qqLAgMBAAGjZjBkMB0GA1UdDgQWBBQ5WFERwi5JUHOqtITJdzBC0gBj"
+                "UjAfBgNVHSMEGDAWgBQ5WFERwi5JUHOqtITJdzBC0gBjUjASBgNVHRMBAf8ECDAG"
+                "AQH/AgEAMA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsFAAOCAgEAysEKRzgP"
+                "vgsmyf+ncJLBDxYKJgOa3NHOvdSDL/x9ruPaHk60Qtdam/Irk9XC96Smx+4OC9RY"
+                "bx0D06GO40IUKlMssLU3eh4G7LTwNYeNFxMgPrkYsdyKlVqOTZMVdErNmo4zpVwa"
+                "T7ZRrGkJvlcjIuIFmGE8JWKZUj+7g7hmM9KPRz4Ie8kCb/W5eVzvnJ2ZhEMh+aMi"
+                "9auE+v98YRqkrK3T+IWTCke4QvDHmGxCxml8MKwxFvuqDbnWkGxvGWM1K1xWhaf6"
+                "I92HtWKeLOIIC29S3EJoQapBHwOFWIo6rCfZkucTTQ5TfaAOv9LpcspnQKLSJxPN"
+                "jvCHUwKitxMBvKjCL7Fne8311G2ydIc4h4Z4WT3XCKVEAvTCRjv2067lKNGMNGfe"
+                "LGkBzueAaGiBYQ4Ex2KvlbbtaAzCVxfI+SwjynJJoLriRQKCVEQbaoVl3MoK7ktx"
+                "Gl2fZRrN5krJ3F2wbQLuS5Wr8j5+FUNb7k6ivSjYALmDn2K+HCWF1+9FAki98ge6"
+                "UPgCcDS92aUTtMsvOQ80LnzYkxK7vYS/tRZGWfuTlZoZjFDNOhIe8zy2bYw1Tm2X"
+                "5vDMen6JX3MJ94XsEkco6g8AkjXHisnBqgNGDRYXMIO/uBmQEhMNBpiy9eYJWI2D"
+                "B7vpBipQ/6G5kI52j8azwyjkIYgOOFv/Hoo=",
                 "subjectName": "www.example.com"
             },
         },
@@ -604,14 +627,37 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
     ]
     assert response.json["clientToken"] is None
     assert response.json["certificateInfo"] == {
-        "rootPublicKey":
-        "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxzCip+h22/jEi3O6rExv"
-        "GSxrmLjk+pkor7gzsjLcZ2vi1N5KBTSmhDdn7O9wSg16DyP45wjb22p2dczVkR6P"
-        "WHFFgEQ0aIojdSFxng7zMybCqinqADP3wposzFRpHxtl346B0SYuMdvjLw8d1Qht"
-        "aRm1pwp+0kH3iCQGz/fMPrkOf5NrbWvE241YUrRqowRb32GY3V63FJHcwf2mI/7j"
-        "pkQteFonRc8kGt0XLu+Xhn/jdT2U9hFrEaWy5DVrz3uAAmhHmESuiP1jHBJXuvcK"
-        "fX66YMSpaJOaS12W4i1QzNnmbHreKile43AcbaxH3bY+4QhBWk3k7RBqQtFGjdu+"
-        "DQIDAQAB",
+        "rootCA":
+            "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"
+            "B7vpBipQ/6G5kI52j8azwyjkIYgOOFv/Hoo=",
         "subjectName": "www.example.com"
     }
 
