@@ -118,7 +118,7 @@ class AppCertificateInfo(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    root_public_key: str = Field(alias=str("rootPublicKey"))
+    root_ca: str = Field(alias=str("rootCA"))
     subject_name: str = Field(alias=str("subjectName"))
 
 

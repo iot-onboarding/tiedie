@@ -10,7 +10,6 @@ import base64
 from flask import Flask
 
 import OpenSSL.crypto
-from cryptography.hazmat.primitives import serialization
 from tiedie.api.onboarding_client import OnboardingClient
 from tiedie.api.control_client import ControlClient
 from tiedie.api.data_receiver_client import DataReceiverClient
@@ -89,27 +88,21 @@ class ClientConfig:
                                   disable_tls=not self.data_app_tls_enabled,
                                   insecure_tls=self.data_app_tls_self_signed)
 
-    def get_root_pubkey(self):
+    def get_root_ca(self):
         """ Get the root CN from certificate. """
         with open(self.client_ca_path, 'rb') as ca_stream:
             cert = ca_stream.read()
 
         cert = OpenSSL.crypto.load_certificate(
             OpenSSL.crypto.FILETYPE_PEM, cert)
-
-        # Get the public key
-        pubkey = cert.get_pubkey()
-
-        # Convert the public key to DER format
-        pubkey_der = pubkey.to_cryptography_key().public_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        
+        # Convert the certificate to DER format
+        cert_der = OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, cert)
 
         # Encode the DER byte string to a base64 string
-        pubkey_base64 = base64.b64encode(pubkey_der).decode('utf-8')
+        cert_base64 = base64.b64encode(cert_der).decode('utf-8')
 
-        return pubkey_base64
+        return cert_base64
 
 # Now pubkey_base64 contains the base64 encoded public key
 
@@ -131,7 +124,7 @@ class ClientConfig:
             certificate_info = None
             if self.control_app_cert_path is not None and self.control_app_key_path is not None:
                 certificate_info = AppCertificateInfo(
-                    root_public_key=self.get_root_pubkey(),
+                    root_ca=self.get_root_ca(),
                     subject_name=self.control_app_id
                 )
 

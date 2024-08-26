@@ -24,7 +24,7 @@ SPDX-License-Identifier: Apache-2.0
                 {% for device in devices %}
                 <tr>
                     <td scope="row">{{ device.device_id }}</td>
-                    <td> {{ device.device_display_name }}</td>
+                    <td> {{ device.display_name }}</td>
                     <td>{{ device.ble_extension.device_mac_address }}</td>
                     <!-- <td>
                         <span id="{{ device.device_id }}-connected" class="badge rounded-pill text-bg-success d-none">Connected</span>

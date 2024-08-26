@@ -331,7 +331,7 @@ def create_endpoint():
         if endpoint_app.applicationType == "telemetry":
             endpoint_app.password = make_hash(str(endpoint_app.clientToken))
     else:
-        endpoint_app.rootPublicKey = certificate_info.get("rootPublicKey")
+        endpoint_app.rootCA = certificate_info.get("rootCA")
         endpoint_app.subjectName = certificate_info.get("subjectName")
     endpoint_app.createdTime = datetime.datetime.now()
     endpoint_app.modifiedTime = datetime.datetime.now()
