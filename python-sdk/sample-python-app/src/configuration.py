@@ -95,7 +95,7 @@ class ClientConfig:
 
         cert = OpenSSL.crypto.load_certificate(
             OpenSSL.crypto.FILETYPE_PEM, cert)
-        
+
         # Convert the certificate to DER format
         cert_der = OpenSSL.crypto.dump_certificate(OpenSSL.crypto.FILETYPE_ASN1, cert)
 
