@@ -21,6 +21,7 @@ from scim_fdo import FDOExtension
 from scim_ethermab import EtherMABExtension
 from database import db
 
+
 @pytest.fixture(name="postgres")
 def fixture_postgres():
     """ Postgres container """
@@ -55,6 +56,7 @@ def fixture_api_key(app):
         db.session.commit()
         yield key
 
+
 def test_create_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -85,6 +87,7 @@ def test_create_device(client: FlaskClient, api_key: str):
     ]
     assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json
 
+
 def test_unsupported_schema(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -107,6 +110,7 @@ def test_unsupported_schema(client: FlaskClient, api_key: str):
     )
     print(response.json)
     assert response.status_code == 501
+
 
 def test_get_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -181,7 +185,8 @@ def test_get_device(client: FlaskClient, api_key):
     assert response.status_code == 200
     assert response.json["totalResults"] == 1
     assert response.json["Resources"][0]["id"] == device_id
-    assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json["Resources"][0]
+    assert "urn:ietf:params:scim:schemas:extension:ble:2.0:Device" in response.json[
+        "Resources"][0]
 
 
 def test_delete_device(client: FlaskClient, api_key):
@@ -236,6 +241,7 @@ def test_delete_device(client: FlaskClient, api_key):
         "urn:ietf:params:scim:api:messages:2.0:ListResponse"]
     assert len(response.json["Resources"]) == 0
 
+
 def test_create_mab_device(client: FlaskClient, api_key: str):
     """ Test POST Device """
     response = client.post(
@@ -262,6 +268,7 @@ def test_create_mab_device(client: FlaskClient, api_key: str):
         'urn:ietf:params:scim:schemas:core:2.0:Device',
         'urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device'
     ]
+
 
 def test_get_mab_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -334,6 +341,7 @@ def test_get_mab_device(client: FlaskClient, api_key):
     assert "urn:ietf:params:scim:schemas:extension:ethernet-mab:2.0:Device" \
         in response.json["Resources"][0]
 
+
 def test_delete_mab_device(client: FlaskClient, api_key):
     """ Test DELETE device """
     device_id = uuid.uuid4()
@@ -403,7 +411,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
         }
     )
 
-    assert response.status_code in (200,201)
+    assert response.status_code in (200, 201)
     device_id = response.json["id"]
 
     response = client.get(f"/scim/v2/Devices/{device_id}", headers={
@@ -438,6 +446,7 @@ def test_create_fdo_device(client: FlaskClient, api_key: str):
     print(response.json)
     assert response.status_code == 200
     assert response.json["totalResults"] == 0
+
 
 def test_get_fdo_device(client: FlaskClient, api_key):
     """ Test GET device """
@@ -560,7 +569,6 @@ def test_delete_fdo_device(client: FlaskClient, api_key):
     assert len(response.json["Resources"]) == 0
 
 
-
 def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
     """ Test POST Endpoint Apps """
     response = client.post(
@@ -570,8 +578,38 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
             "applicationType": "deviceControl",
             "applicationName": "Device Control App 1",
             "certificateInfo": {
-                "rootCN": "DigiCert Global Root CA",
-                "subjectName": "wwww.example.com"
+                "rootCA":
+                "MIIFhjCCA26gAwIBAgIUHDSTmhKfAyFd6AswCPyJ1OfjhVAwDQYJKoZIhvcNAQEL"
+                "BQAwSTEXMBUGA1UEAwwOVGllRGllIFRlc3QgQ0ExCzAJBgNVBAYTAlVTMQ4wDAYD"
+                "VQQKDAVNeU9yZzERMA8GA1UECwwIQ0EuNDgxODEwHhcNMjMxMDIzMjIyNzMzWhcN"
+                "MjQxMDIyMjIyNzMzWjBJMRcwFQYDVQQDDA5UaWVEaWUgVGVzdCBDQTELMAkGA1UE"
+                "BhMCVVMxDjAMBgNVBAoMBU15T3JnMREwDwYDVQQLDAhDQS40ODE4MTCCAiIwDQYJ"
+                "KoZIhvcNAQEBBQADggIPADCCAgoCggIBAM9MtDrSIIBU2o3DgrJ8wy7JNTsVoOJM"
+                "BTJ1/jg20U5s/txX0qs0Jtx2EQOGQsvLlPaB9LHWPycUIz4rGl3B+kfsly3rQFfV"
+                "q2Ff/y8RkXwCF77aauua+yXmFw3ct+bgy2vSjAMzbRXA958HIameWQC0VOLzpCAF"
+                "hgKyjLwR/YCpZxX0TOlFpN9DrfhSCUItSNTivPh3bHtdcbr5QRfbnH9OQ3lHKr+g"
+                "SNzjrxQSmFQrtqpCtqVdg7O3oOnehHlEm1l8WBgdk0AdGYZ5TpUu/sxdi8h25xrw"
+                "Cq8Lytv9zC9yCszTFqHDM8ralulVLizTznvGJNVg6utWmbmd8nMeYh0Ii3oQ9QHB"
+                "FSbHR3njD4TR8nR7UXaf02BmTH7BrrSp81ALvjWQWAGqvHT6ORD93Jz2E7pRmfk1"
+                "Lmw7Zniglg2ur+zOmRdAJUoEEJKh9G9sdzEm+kPtkBV15mVkBAbaRG2KMBdiiqm/"
+                "MAuUaaWvcUrBH65gQBUTabb7fV9/iA13B7DlyYPFN+h/RBpnUSBTv2pr7ugdlbjk"
+                "CUwvyCjLrMCMJ5tRqtM4Lj5RKXJ2haUG+am570e7MV8gfwmcYfvO0YjI7qoNAVNI"
+                "jim+OLENWUWEHk60Tywo3+SvWllZDCAk1cihzeKggObNiZD72YCOmvO4D5+ebJgo"
+                "chdaY7nu+qqLAgMBAAGjZjBkMB0GA1UdDgQWBBQ5WFERwi5JUHOqtITJdzBC0gBj"
+                "UjAfBgNVHSMEGDAWgBQ5WFERwi5JUHOqtITJdzBC0gBjUjASBgNVHRMBAf8ECDAG"
+                "AQH/AgEAMA4GA1UdDwEB/wQEAwIBBjANBgkqhkiG9w0BAQsFAAOCAgEAysEKRzgP"
+                "vgsmyf+ncJLBDxYKJgOa3NHOvdSDL/x9ruPaHk60Qtdam/Irk9XC96Smx+4OC9RY"
+                "bx0D06GO40IUKlMssLU3eh4G7LTwNYeNFxMgPrkYsdyKlVqOTZMVdErNmo4zpVwa"
+                "T7ZRrGkJvlcjIuIFmGE8JWKZUj+7g7hmM9KPRz4Ie8kCb/W5eVzvnJ2ZhEMh+aMi"
+                "9auE+v98YRqkrK3T+IWTCke4QvDHmGxCxml8MKwxFvuqDbnWkGxvGWM1K1xWhaf6"
+                "I92HtWKeLOIIC29S3EJoQapBHwOFWIo6rCfZkucTTQ5TfaAOv9LpcspnQKLSJxPN"
+                "jvCHUwKitxMBvKjCL7Fne8311G2ydIc4h4Z4WT3XCKVEAvTCRjv2067lKNGMNGfe"
+                "LGkBzueAaGiBYQ4Ex2KvlbbtaAzCVxfI+SwjynJJoLriRQKCVEQbaoVl3MoK7ktx"
+                "Gl2fZRrN5krJ3F2wbQLuS5Wr8j5+FUNb7k6ivSjYALmDn2K+HCWF1+9FAki98ge6"
+                "UPgCcDS92aUTtMsvOQ80LnzYkxK7vYS/tRZGWfuTlZoZjFDNOhIe8zy2bYw1Tm2X"
+                "5vDMen6JX3MJ94XsEkco6g8AkjXHisnBqgNGDRYXMIO/uBmQEhMNBpiy9eYJWI2D"
+                "B7vpBipQ/6G5kI52j8azwyjkIYgOOFv/Hoo=",
+                "subjectName": "www.example.com"
             },
         },
         headers={
@@ -588,6 +626,40 @@ def test_create_endpoint_app_cert(client: FlaskClient, api_key: str):
         "urn:ietf:params:scim:schemas:core:2.0:EndpointApp"
     ]
     assert response.json["clientToken"] is None
+    assert response.json["certificateInfo"] == {
+        "rootCA":
+            "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"
+            "B7vpBipQ/6G5kI52j8azwyjkIYgOOFv/Hoo=",
+        "subjectName": "www.example.com"
+    }
 
 
 def test_create_endpoint_app_token(client: FlaskClient, api_key: str):

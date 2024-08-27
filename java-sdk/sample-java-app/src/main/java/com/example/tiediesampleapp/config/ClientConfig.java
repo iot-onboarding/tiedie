@@ -7,7 +7,9 @@ package com.example.tiediesampleapp.config;
 
 import java.security.KeyStore;
 import java.security.KeyStoreException;
+import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 import java.util.Enumeration;
 import java.util.Optional;
 
@@ -52,5 +54,12 @@ public abstract class ClientConfig {
         } catch (InvalidNameException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    protected String getEncodedCert(X509Certificate certificate) throws CertificateEncodingException {
+        byte[] encoded = certificate.getEncoded();
+        byte[] b64Key = Base64.getEncoder().encode(encoded);
+
+        return new String(b64Key);
     }
 }
