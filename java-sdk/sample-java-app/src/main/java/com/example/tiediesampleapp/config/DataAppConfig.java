@@ -62,12 +62,12 @@ public class DataAppConfig extends ClientConfig {
             CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
             X509Certificate caCert = (X509Certificate) certificateFactory.generateCertificate(caStream);
 
-            var rootCN = getCnFromCert(caCert);
+            var rootCA = getEncodedCert(caCert);
             var cn = getCnFromKeyStore(keyStore);
 
             dataAppBuilder = dataAppBuilder
                     .certificateInfo(AppCertificateInfo.builder()
-                            .rootCN(rootCN)
+                            .rootCA(rootCA)
                             .subjectName(cn)
                             .build());
         }

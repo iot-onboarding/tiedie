@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import uuid
-from sqlalchemy import JSON, Boolean, Column, DateTime, \
+from sqlalchemy import Boolean, Column, DateTime, \
     ForeignKey, String, ARRAY
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
@@ -105,8 +105,8 @@ class EndpointApp(db.Model):
     applicationType: Mapped[str] = mapped_column(String())
     applicationName: Mapped[str] = mapped_column(
         String(), unique=True, nullable=False)
-    certificateInfo: Mapped[Optional[dict]
-                            ] = mapped_column(JSON(), nullable=True)
+    rootCA: Mapped[Optional[str]] = mapped_column(String())
+    subjectName: Mapped[Optional[str]] = mapped_column(String())
     clientToken: Mapped[Optional[UUID]] = mapped_column(String())
     createdTime: Mapped[datetime] = mapped_column(DateTime())
     modifiedTime: Mapped[datetime] = mapped_column(DateTime())
@@ -118,12 +118,20 @@ class EndpointApp(db.Model):
 
     def serialize(self):
         """ Serialize function """
+        certificateInfo = None
+
+        if self.rootCA:
+            certificateInfo = {
+                "rootCA": self.rootCA,
+                "subjectName": self.subjectName
+            }
+
         return {
             "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
             "id": self.id,
             "applicationType": self.applicationType,
             "applicationName": self.applicationName,
-            "certificateInfo": self.certificateInfo,
+            "certificateInfo": certificateInfo,
             "clientToken": str(self.clientToken) if self.clientToken else None,
             "meta": {
                 "resourceType": "EndpointApp",
