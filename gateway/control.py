@@ -56,12 +56,13 @@ def authenticate_user(func):
 
     @wraps(func)
     def check_apikey(*args, **kwargs):
-        client_cert = request.environ.get('peercert')
+        client_cert: OpenSSL.crypto.X509 | None = request.environ.get('peercert')
         if client_cert:
-            if session.scalar(
+            endpoint_app = session.scalar(
                 select(EndpointApp)
-                .filter_by(applicationName=client_cert.get_subject().CN)
-            ) is not None:
+                .filter_by(subjectName=client_cert.get_subject().CN)
+            )
+            if endpoint_app is not None:
                 return func(*args, **kwargs)
 
             return make_response(jsonify({"error": "Unauthorized"}), 403)
