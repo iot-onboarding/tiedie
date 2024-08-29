@@ -15,7 +15,7 @@ from uuid import uuid4
 from http import HTTPStatus
 from typing import Any
 from functools import wraps
-from flask import Blueprint, current_app, jsonify, make_response, redirect, request, url_for
+from flask import Blueprint, current_app, jsonify, make_response, request
 from sqlalchemy import select
 from werkzeug.test import EnvironBuilder
 import werkzeug.serving
