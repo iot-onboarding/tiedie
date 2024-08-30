@@ -11,13 +11,14 @@ real-time updates.
 
 """
 
+import base64
+import json
 import sys
 import os
 
 import logging
 from flask import Flask, render_template, request, redirect, jsonify
 from flask_socketio import SocketIO, namespace
-from google.protobuf.json_format import MessageToJson
 from tiedie.models import (Device, DataFormat, BleDataParameter,
                            AdvertisementRegistrationOptions,
                            ConnectionRegistrationOptions,
@@ -73,7 +74,10 @@ class GattHandler(namespace.Namespace):
         """ function to define what happens on subscription """
         def callback(data_subscription):
             try:
-                payload = MessageToJson(data_subscription)
+                data_subscription["data"] = base64 \
+                                            .b64encode(data_subscription["data"]) \
+                                            .decode("utf-8")
+                payload = json.dumps(data_subscription)
                 self.emit("data", {'data': payload})
             except Exception as e:
                 print(e)
@@ -107,8 +111,8 @@ class AdvertisementHandler(namespace.Namespace):
         """ function to define what happens on subscription """
         def callback(data_subscription):
             print("subscription: ", data_subscription)
-
-            payload = MessageToJson(data_subscription)
+            data_subscription["data"] = base64.b64encode(data_subscription["data"]).decode("utf-8")
+            payload = json.dumps(data_subscription)
 
             self.emit('data', {'data': payload})
 
@@ -142,7 +146,7 @@ class ConnectionStatusHandler(namespace.Namespace):
         def callback(data_subscription):
             try:
                 print("subscription: ", data_subscription)
-                payload = MessageToJson(data_subscription)
+                payload = json.dumps(data_subscription)
 
                 self.emit('data', {'data': payload})
             except Exception as e:
