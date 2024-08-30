@@ -11,10 +11,10 @@ handling data from an MQTT broker, particularly for IoT applications.
 
 """
 
-from typing import Callable, Optional
+from typing import Any, Callable
 import paho.mqtt.client as mqtt
+import cbor2
 from .auth import Authenticator
-from .proto import data_app_pb2
 
 
 class DataReceiverClient:
@@ -48,20 +48,21 @@ class DataReceiverClient:
         self.mqtt_client.loop_stop()
 
     def subscribe(self, topic: str,
-                  callback: Callable[[Optional[data_app_pb2.DataSubscription]],
-                                     None]):
+                  callback: Callable[[Any], None]):
         """ Subscribe to a topic and register a callback function.
 
         Args:
             topic (str): The topic to subscribe to.
-            callback (Callable[[Optional[data_app_pb2.DataSubscription]], None]): 
+            callback (Callable[[Any], None]): 
                 A callback function to be called when a message is received.
         """
         def on_message(_client, _userdata, msg):
             payload = msg.payload
-            data_subscription = data_app_pb2.DataSubscription()
-            data_subscription.ParseFromString(payload)
-            callback(data_subscription)
+            # data_subscription = data_app_pb2.DataSubscription()
+            # data_subscription.ParseFromString(payload)
+            print("Received message: ", len(payload), payload.hex())
+            data = cbor2.loads(payload)
+            callback(data)
 
         self.mqtt_client.subscribe(topic, qos=0)
         self.mqtt_client.message_callback_add(topic, on_message)
