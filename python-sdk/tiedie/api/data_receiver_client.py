@@ -30,7 +30,7 @@ class DataReceiverClient:
         self.port = port
         self.authenticator = authenticator
         self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
-            client_id=authenticator.get_client_id(), clean_session=True)
+            authenticator.get_client_id(), True)
         self.authenticator.set_auth_options_mqtt(self.mqtt_client, disable_tls, insecure_tls)
         self.mqtt_client.on_connect = self.__on_connect
         self.mqtt_client.on_disconnect = self.__on_disconnect

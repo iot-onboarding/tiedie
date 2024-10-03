@@ -115,6 +115,8 @@ class TiedieConnectRequest(TiedieBasicRequest):
     primarily used for BLE technology.
     """
     ble: BleConnectRequest
+    retries: Optional[int] = 3
+    retry_multiple_aps: Optional[bool] = Field(alias=str("retryMultipleAPs"), default=True)
 
 
 class TiedieRegisterTopicRequest(TiedieBasicRequest):
@@ -200,7 +202,7 @@ class IDQuery(BaseModel):
     """ Object with device ID used for query parameter generation """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    device_id: str = Field(alias="id")
+    device_ids: List[Optional[str]] = Field(alias=str("id"))
 
 
 class TopicQuery(BaseModel):
