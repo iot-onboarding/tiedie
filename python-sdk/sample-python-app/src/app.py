@@ -233,7 +233,7 @@ def add_device():
 
     topic = "data-app/" + response.body.device_id + "/connection"
 
-    control_client.register_topic(
+    control_client.register_event(
         topic,
         response.body,
         ConnectionRegistrationOptions(
@@ -338,7 +338,7 @@ def subscribe_advertisements(device_id):
 
     topic = f'data-app/{device.device_id}/advertisements'
 
-    control_client.register_topic(topic,
+    control_client.register_event(topic,
                                   device,
                                   AdvertisementRegistrationOptions(
                                       data_apps=[app.config['DATA_APP_ID']],
@@ -357,7 +357,7 @@ def unsubscribe():
     if topic is None:
         return render_template("error.html", error="Invalid topic string")
 
-    control_client.unregister_topic(topic)
+    control_client.unregister_event(topic)
     print("remove topic: ", topic)
     try:
         subscriptionTopics.remove(topic)
@@ -428,7 +428,7 @@ def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
 
     topic = f"data-app/{device_id}/{service_id}/{char_id}"
 
-    topic_response = control_client.register_topic(topic,
+    topic_response = control_client.register_event(topic,
                                                    device,
                                                    DataRegistrationOptions(
                                                        data_apps=[
@@ -459,7 +459,7 @@ def subscribe_advertisement():
     topic = "data-app/advertisements/" + request_data.get("topic")
 
     # Register topic
-    topic_response = control_client.register_topic(
+    topic_response = control_client.register_event(
         topic,
         None,
         AdvertisementRegistrationOptions(

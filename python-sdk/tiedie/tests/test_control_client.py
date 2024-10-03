@@ -126,7 +126,7 @@ def test_connect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/connection",
+        "https://control.example.com/nipc/action/connection",
         body=body,
         status=200,
         match=[
@@ -141,7 +141,7 @@ def test_connect(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/connection",
+        "https://control.example.com/nipc/action/connection",
         body=body,
         status=200,
         match=[
@@ -165,7 +165,7 @@ def test_connect(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/connection",
+        "https://control.example.com/nipc/action/connection",
         body=body,
         status=200,
         match=[
@@ -292,14 +292,14 @@ def test_disconnect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        "https://control.example.com/nipc/connectivity/connection",
+        "https://control.example.com/nipc/action/connection",
         body=body,
         status=200,
         match=[matchers.query_param_matcher({"id": device_id})],
         content_type="application/json",
     )
     mock_server.delete(
-        "https://control.example.com/nipc/connectivity/connection",
+        "https://control.example.com/nipc/action/connection",
         body=body2,
         status=200,
         match=[matchers.query_param_matcher(
@@ -418,7 +418,7 @@ def test_discovery(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/services",
+        "https://control.example.com/nipc/action/services",
         body=body,
         status=200,
         match=[
@@ -433,7 +433,7 @@ def test_discovery(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/services",
+        "https://control.example.com/nipc/action/services",
         body=body,
         status=200,
         match=[
@@ -457,7 +457,7 @@ def test_discovery(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/connectivity/services",
+        "https://control.example.com/nipc/action/services",
         body=json.dumps({
             "status": "FAILURE",
             "message": "No connection"
@@ -559,7 +559,7 @@ def test_read(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/attribute/read",
+        "https://control.example.com/nipc/action/property/read",
         body=body,
         status=200,
         match=[
@@ -611,7 +611,7 @@ def test_write(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/attribute/write",
+        "https://control.example.com/nipc/action/property/write",
         body=body,
         status=200,
         match=[
@@ -666,7 +666,7 @@ def test_subscribe(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/attribute/subscription/start",
+        "https://control.example.com/nipc/action/property/subscription/start",
         body=body,
         status=200,
         match=[
@@ -718,7 +718,7 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/data/attribute/subscription/stop",
+        "https://control.example.com/nipc/action/property/subscription/stop",
         body=body,
         status=200,
         match=[
@@ -759,7 +759,7 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
     assert response.body is None
 
 
-def test_register_topic(mock_server: responses.RequestsMock,
+def test_register_event(mock_server: responses.RequestsMock,
                         control_client: ControlClient):
     """ Test register topic """
 
@@ -774,7 +774,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/registration/topic",
+        "https://control.example.com/nipc/registration/event",
         body=body,
         status=200,
         match=[
@@ -801,7 +801,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/registration/topic",
+        "https://control.example.com/nipc/registration/event",
         body=body,
         status=200,
         match=[
@@ -823,7 +823,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/registration/topic",
+        "https://control.example.com/nipc/registration/event",
         body=body,
         status=200,
         match=[
@@ -854,7 +854,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/registration/topic",
+        "https://control.example.com/nipc/registration/event",
         body=body,
         status=200,
         match=[
@@ -888,7 +888,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
         )
     )
 
-    response = control_client.register_topic(topic, device, DataRegistrationOptions(
+    response = control_client.register_event(topic, device, DataRegistrationOptions(
         data_apps=[data_app_1, data_app_2],
         data_parameter=BleDataParameter(
             device_id=device_id, service_id="1800", characteristic_id="2a00")
@@ -897,7 +897,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
-    response = control_client.register_topic(
+    response = control_client.register_event(
         topic, device, AdvertisementRegistrationOptions(
             data_apps=[data_app_1, data_app_2]
         ))
@@ -905,7 +905,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
-    response = control_client.register_topic(topic, None, AdvertisementRegistrationOptions(
+    response = control_client.register_event(topic, None, AdvertisementRegistrationOptions(
         data_apps=[data_app_1, data_app_2],
         advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
         advertisement_filter=[
@@ -917,7 +917,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
 
-    response = control_client.register_topic(topic, device, ConnectionRegistrationOptions(
+    response = control_client.register_event(topic, device, ConnectionRegistrationOptions(
         data_apps=[data_app_1, data_app_2],
     ))
 
@@ -925,7 +925,7 @@ def test_register_topic(mock_server: responses.RequestsMock,
     assert response.status == TiedieStatus.SUCCESS
 
 
-def test_unregister_topic(mock_server: responses.RequestsMock,
+def test_unregister_event(mock_server: responses.RequestsMock,
                           control_client: ControlClient):
     """ Test unregister topic """
 
@@ -936,7 +936,7 @@ def test_unregister_topic(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        "https://control.example.com/nipc/registration/topic",
+        "https://control.example.com/nipc/registration/event",
         body=body,
         status=200,
         match=[
@@ -947,7 +947,7 @@ def test_unregister_topic(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
 
-    response = control_client.unregister_topic(topic)
+    response = control_client.unregister_event(topic)
 
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
