@@ -24,7 +24,7 @@ from tiedie.models import (Device, DataFormat, BleDataParameter,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
-from tiedie.models.scim import Application, NullPairing, PairingJustWorks, PairingPassKey
+from tiedie.models.scim import Application, NullPairing, PairingJustWorks
 import configuration
 
 
@@ -211,7 +211,7 @@ def add_device():
     version_support = content['versionSupport'].split(',')
 
     pairing_method = content.get('pairingMethod')
-    mobility = True if content.get('mobility', 'off') == 'on' else False
+    mobility = content.get('mobility', 'off') == 'on'
 
     device = Device(
         display_name=content['displayName'],
