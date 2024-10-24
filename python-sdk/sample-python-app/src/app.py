@@ -24,7 +24,7 @@ from tiedie.models import (Device, DataFormat, BleDataParameter,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
-from tiedie.models.scim import Application, PairingPassKey
+from tiedie.models.scim import Application, NullPairing, PairingJustWorks, PairingPassKey
 import configuration
 
 
@@ -210,6 +210,9 @@ def add_device():
     is_random = content.get('isRandom', 'off') == 'on'
     version_support = content['versionSupport'].split(',')
 
+    pairing_method = content.get('pairingMethod')
+    mobility = True if content.get('mobility', 'off') == 'on' else False
+
     device = Device(
         display_name=content['displayName'],
         active=active,
@@ -217,7 +220,9 @@ def add_device():
             device_mac_address=content['deviceMacAddress'],
             version_support=version_support,
             is_random=is_random,
-            pairing_pass_key=PairingPassKey(key=int(content['passKey']))
+            mobility=mobility,
+            null_pairing= NullPairing() if pairing_method == 'null' else None,
+            pairing_just_works= PairingJustWorks() if pairing_method == 'justWorks' else None,
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps

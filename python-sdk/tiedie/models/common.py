@@ -58,10 +58,10 @@ class ListResponse(BaseModel, Generic[Resource]):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     total_results: int
-    start_index: int
-    items_per_page: int
+    start_index: Optional[int] = None
+    items_per_page: Optional[int] = None
 
-    resources: List[Resource] = Field(alias=str("Resources"))
+    resources: Optional[List[Resource]] = Field(alias=str("Resources"), default=[])
 
 
 class RegistrationOptions(BaseModel):

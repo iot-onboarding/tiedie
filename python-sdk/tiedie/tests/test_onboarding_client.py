@@ -138,6 +138,7 @@ def test_get_device(mock_server: responses.RequestsMock,
 
     response = onboarding_client.get_device(device_id)
     assert response.status_code == 200
+    assert response.body is not None
     assert response.body.display_name == "BLE Monitor"
     assert response.body.device_id == device_id
 
@@ -200,9 +201,11 @@ def test_get_devices(mock_server: responses.RequestsMock,
     response = onboarding_client.get_devices()
 
     assert response.status_code == 200
+    assert response.body is not None
     assert response.body.total_results == 2
     assert response.body.items_per_page == 2
     assert response.body.start_index == 1
+    assert response.body.resources is not None
     assert len(response.body.resources) == 2
     assert response.body.resources[0].display_name == "BLE Monitor"
     assert response.body.resources[0].device_id == device_id_1
@@ -250,6 +253,7 @@ def test_create_endpoint_apps(mock_server: responses.RequestsMock,
     ))
 
     assert response.status_code == 201
+    assert response.body is not None
     assert response.body.application_name == "control-app"
     assert response.body.application_type == "deviceControl"
     assert response.body.application_id == app_id
@@ -339,6 +343,7 @@ def test_create_endpoint_apps(mock_server: responses.RequestsMock,
     ))
 
     assert response.status_code == 201
+    assert response.body is not None
     assert response.body.application_name == "data-app"
     assert response.body.application_type == "telemetry"
     assert response.body.application_id == app_id
@@ -365,6 +370,7 @@ def test_get_endpoint_app(mock_server: responses.RequestsMock,
     response = onboarding_client.get_endpoint_app(app_id)
 
     assert response.status_code == 200
+    assert response.body is not None
     assert response.body.application_name == "control-app"
     assert response.body.application_type == "deviceControl"
     assert response.body.application_id == app_id
@@ -438,9 +444,11 @@ def test_get_endpoint_apps(mock_server: responses.RequestsMock,
     response = onboarding_client.get_endpoint_apps()
 
     assert response.status_code == 200
+    assert response.body is not None
     assert response.body.total_results == 2
     assert response.body.items_per_page == 2
     assert response.body.start_index == 1
+    assert response.body.resources is not None
     assert len(response.body.resources) == 2
     assert response.body.resources[0].application_name == "control-app"
     assert response.body.resources[0].application_type == "deviceControl"
@@ -448,3 +456,23 @@ def test_get_endpoint_apps(mock_server: responses.RequestsMock,
     assert response.body.resources[1].application_name == "data-app"
     assert response.body.resources[1].application_type == "telemetry"
     assert response.body.resources[1].application_id == app_id_2
+
+
+def test_no_endpoint_app(mock_server: responses.RequestsMock,
+                           onboarding_client: OnboardingClient):
+    """ Test get endpoint apps """
+    mock_server.get(
+        "https://onboarding.example.com/scim/v2/EndpointApps",
+        body=json.dumps({
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+            "totalResults": 0
+        }),
+        status=200,
+        content_type="application/scim+json",
+    )
+
+    response = onboarding_client.get_endpoint_apps()
+
+    assert response.status_code == 200
+    assert response.body is not None
+    assert response.body.total_results == 0

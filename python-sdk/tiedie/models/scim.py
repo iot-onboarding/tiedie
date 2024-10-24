@@ -19,12 +19,11 @@ from pydantic.alias_generators import to_camel
 
 class NullPairing(BaseModel):
     """ Represents Null Pairing with an ID. """
-    id: str
 
 
 class PairingJustWorks(BaseModel):
     """ class PairingJustWorks """
-    key: int
+    key: Optional[int] = None
 
 
 class PairingPassKey(BaseModel):
@@ -49,6 +48,7 @@ class BleExtension(BaseModel):
     device_mac_address: str
     is_random: bool = False
     irk: Optional[str] = None
+    mobility: bool = False
     null_pairing: Optional[NullPairing] = Field(
         alias=str("urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"),
         default=None)
