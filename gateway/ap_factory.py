@@ -26,6 +26,12 @@ def create_ble_ap(data_producer: DataProducer) -> AccessPoint:
     return _ble_ap
 
 
+def set_ble_ap(new_ble_ap: AccessPoint):
+    """ Global BLE AP setter """
+    global _ble_ap  # pylint: disable=global-statement
+    _ble_ap = new_ble_ap
+
+
 def ble_ap() -> AccessPoint:
     """ Global BLE AP getter """
     return _ble_ap

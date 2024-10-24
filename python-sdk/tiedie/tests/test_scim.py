@@ -37,6 +37,7 @@ def test_ble_device_creation():
             "versionSupport": ["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
             "deviceMacAddress": "AA:BB:CC:11:22:33",
             "isRandom": False,
+            "mobility": False,
             "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device":
             {"key": 123456},
             "pairingMethods":
@@ -78,6 +79,7 @@ def test_ble_device_creation():
             ],
             "deviceMacAddress": "AA:BB:CC:11:22:33",
             "isRandom": False,
+            "mobility": False,
             "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device": {
                 "key": 123456
             },
@@ -214,6 +216,7 @@ def test_endpoint_extension():
             ],
             "deviceMacAddress": "AA:BB:CC:11:22:33",
             "isRandom": False,
+            "mobility": False,
             "urn:ietf:params:scim:schemas:extension:pairingPassKey:2.0:Device": {
                 "key": 123456
             },

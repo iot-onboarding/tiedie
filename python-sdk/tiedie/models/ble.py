@@ -26,8 +26,8 @@ class BleReadRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    service_id: str = Field(alias="serviceID")
-    characteristic_id: str = Field(alias="characteristicID")
+    service_id: str = Field(alias=str("serviceID"))
+    characteristic_id: str = Field(alias=str("characteristicID"))
 
 
 class BleSubscribeRequest(BaseModel):
@@ -45,14 +45,14 @@ class BleDescriptors(BaseModel):
     """ Represents a BLE descriptor. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    descriptor_id: str = Field(alias="descriptorID")
+    descriptor_id: str = Field(alias=str("descriptorID"))
 
 
 class BleCharacteristic(BaseModel):
     """ Represents a BLE characteristic. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    characteristic_id: str = Field(alias="characteristicID")
+    characteristic_id: str = Field(alias=str("characteristicID"))
     flags: List[str]
     descriptors: Optional[List[BleDescriptors]] = None
 
@@ -61,8 +61,17 @@ class BleService(BaseModel):
     """ Represents a BLE service. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    service_id: str = Field(alias="serviceID")
+    service_id: str = Field(alias=str("serviceID"))
     characteristics: Optional[List[BleCharacteristic]] = None
+
+
+class BleBondingOptions(Enum):
+    """ BLE bonding options. """
+    DEFAULT = "default"
+    NONE = "none"
+    JUST_WORKS = "justworks"
+    PASSKEY = "passkey"
+    OOB = "oob"
 
 
 class BleConnectRequest(BaseModel):
@@ -74,8 +83,10 @@ class BleConnectRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     services: Optional[List[BleService]] = None
-    retries: Optional[int] = 3
-    retry_multiple_aps: Optional[bool] = Field(alias="retryMultipleAPs", default=True)
+    cached: Optional[bool] = None
+    cache_idle_purge: Optional[int] = None
+    auto_update: Optional[bool] = None
+    bonding: Optional[BleBondingOptions] = None
 
 
 class BleDataParameter(DataParameter):
@@ -96,8 +107,8 @@ class BleWriteRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    service_id: str = Field(alias="serviceID")
-    characteristic_id: str = Field(alias="characteristicID")
+    service_id: str = Field(alias=str("serviceID"))
+    characteristic_id: str = Field(alias=str("characteristicID"))
 
 
 class BleAdvertisementFilterType(Enum):
@@ -135,7 +146,7 @@ class BleRegisterTopicRequest(BaseModel):
     """ A request class for registering topic to BLE devices. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    type: BleTopicType = Field(alias="type")
+    type: BleTopicType = Field(alias=str("type"))
 
 
 class BleAdvertisementTopic(BleRegisterTopicRequest):
@@ -145,10 +156,10 @@ class BleAdvertisementTopic(BleRegisterTopicRequest):
     """
 
     type: BleTopicType = Field(
-        alias="type", default=BleTopicType.ADVERTISEMENTS)
+        alias=str("type"), default=BleTopicType.ADVERTISEMENTS)
 
     filter_type: Optional[BleAdvertisementFilterType] = Field(
-        alias="filterType", default=None)
+        alias=str("filterType"), default=None)
     filters: Optional[List[BleAdvertisementFilter]] = Field(default=None)
 
 
@@ -158,16 +169,16 @@ class BleGattTopic(BleRegisterTopicRequest):
     and characteristicUUID.
     """
 
-    type: BleTopicType = Field(alias="type", default=BleTopicType.GATT)
-    service_id: str = Field(alias="serviceID")
-    characteristic_id: str = Field(alias="characteristicID")
+    type: BleTopicType = Field(alias=str("type"), default=BleTopicType.GATT)
+    service_id: str = Field(alias=str("serviceID"))
+    characteristic_id: str = Field(alias=str("characteristicID"))
 
 
 class BleConnectionTopic(BleRegisterTopicRequest):
     """ Represents a topic for BLE connection-related data. """
 
     type: BleTopicType = Field(
-        alias="type", default=BleTopicType.CONNECTION_EVENTS)
+        alias=str("type"), default=BleTopicType.CONNECTION_EVENTS)
 
 
 class AdvertisementRegistrationOptions(RegistrationOptions):
