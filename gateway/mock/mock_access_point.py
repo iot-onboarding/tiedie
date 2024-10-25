@@ -41,8 +41,7 @@ class MockAccessPoint(AccessPoint):
     def __init__(self, data_producer: DataProducer):
         super().__init__(data_producer)
         self._scanning = False
-        self._subscription_threads: dict[(
-            str, str, str), threading.Thread] = {}
+        self._subscription_threads: dict[tuple[str, str, str], threading.Thread] = {}
 
     def start(self):
         self.log.info("System booted")
