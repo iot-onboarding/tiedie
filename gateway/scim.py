@@ -400,10 +400,10 @@ def bulk_command():
                 jn = dict(response.json)
                 jn["operation"] = op["operation"]
                 if bulk_id is not None:
-                    results.append({bulk_id: json})
-                results.append(json)
+                    results.append({bulk_id: jn})
+                results.append(jn)
 
-                if json["status"] == "FAILURE":
+                if jn["status"] == "FAILURE":
                     break
 
         return make_response(jsonify({"status": "SUCCESS", "operations": results}), 200)

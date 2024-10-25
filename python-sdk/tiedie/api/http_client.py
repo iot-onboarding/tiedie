@@ -63,7 +63,7 @@ class AbstractHttpClient:
     def post(self,
              path: str,
              body: BaseModel,
-             return_class: Optional[Type[ReturnClass]] = None) -> HttpResponse[ReturnClass | None]:
+             return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
         """ API POST """
         response = self.http_client.post(
             self.base_url + path,
@@ -76,7 +76,7 @@ class AbstractHttpClient:
 
     def get(self,
             path: str,
-            return_class: Optional[Type[ReturnClass]] = None) -> HttpResponse[ReturnClass | None]:
+            return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
         """ API GET """
 
         response = self.http_client.get(
@@ -102,8 +102,8 @@ class AbstractHttpClient:
 
     def _map_tiedie_response(self,
                              response: requests.Response,
-                             return_class: Optional[Type[TiedieReturnClass]] = None) \
-            -> TiedieRawResponse:
+                             return_class: Optional[Type[TiedieReturnClass]]) \
+            -> TiedieResponse[Optional[TiedieReturnClass]]:
         """ Map response to object """
         http = TiedieHTTP(
             status_code=response.status_code,
@@ -117,8 +117,12 @@ class AbstractHttpClient:
             return tiedie_response
 
         try:
-            tiedie_response = return_class.model_validate_json(response.text)
-            tiedie_response.http = http
+            resp = return_class.model_validate_json(response.text)
+            tiedie_response = TiedieResponse[Optional[TiedieReturnClass]](
+                status=resp.status,
+                http=http,
+                body=resp
+            )
         except (ValueError, ValidationError):
             tiedie_response = TiedieResponse[None](
                 status=TiedieStatus.FAILURE,
@@ -144,8 +148,7 @@ class AbstractHttpClient:
                 for sub_key, sub_value in value.items():
                     stack.append((key + "[" + sub_key + "]", sub_value))
             elif isinstance(value, list):
-                for sub_value in value:
-                    stack.append((key, sub_value))
+                query_parameters.append((key, ",".join(value)))
             elif isinstance(value, bool):
                 query_parameters.append((key, json.dumps(value)))
             else:
@@ -158,8 +161,8 @@ class AbstractHttpClient:
     def post_with_tiedie_response(self,
                                   path: str,
                                   body: BaseModel,
-                                  return_class: Optional[Type[TiedieReturnClass]] = None) -> \
-            TiedieRawResponse:
+                                  return_class: Optional[Type[TiedieReturnClass]]) -> \
+            TiedieResponse[Optional[TiedieReturnClass]]:
         """ API POST with tiedie response """
 
         response = self.http_client.post(
@@ -174,8 +177,8 @@ class AbstractHttpClient:
     def get_with_tiedie_response(self,
                                  path: str,
                                  body: BaseModel,
-                                 return_class: Optional[Type[TiedieReturnClass]] = None) -> \
-            TiedieRawResponse:
+                                 return_class: Optional[Type[TiedieReturnClass]]) -> \
+            TiedieResponse[Optional[TiedieReturnClass]]:
         """ API GET with tiedie response """
 
         response = self.http_client.get(
@@ -190,8 +193,8 @@ class AbstractHttpClient:
     def delete_with_tiedie_response(self,
                                     path: str,
                                     body: BaseModel,
-                                    return_class: Optional[Type[TiedieReturnClass]] = None) -> \
-            TiedieRawResponse:
+                                    return_class: Optional[Type[TiedieReturnClass]]) -> \
+            TiedieResponse[Optional[TiedieReturnClass]]:
         """ API DELETE with tiedie response """
 
         response = self.http_client.delete(

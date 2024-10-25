@@ -18,16 +18,15 @@ setup(
         'urllib3',
         'paho-mqtt',
         'protobuf',
-        'google',
         'cryptography',
         'certifi',
         'pyOpenSSL',
-        'pydantic==2.4',
+        'pydantic',
     ],
     extras_require={
         'test': [
-            'pytest==7.4',
-            'responses==0.24.0',
+            'pytest',
+            'responses',
             'pytest-cov>=4.1'
         ]
     }
