@@ -25,7 +25,7 @@ from tiedie.models import (Device, DataFormat, BleDataParameter,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
-from tiedie.models.scim import Application, PairingPassKey
+from tiedie.models.scim import Application, NullPairing, PairingJustWorks
 import configuration
 
 
@@ -214,6 +214,9 @@ def add_device():
     is_random = content.get('isRandom', 'off') == 'on'
     version_support = content['versionSupport'].split(',')
 
+    pairing_method = content.get('pairingMethod')
+    mobility = content.get('mobility', 'off') == 'on'
+
     device = Device(
         display_name=content['displayName'],
         active=active,
@@ -221,7 +224,9 @@ def add_device():
             device_mac_address=content['deviceMacAddress'],
             version_support=version_support,
             is_random=is_random,
-            pairing_pass_key=PairingPassKey(key=int(content['passKey']))
+            mobility=mobility,
+            null_pairing= NullPairing() if pairing_method == 'null' else None,
+            pairing_just_works= PairingJustWorks() if pairing_method == 'justWorks' else None,
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
@@ -237,7 +242,7 @@ def add_device():
 
     topic = "data-app/" + response.body.device_id + "/connection"
 
-    control_client.register_topic(
+    control_client.register_event(
         topic,
         response.body,
         ConnectionRegistrationOptions(
@@ -342,7 +347,7 @@ def subscribe_advertisements(device_id):
 
     topic = f'data-app/{device.device_id}/advertisements'
 
-    control_client.register_topic(topic,
+    control_client.register_event(topic,
                                   device,
                                   AdvertisementRegistrationOptions(
                                       data_apps=[app.config['DATA_APP_ID']],
@@ -361,7 +366,7 @@ def unsubscribe():
     if topic is None:
         return render_template("error.html", error="Invalid topic string")
 
-    control_client.unregister_topic(topic)
+    control_client.unregister_event(topic)
     print("remove topic: ", topic)
     try:
         subscriptionTopics.remove(topic)
@@ -432,7 +437,7 @@ def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
 
     topic = f"data-app/{device_id}/{service_id}/{char_id}"
 
-    topic_response = control_client.register_topic(topic,
+    topic_response = control_client.register_event(topic,
                                                    device,
                                                    DataRegistrationOptions(
                                                        data_apps=[
@@ -463,7 +468,7 @@ def subscribe_advertisement():
     topic = "data-app/advertisements/" + request_data.get("topic")
 
     # Register topic
-    topic_response = control_client.register_topic(
+    topic_response = control_client.register_event(
         topic,
         None,
         AdvertisementRegistrationOptions(

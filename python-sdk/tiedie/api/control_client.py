@@ -79,7 +79,7 @@ class ControlClient(AbstractHttpClient):
             retry_multiple_aps=retry_multiple_aps)
 
         ble_discover_response = self.post_with_tiedie_response(
-            '/connectivity/connection', tiedie_request, BleDiscoverResponse)
+            '/action/connection', tiedie_request, BleDiscoverResponse)
 
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
@@ -98,7 +98,7 @@ class ControlClient(AbstractHttpClient):
 
     def disconnect(self, *device: Device) -> TiedieResponse[Optional[MultiConnectionsResponse]]:
         """ Disconnects from a connected IoT device. """
-        return self.delete_with_tiedie_response('/connectivity/connection',
+        return self.delete_with_tiedie_response('/action/connection',
                                                 IDQuery(device_ids=[
                                                     d.device_id for d in device
                                                 ]), MultiConnectionsResponse)
@@ -134,7 +134,7 @@ class ControlClient(AbstractHttpClient):
 
         if tiedie_request.technology == Technology.BLE:
             ble_discover_response = self.post_with_tiedie_response(
-                "/connectivity/services", tiedie_request, BleDiscoverResponse)
+                "/action/services", tiedie_request, BleDiscoverResponse)
             tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
                 http=ble_discover_response.http,
                 status=ble_discover_response.status,
@@ -181,7 +181,7 @@ class ControlClient(AbstractHttpClient):
         """
         tiedie_request = \
             TiedieReadRequest(device=device, data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/data/attribute/read",
+        return self.post_with_tiedie_response("/action/property/read",
                                               tiedie_request, ValueResponse)
 
     def write(self, device: Device,
@@ -200,7 +200,7 @@ class ControlClient(AbstractHttpClient):
         tiedie_request = TiedieWriteRequest(device=device,
                                             data_parameter=data_parameter,
                                             value=value)
-        return self.post_with_tiedie_response("/data/attribute/write",
+        return self.post_with_tiedie_response("/action/property/write",
                                               tiedie_request, ValueResponse)
 
     def subscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
@@ -215,7 +215,7 @@ class ControlClient(AbstractHttpClient):
         """
         tiedie_request = TiedieReadRequest(device=device,
                                            data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/data/attribute/subscription/start",
+        return self.post_with_tiedie_response("/action/property/subscription/start",
                                               tiedie_request, None)
 
     def unsubscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
@@ -230,10 +230,10 @@ class ControlClient(AbstractHttpClient):
         """
         tiedie_request = TiedieReadRequest(device=device,
                                            data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/data/attribute/subscription/stop",
+        return self.post_with_tiedie_response("/action/property/subscription/stop",
                                                 tiedie_request, None)
 
-    def register_topic(self,
+    def register_event(self,
                        topic: str,
                        device: Optional[Device] = None,
                        options: Optional[RegistrationOptions] = None) -> TiedieResponse[None]:
@@ -252,10 +252,10 @@ class ControlClient(AbstractHttpClient):
         tiedie_request = \
             TiedieRegisterTopicRequest(
                 topic=topic, device=device, registration_options=options)
-        return self.post_with_tiedie_response("/registration/topic",
+        return self.post_with_tiedie_response("/registration/event",
                                               tiedie_request, None)
 
-    def unregister_topic(self, topic: str):
+    def unregister_event(self, topic: str):
         """ Unregisters a data stream topic for IoT devices.
 
         Args:
@@ -264,5 +264,5 @@ class ControlClient(AbstractHttpClient):
         Returns:
             _type_: The response object containing the status of the request.
         """
-        return self.delete_with_tiedie_response("/registration/topic",
+        return self.delete_with_tiedie_response("/registration/event",
                                                 TopicQuery(topic=topic), None)

@@ -237,7 +237,7 @@ To register a topic on a GATT subscription:
 from tiedie.models.common import DataRegistrationOptions
 from tiedie.models.ble import BleDataParameter
 
-response = control_client.register_topic(topic, device, DataRegistrationOptions(
+response = control_client.register_event(topic, device, DataRegistrationOptions(
         data_apps=["app1", "app2"],
         data_parameter=BleDataParameter(
             device_id=device_id, service_id="1800", characteristic_id="2a00")
@@ -250,7 +250,7 @@ To register a topic on advertisements for onboarded devices:
 ```python
 from tiedie.models.ble import AdvertisementRegistrationOptions
 
-response = control_client.register_topic(
+response = control_client.register_event(
     topic, device, AdvertisementRegistrationOptions(
         data_apps=["app1", "app2"]
     )
@@ -262,7 +262,7 @@ To register a topic on advertisements for non-onboarded devices:
 ```python
 from tiedie.models.ble import AdvertisementRegistrationOptions, BleAdvertisementFilter, BleAdvertisementFilterType
 
-response = control_client.register_topic(topic, None, AdvertisementRegistrationOptions(
+response = control_client.register_event(topic, None, AdvertisementRegistrationOptions(
         data_apps=["app1", "app2"],
         advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
         advertisement_filter=[
@@ -278,7 +278,7 @@ To register a topic on connection status:
 ```python
 from tiedie.models.common import ConnectionRegistrationOptions
 
-response = control_client.register_topic(topic, device, ConnectionRegistrationOptions(
+response = control_client.register_event(topic, device, ConnectionRegistrationOptions(
         data_apps=["app1", "app2"],
     )
 )
