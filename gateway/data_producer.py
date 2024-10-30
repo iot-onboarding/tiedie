@@ -11,6 +11,7 @@ Bluetooth Low Energy device data and MQTT communication in a project.
 """
 
 import dataclasses
+import time
 from typing import Any
 import cbor2
 from flask import Flask
@@ -129,7 +130,8 @@ class DataProducer:
                 # ble_sub = data_app_pb2.DataSubscription()  # pylint: disable=no-member
                 # ble_sub.data = value
                 ble_sub: dict[str, Any] = {
-                    "data": value
+                    "data": value,
+                    "timestamp": time.time()
                 }
 
                 if topic.data_format == "default":
@@ -137,8 +139,8 @@ class DataProducer:
                     # pylint: disable-next=no-member
                     ble_sub["bleSubscription"] = {}
                     ble_subscription = ble_sub["bleSubscription"]
-                    ble_subscription["serviceUuid"] = service_uuid
-                    ble_subscription["characteristicUuid"] = char_uuid
+                    ble_subscription["serviceId"] = service_uuid
+                    ble_subscription["characteristicId"] = char_uuid
 
                 data = cbor2.dumps(obj=ble_sub)
 

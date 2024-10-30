@@ -7,10 +7,12 @@ package com.cisco.tiedie.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.cbor.databind.CBORMapper;
 
 
 public class ObjectMapperSingleton {
     private static ObjectMapper objectMapper;
+    private static CBORMapper cborMapper;
 
     private ObjectMapperSingleton() {}
 
@@ -25,4 +27,10 @@ public class ObjectMapperSingleton {
         return objectMapper;
     }
 
+    public static ObjectMapper getCborInstance() {
+        cborMapper = new CBORMapper();
+        cborMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+        return cborMapper;
+    }
 }

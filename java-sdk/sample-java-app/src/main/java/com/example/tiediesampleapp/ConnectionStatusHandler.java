@@ -16,7 +16,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.cisco.tiedie.clients.DataReceiverClient;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.util.JsonFormat;
 
 @Component
 public class ConnectionStatusHandler extends TextWebSocketHandler {
@@ -39,7 +38,7 @@ public class ConnectionStatusHandler extends TextWebSocketHandler {
         dataReceiverClient.connect();
         dataReceiverClient.subscribe(topics, (dataSubscription, topic) -> {
             try {
-                var payload = JsonFormat.printer().print(dataSubscription);
+                var payload = mapper.writeValueAsString(dataSubscription);
                 if (session.isOpen()) {
                     session.sendMessage(new TextMessage(payload));
                 }
