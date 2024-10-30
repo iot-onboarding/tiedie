@@ -6,7 +6,10 @@
 package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.auth.Authenticator;
-import com.cisco.tiedie.proto.DataSubscription;
+import com.cisco.tiedie.dto.telemetry.DataSubscription;
+import com.cisco.tiedie.utils.ObjectMapperSingleton;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.NonNull;
 
 import org.eclipse.paho.client.mqttv3.IMqttMessageListener;
@@ -37,6 +40,8 @@ import java.util.function.Consumer;
 public class DataReceiverClient {
     private final MqttClient mqttClient;
     private final MqttConnectOptions mqttConnectOptions;
+
+    private final ObjectMapper mapper = ObjectMapperSingleton.getCborInstance();
 
     /**
      * Create a {@link DataReceiverClient} object.
@@ -89,7 +94,7 @@ public class DataReceiverClient {
 
             byte[] payload = message.getPayload();
 
-            DataSubscription dataSubscription = DataSubscription.parseFrom(payload);
+            DataSubscription dataSubscription = mapper.readValue(payload, DataSubscription.class);
 
             callback.accept(dataSubscription);
         });
@@ -121,7 +126,7 @@ public class DataReceiverClient {
 
                 byte[] payload = message.getPayload();
 
-                DataSubscription dataSubscription = DataSubscription.parseFrom(payload);
+                DataSubscription dataSubscription = mapper.readValue(payload, DataSubscription.class);
 
                 callback.accept(dataSubscription, topic);
             };
