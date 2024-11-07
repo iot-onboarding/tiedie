@@ -6,7 +6,7 @@ import lombok.Data;
 public class DataSubscription {
     byte[] data;
     float timestamp;
-    String deviceId;
+    String deviceID;
     String apMacAddress;
     BleSubscription BleSubscription;
     BleAdvertisement bleAdvertisement;

@@ -65,7 +65,7 @@ SPDX-License-Identifier: Apache-2.0
                 var obj = JSON.parse(event.data);
 
                 console.log(obj);
-                const id = obj.deviceId;
+                const id = obj.deviceID;
 
                 if (obj.bleConnectionStatus.connected) {
                     document.getElementById(`${id}-connected`).classList.remove("d-none");

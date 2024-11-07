@@ -135,12 +135,12 @@ class DataProducer:
                 }
 
                 if topic.data_format == "default":
-                    ble_sub["deviceId"] = str(device.device_id)
+                    ble_sub["deviceID"] = str(device.device_id)
                     # pylint: disable-next=no-member
                     ble_sub["bleSubscription"] = {}
                     ble_subscription = ble_sub["bleSubscription"]
-                    ble_subscription["serviceId"] = service_uuid
-                    ble_subscription["characteristicId"] = char_uuid
+                    ble_subscription["serviceID"] = service_uuid
+                    ble_subscription["characteristicID"] = char_uuid
 
                 data = cbor2.dumps(obj=ble_sub)
 
@@ -166,7 +166,7 @@ class DataProducer:
             adv_fields = AdvField.from_bytes(evt.data)
 
             if device is not None:
-                ble_adv["deviceId"] = str(device.device_id)
+                ble_adv["deviceID"] = str(device.device_id)
                 adv_topics.extend(device.adv_topics)
 
             data = cbor2.dumps(obj=ble_adv)
@@ -186,7 +186,7 @@ class DataProducer:
                 return
 
             ble_connection = {
-                "deviceId": str(device.device_id),
+                "deviceID": str(device.device_id),
                 "bleConnectionStatus": {
                     "macAddress": address,
                     "connected": connected,
