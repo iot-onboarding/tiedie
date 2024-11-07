@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class BleSubscription {
-    String serviceId;
-    String characteristicId;
+    String serviceID;
+    String characteristicID;
 }
