@@ -10,7 +10,7 @@ Test gateway data producer.
 import os
 import time
 import uuid
-
+import cbor2
 import paho.mqtt.client as mqtt
 import pytest
 from flask import Flask
@@ -176,12 +176,11 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
     def on_message(_client, _userdata, message: mqtt.MQTTMessage):
         print(
             f"Received message '{message.payload}' on topic '{message.topic}'")
-        data_subscription = data_app_pb2.DataSubscription()  # pylint: disable=no-member
-        data_subscription.ParseFromString(message.payload)
-        assert data_subscription.device_id == device_id
-        assert data_subscription.ble_subscription.service_uuid == "180d"
-        assert data_subscription.ble_subscription.characteristic_uuid == "2a37"
-        assert data_subscription.data == b"\x00\x00"
+        data_subscription = cbor2.loads(message.payload)
+        assert data_subscription["deviceID"] == device_id
+        assert data_subscription["bleSubscription"]["serviceID"] == "180d"
+        assert data_subscription["bleSubscription"]["characteristicID"] == "2a37"
+        assert data_subscription["data"] == b"\x00\x00"
 
     mqtt_client2.on_message = on_message
     mqtt_client2.subscribe("ble/notifications")
