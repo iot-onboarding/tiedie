@@ -100,7 +100,8 @@ class ControlClient(AbstractHttpClient):
         """ Disconnects from a connected IoT device. """
         # if there is only one device
         if len(device) == 1 and device[0].device_id is not None:
-            return self.delete_with_tiedie_response('/action/connection/id/' + device[0].device_id, None,
+            return self.delete_with_tiedie_response('/action/connection/id/' + device[0].device_id,
+                                                    None,
                                                     MultiConnectionsResponse)
 
         return self.delete_with_tiedie_response('/action/connection',

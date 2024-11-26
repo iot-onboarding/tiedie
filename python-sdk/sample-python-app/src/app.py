@@ -72,7 +72,7 @@ class GattHandler(namespace.Namespace):
     subscriptions.
     """
 
-    def on_connect(self, *args):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -109,7 +109,7 @@ socketio.on_namespace(GattHandler('/subscription'))
 class AdvertisementHandler(namespace.Namespace):
     """ Handles BLE advertisement subscriptions and data stream management. """
 
-    def on_connect(self, *args):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -143,7 +143,7 @@ socketio.on_namespace(AdvertisementHandler('/advertisements'))
 class ConnectionStatusHandler(namespace.Namespace):
     """ Manages WebSocket connections and connection status data streams. """
 
-    def on_connect(self, *args):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -277,12 +277,13 @@ def get_device(device_id):
     parameters = device_gatt_cache.get(device_id)
 
     if parameters is None:
-            tiedie_response = control_client.discover(device)
+        tiedie_response = control_client.discover(device)
 
-            if tiedie_response.http and tiedie_response.http.status_code == 200 and tiedie_response.body:
-                parameters = [
-                    p for p in tiedie_response.body if isinstance(p, BleDataParameter)
-                ]
+        if tiedie_response.http and tiedie_response.http.status_code == 200 and \
+            tiedie_response.body is not None:
+            parameters = [
+                p for p in tiedie_response.body if isinstance(p, BleDataParameter)
+            ]
 
 
     return render_template(
