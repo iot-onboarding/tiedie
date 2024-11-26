@@ -13,6 +13,7 @@ and mapping them to specific classes, particularly for IoT applications.
 
 from enum import Enum
 import json
+import logging
 from typing import Optional, Type, TypeVar
 from pydantic import BaseModel, ValidationError
 import requests
@@ -29,6 +30,7 @@ from tiedie.models.responses import (
 ReturnClass = TypeVar('ReturnClass', bound=BaseModel)
 TiedieReturnClass = TypeVar('TiedieReturnClass', bound=TiedieRawResponse)
 
+logger = logging.getLogger('tiedie')
 
 class AbstractHttpClient:
     """ class AbstractHttpClient """
@@ -51,6 +53,9 @@ class AbstractHttpClient:
                 None
             )
 
+        logger.debug("Response headers: %s", response.headers)
+        logger.debug("Response: %s", response.text)
+
         body = return_class.model_validate_json(
             response.text)
 
@@ -65,9 +70,15 @@ class AbstractHttpClient:
              body: BaseModel,
              return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
         """ API POST """
+        data = body.model_dump_json(by_alias=True, exclude_none=True)
+
+        logger.debug("POST %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
         response = self.http_client.post(
             self.base_url + path,
-            data=body.model_dump_json(by_alias=True, exclude_none=True),
+            data=data,
             headers=self.headers,
             verify=False,
         )
@@ -78,6 +89,9 @@ class AbstractHttpClient:
             path: str,
             return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
         """ API GET """
+
+        logger.debug("GET %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
 
         response = self.http_client.get(
             self.base_url + path,
@@ -92,6 +106,10 @@ class AbstractHttpClient:
                return_class: Optional[Type[ReturnClass]] = None) \
             -> HttpResponse[ReturnClass | None]:
         """ API DELETE """
+
+        logger.debug("DELETE %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+
         response = self.http_client.delete(
             self.base_url + path,
             headers=self.headers,
@@ -109,6 +127,9 @@ class AbstractHttpClient:
             status_code=response.status_code,
             status_message=response.reason
         )
+
+        logger.debug("Response headers: %s", response.headers)
+        logger.debug("Response: %s", response.text)
 
         if return_class is None:
             tiedie_response = TiedieResponse[None].model_validate_json(
@@ -131,7 +152,7 @@ class AbstractHttpClient:
 
         return tiedie_response
 
-    def _get_query_parameters(self, body: BaseModel):
+    def _get_query_parameters(self, body: Optional[BaseModel]):
         if body is None:
             return []
 
@@ -165,9 +186,15 @@ class AbstractHttpClient:
             TiedieResponse[Optional[TiedieReturnClass]]:
         """ API POST with tiedie response """
 
+        data = body.model_dump_json(by_alias=True, exclude_none=True)
+
+        logger.debug("POST %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
         response = self.http_client.post(
             self.base_url + path,
-            data=body.model_dump_json(by_alias=True, exclude_none=True),
+            data=data,
             headers=self.headers,
             verify=False,
         )
@@ -181,10 +208,17 @@ class AbstractHttpClient:
             TiedieResponse[Optional[TiedieReturnClass]]:
         """ API GET with tiedie response """
 
+        params = self._get_query_parameters(body)
+
+        logger.debug("GET %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Params: %s", params)
+
+
         response = self.http_client.get(
             self.base_url + path,
             headers=self.headers,
-            params=self._get_query_parameters(body),
+            params=params,
             verify=False,
         )
 
@@ -192,14 +226,20 @@ class AbstractHttpClient:
 
     def delete_with_tiedie_response(self,
                                     path: str,
-                                    body: BaseModel,
+                                    body: Optional[BaseModel],
                                     return_class: Optional[Type[TiedieReturnClass]]) -> \
             TiedieResponse[Optional[TiedieReturnClass]]:
         """ API DELETE with tiedie response """
 
+        params = self._get_query_parameters(body)
+
+        logger.debug("DELETE %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Params: %s", params)
+
         response = self.http_client.delete(
             self.base_url + path,
-            params=self._get_query_parameters(body),
+            params=params,
             headers=self.headers,
             verify=False,
         )

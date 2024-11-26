@@ -125,7 +125,7 @@ class TiedieRegisterTopicRequest(TiedieBasicRequest):
     registration_options: Optional[RegistrationOptions] = Field(
         exclude=True, default=None)
 
-    topic: str
+    event: str
 
     @computed_field
     @property
@@ -209,4 +209,4 @@ class TopicQuery(BaseModel):
     """ Object with topic used for query parameter generation """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    topic: str
+    event: str

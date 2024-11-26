@@ -781,7 +781,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [
                     {
@@ -808,7 +808,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -829,7 +829,7 @@ def test_register_event(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "technology": "ble",
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -861,7 +861,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -941,7 +941,7 @@ def test_unregister_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.query_param_matcher({
-                "topic": topic,
+                "event": topic,
             }),
         ],
         content_type="application/json",
