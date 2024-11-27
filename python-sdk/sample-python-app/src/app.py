@@ -11,19 +11,22 @@ real-time updates.
 
 """
 
+import base64
+import json
 import sys
 import os
 
 import logging
+from typing import Sequence
 from flask import Flask, render_template, request, redirect, jsonify
 from flask_socketio import SocketIO, namespace
-from google.protobuf.json_format import MessageToJson
 from tiedie.models import (Device, DataFormat, BleDataParameter,
                            AdvertisementRegistrationOptions,
                            ConnectionRegistrationOptions,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
+from tiedie.models.common import DataParameter
 from tiedie.models.scim import Application, NullPairing, PairingJustWorks
 import configuration
 
@@ -37,6 +40,10 @@ logger = logging.getLogger('socketio')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
+tiedie_logger = logging.getLogger('tiedie')
+tiedie_logger.setLevel(logging.DEBUG)
+tiedie_logger.addHandler(logging.StreamHandler())
+
 if os.environ.get("DOCKER_BUILD"):
     app.config.from_pyfile("/config/config.ini")
 else:
@@ -46,13 +53,17 @@ client_config = configuration.ClientConfig(app)
 
 onboarding_client = client_config.get_onboarding_client()
 endpoint_apps = client_config.get_endpoint_apps(onboarding_client)
+
+data_endpoint_app = endpoint_apps[1]
 control_client = client_config.get_control_client(
     control_app_endpoint=endpoint_apps[0])
 data_receiver_client = client_config.get_data_receiver_client(
-    data_app_endpoint=endpoint_apps[1])
+    data_app_endpoint=data_endpoint_app)
 
 subscriptionTopics = set()
 advertisementTopics = set()
+
+device_gatt_cache: dict[str, Sequence[DataParameter]] = {}
 
 
 class GattHandler(namespace.Namespace):
@@ -61,7 +72,7 @@ class GattHandler(namespace.Namespace):
     subscriptions.
     """
 
-    def on_connect(self):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -73,7 +84,10 @@ class GattHandler(namespace.Namespace):
         """ function to define what happens on subscription """
         def callback(data_subscription):
             try:
-                payload = MessageToJson(data_subscription)
+                data_subscription["data"] = base64 \
+                                            .b64encode(data_subscription["data"]) \
+                                            .decode("utf-8")
+                payload = json.dumps(data_subscription)
                 self.emit("data", {'data': payload})
             except Exception as e:
                 print(e)
@@ -95,7 +109,7 @@ socketio.on_namespace(GattHandler('/subscription'))
 class AdvertisementHandler(namespace.Namespace):
     """ Handles BLE advertisement subscriptions and data stream management. """
 
-    def on_connect(self):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -107,8 +121,8 @@ class AdvertisementHandler(namespace.Namespace):
         """ function to define what happens on subscription """
         def callback(data_subscription):
             print("subscription: ", data_subscription)
-
-            payload = MessageToJson(data_subscription)
+            data_subscription["data"] = base64.b64encode(data_subscription["data"]).decode("utf-8")
+            payload = json.dumps(data_subscription)
 
             self.emit('data', {'data': payload})
 
@@ -129,7 +143,7 @@ socketio.on_namespace(AdvertisementHandler('/advertisements'))
 class ConnectionStatusHandler(namespace.Namespace):
     """ Manages WebSocket connections and connection status data streams. """
 
-    def on_connect(self):
+    def on_connect(self, *_):
         """ function to define what happens on connection """
         data_receiver_client.connect()
 
@@ -142,7 +156,7 @@ class ConnectionStatusHandler(namespace.Namespace):
         def callback(data_subscription):
             try:
                 print("subscription: ", data_subscription)
-                payload = MessageToJson(data_subscription)
+                payload = json.dumps(data_subscription)
 
                 self.emit('data', {'data': payload})
             except Exception as e:
@@ -243,7 +257,7 @@ def add_device():
         response.body,
         ConnectionRegistrationOptions(
             data_format=DataFormat.DEFAULT,
-            data_apps=[app.config['DATA_APP_ID']]
+            data_apps=[data_endpoint_app.application_id]
         )
     )
 
@@ -260,13 +274,17 @@ def get_device(device_id):
 
     device = response.body
 
-    tiedie_response = control_client.discover(device)
-    parameters = None
+    parameters = device_gatt_cache.get(device_id)
 
-    if tiedie_response.http and tiedie_response.http.status_code == 200 and tiedie_response.body:
-        parameters = [
-            p for p in tiedie_response.body if isinstance(p, BleDataParameter)
-        ]
+    if parameters is None:
+        tiedie_response = control_client.discover(device)
+
+        if tiedie_response.http and tiedie_response.http.status_code == 200 and \
+            tiedie_response.body is not None:
+            parameters = [
+                p for p in tiedie_response.body if isinstance(p, BleDataParameter)
+            ]
+
 
     return render_template(
         "device.html", device=device, parameters=parameters,
@@ -299,6 +317,9 @@ def connect_device(device_id):
         return render_template("error.html",
                                error="Failed to connect to device")
 
+    if tiedie_response.body:
+        device_gatt_cache[device_id] = tiedie_response.body
+
     return redirect(f"/devices/{device_id}")
 
 
@@ -316,6 +337,8 @@ def disconnect_device(device_id):
 
     if tiedie_response.http is None or tiedie_response.http.status_code != 200:
         return render_template("error.html")
+
+    del device_gatt_cache[device_id]
 
     return redirect(f"/devices/{device_id}")
 
@@ -346,7 +369,7 @@ def subscribe_advertisements(device_id):
     control_client.register_event(topic,
                                   device,
                                   AdvertisementRegistrationOptions(
-                                      data_apps=[app.config['DATA_APP_ID']],
+                                      data_apps=[data_endpoint_app.application_id],
                                       data_format=DataFormat.DEFAULT,
                                   ))
     advertisementTopics.add(topic)
@@ -388,7 +411,7 @@ def read_characteristic(device_id, service_id, char_id):
         service_id=service_id,
         characteristic_id=char_id)
     response = control_client.read(device, parameter)
-    return response.model_dump_json()
+    return response.body.model_dump_json() if response.body else ""
 
 
 @app.route("/devices/<device_id>/svc/<service_id>/char/<char_id>/write",
@@ -412,7 +435,7 @@ def write_characteristic(device_id, service_id, char_id):
     print("value: ", value)
     response = control_client.write(device, parameter, value)
 
-    return response.model_dump_json()
+    return response.body.model_dump_json() if response.body else ""
 
 
 @app.route('/devices/<string:device_id>/svc/<string:service_id>/char/<string:char_id>/subscribe',
@@ -437,7 +460,7 @@ def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
                                                    device,
                                                    DataRegistrationOptions(
                                                        data_apps=[
-                                                           app.config['DATA_APP_ID']],
+                                                           data_endpoint_app.application_id],
                                                        data_format=DataFormat.DEFAULT,
                                                        data_parameter=parameter)
                                                    )
@@ -469,7 +492,7 @@ def subscribe_advertisement():
         None,
         AdvertisementRegistrationOptions(
             data_format=DataFormat.DEFAULT,
-            data_apps=[app.config['DATA_APP_ID']],
+            data_apps=[data_endpoint_app.application_id],
             advertisement_filter_type=request_data['filterType'],
             advertisement_filters=request_data['filters']
         )

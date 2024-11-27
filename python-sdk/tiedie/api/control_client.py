@@ -39,7 +39,7 @@ class ControlClient(AbstractHttpClient):
     """ Performs IoT device control and data management operations. """
 
     def __init__(self, base_url: str, authenticator: Authenticator):
-        super().__init__(base_url, "application/scim+json", authenticator)
+        super().__init__(base_url, "application/json", authenticator)
         self.base_url = base_url
         self.authenticator = authenticator
 
@@ -98,6 +98,12 @@ class ControlClient(AbstractHttpClient):
 
     def disconnect(self, *device: Device) -> TiedieResponse[Optional[MultiConnectionsResponse]]:
         """ Disconnects from a connected IoT device. """
+        # if there is only one device
+        if len(device) == 1 and device[0].device_id is not None:
+            return self.delete_with_tiedie_response('/action/connection/id/' + device[0].device_id,
+                                                    None,
+                                                    MultiConnectionsResponse)
+
         return self.delete_with_tiedie_response('/action/connection',
                                                 IDQuery(device_ids=[
                                                     d.device_id for d in device
@@ -134,7 +140,7 @@ class ControlClient(AbstractHttpClient):
 
         if tiedie_request.technology == Technology.BLE:
             ble_discover_response = self.post_with_tiedie_response(
-                "/action/services", tiedie_request, BleDiscoverResponse)
+                "/action/services/discover", tiedie_request, BleDiscoverResponse)
             tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
                 http=ble_discover_response.http,
                 status=ble_discover_response.status,
@@ -151,7 +157,7 @@ class ControlClient(AbstractHttpClient):
             return tiedie_response
 
         zigbee_discover_response = self.post_with_tiedie_response(
-            "/connection/services", tiedie_request, ZigbeeDiscoverResponse)
+            "/action/services/discover", tiedie_request, ZigbeeDiscoverResponse)
 
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=zigbee_discover_response.http,
@@ -251,7 +257,7 @@ class ControlClient(AbstractHttpClient):
         """
         tiedie_request = \
             TiedieRegisterTopicRequest(
-                topic=topic, device=device, registration_options=options)
+                event=topic, device=device, registration_options=options)
         return self.post_with_tiedie_response("/registration/event",
                                               tiedie_request, None)
 
@@ -265,4 +271,4 @@ class ControlClient(AbstractHttpClient):
             _type_: The response object containing the status of the request.
         """
         return self.delete_with_tiedie_response("/registration/event",
-                                                TopicQuery(topic=topic), None)
+                                                TopicQuery(event=topic), None)

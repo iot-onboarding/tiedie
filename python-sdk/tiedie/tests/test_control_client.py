@@ -292,10 +292,9 @@ def test_disconnect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/action/connection/id/{device_id}",
         body=body,
         status=200,
-        match=[matchers.query_param_matcher({"id": device_id})],
         content_type="application/json",
     )
     mock_server.delete(
@@ -418,7 +417,7 @@ def test_discovery(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/action/services",
+        "https://control.example.com/nipc/action/services/discover",
         body=body,
         status=200,
         match=[
@@ -433,7 +432,7 @@ def test_discovery(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/action/services",
+        "https://control.example.com/nipc/action/services/discover",
         body=body,
         status=200,
         match=[
@@ -457,7 +456,7 @@ def test_discovery(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/action/services",
+        "https://control.example.com/nipc/action/services/discover",
         body=json.dumps({
             "status": "FAILURE",
             "message": "No connection"
@@ -781,7 +780,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [
                     {
@@ -808,7 +807,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -829,7 +828,7 @@ def test_register_event(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "technology": "ble",
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -861,7 +860,7 @@ def test_register_event(mock_server: responses.RequestsMock,
             matchers.json_params_matcher({
                 "technology": "ble",
                 "id": device_id,
-                "topic": topic,
+                "event": topic,
                 "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
@@ -941,7 +940,7 @@ def test_unregister_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.query_param_matcher({
-                "topic": topic,
+                "event": topic,
             }),
         ],
         content_type="application/json",

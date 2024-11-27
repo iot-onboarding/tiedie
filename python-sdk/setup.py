@@ -22,6 +22,7 @@ setup(
         'certifi',
         'pyOpenSSL',
         'pydantic',
+        'cbor2'
     ],
     extras_require={
         'test': [

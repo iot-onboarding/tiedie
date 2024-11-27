@@ -18,12 +18,14 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import com.cisco.tiedie.clients.DataReceiverClient;
-import com.google.protobuf.util.JsonFormat;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class GattHandler extends TextWebSocketHandler implements HandshakeInterceptor {
     @Autowired
     DataReceiverClient dataReceiverClient;
+
+    ObjectMapper mapper = new ObjectMapper();
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
@@ -39,7 +41,7 @@ public class GattHandler extends TextWebSocketHandler implements HandshakeInterc
 
         dataReceiverClient.subscribe(topic, (dataSubscription) -> {
             try {
-                var payload = JsonFormat.printer().print(dataSubscription);
+                var payload = mapper.writeValueAsString(dataSubscription);
                 if (session.isOpen()) {
                     session.sendMessage(new TextMessage(payload));
                 }
