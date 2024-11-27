@@ -80,7 +80,10 @@ class ClientConfig:
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
             authenticator = ApiKeyAuthenticator(
-                self.data_app_id, self.client_ca_path, data_app_endpoint.client_token)
+                data_app_endpoint.application_id,
+                self.client_ca_path,
+                data_app_endpoint.client_token
+            )
 
         return DataReceiverClient(self.data_app_host,
                                   authenticator=authenticator,

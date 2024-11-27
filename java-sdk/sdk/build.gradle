@@ -7,7 +7,6 @@ plugins {
     id 'java-library'
     id "io.freefair.lombok" version "8.0.0-rc4"
     id 'jacoco'
-    id 'com.google.protobuf' version '0.9.2'
 }
 
 group 'com.cisco.tiedie'
@@ -23,8 +22,8 @@ dependencies {
     implementation platform('com.squareup.okhttp3:okhttp-bom:4.10.0')
     implementation 'com.squareup.okhttp3:okhttp'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.14.2'
     implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
-    implementation 'com.google.protobuf:protobuf-java:3.22.2'
 
     testImplementation 'com.squareup.okhttp3:mockwebserver'
     testImplementation platform('org.junit:junit-bom:5.8.2')
@@ -42,18 +41,4 @@ test {
 
 jacocoTestReport {
     dependsOn test
-
-    afterEvaluate {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    "com/cisco/tiedie/proto/**"
-            ])
-        }))
-    }
-}
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.22.2'
-    }
 }

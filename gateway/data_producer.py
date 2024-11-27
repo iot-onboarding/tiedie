@@ -11,12 +11,14 @@ Bluetooth Low Energy device data and MQTT communication in a project.
 """
 
 import dataclasses
+import time
+from typing import Any
+import cbor2
 from flask import Flask
 import paho.mqtt.client as mqtt
 from sqlalchemy import Column, func, and_, select
 from database import session
 from ble_models import AdvTopic, GattTopic, BleExtension
-from proto import data_app_pb2
 
 
 @dataclasses.dataclass
@@ -125,19 +127,24 @@ class DataProducer:
                 return
 
             for topic in device.gatt_topics:
-                ble_sub = data_app_pb2.DataSubscription()  # pylint: disable=no-member
-                ble_sub.data = value
+                # ble_sub = data_app_pb2.DataSubscription()  # pylint: disable=no-member
+                # ble_sub.data = value
+                ble_sub: dict[str, Any] = {
+                    "data": value,
+                    "timestamp": time.time()
+                }
 
                 if topic.data_format == "default":
-                    ble_sub.device_id = str(device.device_id)
+                    ble_sub["deviceID"] = str(device.device_id)
                     # pylint: disable-next=no-member
-                    ble_subscription = data_app_pb2.DataSubscription.BLESubscription()
-                    ble_subscription.service_uuid = service_uuid
-                    ble_subscription.characteristic_uuid = char_uuid
-                    ble_sub.ble_subscription.CopyFrom(ble_subscription)
+                    ble_sub["bleSubscription"] = {}
+                    ble_subscription = ble_sub["bleSubscription"]
+                    ble_subscription["serviceID"] = service_uuid
+                    ble_subscription["characteristicID"] = char_uuid
 
-                self.mqtt_client.publish(
-                    topic.topic, ble_sub.SerializeToString())
+                data = cbor2.dumps(obj=ble_sub)
+
+                self.mqtt_client.publish(topic.topic, data)
 
     def publish_advertisement(self, evt):
         """ Publishes filtered BLE advertisements to MQTT topics based on conditions. """
@@ -148,24 +155,26 @@ class DataProducer:
             adv_topics = list(session.scalars(
                 select(AdvTopic).filter_by(onboarded=False)).all())
 
-            ble_adv = data_app_pb2.DataSubscription()  # pylint: disable=no-member
-            ble_adv.data = evt.data
-            # pylint: disable-next=no-member
-            ble_advertisement = data_app_pb2.DataSubscription.BLEAdvertisement()
-            ble_advertisement.rssi = evt.rssi
-            ble_advertisement.mac_address = evt.address
-            ble_adv.ble_advertisement.CopyFrom(ble_advertisement)
+            ble_adv = {
+                "data": evt.data,
+                "bleAdvertisement": {
+                    "rssi": evt.rssi,
+                    "macAddress": evt.address,
+                }
+            }
 
             adv_fields = AdvField.from_bytes(evt.data)
 
             if device is not None:
-                ble_adv.device_id = str(device.device_id)
+                ble_adv["deviceID"] = str(device.device_id)
                 adv_topics.extend(device.adv_topics)
+
+            data = cbor2.dumps(obj=ble_adv)
 
             for topic in adv_topics:
                 if is_adv_allowed(topic, adv_fields, evt.address):
                     self.mqtt_client.publish(
-                        str(topic.topic), ble_adv.SerializeToString())
+                        str(topic.topic), data)
 
     def publish_connection_status(self, evt, address, connected: bool):
         """ Publishes BLE connection status updates to MQTT topics based on conditions. """
@@ -176,22 +185,21 @@ class DataProducer:
             if device is None:
                 return
 
-            ble_connection = data_app_pb2.DataSubscription()  # pylint: disable=no-member
-            ble_connection.device_id = str(device.device_id)
-            # pylint: disable-next=no-member
-            ble_connection_status = data_app_pb2.DataSubscription.BLEConnectionStatus()
-            ble_connection_status.mac_address = address
-            ble_connection_status.connected = connected
-            if not connected:
-                ble_connection_status.reason = evt.reason
+            ble_connection = {
+                "deviceID": str(device.device_id),
+                "bleConnectionStatus": {
+                    "macAddress": address,
+                    "connected": connected,
+                    "reason": evt.reason,
+                }
+            }
 
-            ble_connection.ble_connection_status.CopyFrom(
-                ble_connection_status)
+            data = cbor2.dumps(obj=ble_connection)
 
             for connection_topic in device.connection_topics:
                 self.mqtt_client.publish(
                     topic=str(connection_topic.topic),
-                    payload=ble_connection.SerializeToString(),
+                    payload=data,
                     qos=1,
                     retain=True
                 )

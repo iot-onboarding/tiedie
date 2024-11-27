@@ -94,7 +94,7 @@ public class Device {
         }
 
         if (endpointAppsExtension != null) {
-            schemas.add("urn:ietf:params:scim:schemas:extension:endpointApps:2.0:Device");
+            schemas.add("urn:ietf:params:scim:schemas:extension:endpointAppsExt:2.0:Device");
         }
 
         return schemas;
