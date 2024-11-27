@@ -24,7 +24,6 @@ from database import db
 from models import OnboardingAppKey, Device
 # pylint: disable-next=unused-import
 from ble_models import BleExtension, GattTopic
-from proto import data_app_pb2
 from tests.mosquitto_container import MosquittoContainer
 
 
