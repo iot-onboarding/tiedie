@@ -72,7 +72,6 @@ class ApiKeyAuthenticator(Authenticator):
         if not disable_tls:
             mqtt_client.tls_set(ca_certs=self.ca_file_path)
             mqtt_client.tls_insecure_set(insecure_tls)
-            print('tls_insecure_set', insecure_tls)
         mqtt_client.username_pw_set(self.app_id, password=self.api_key)
         return mqtt_client
 

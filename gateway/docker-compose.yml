@@ -53,9 +53,3 @@ services:
       - '5432:5432'
     volumes: 
       - ./db:/docker-entrypoint-initdb.d/
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 8080:8080

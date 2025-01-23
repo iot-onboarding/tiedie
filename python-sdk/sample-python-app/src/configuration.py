@@ -148,7 +148,4 @@ class ClientConfig:
             ))
             data_app = endpoint_app_response.body
 
-        print("Control App: ", control_app)
-        print("Data App: ", data_app)
-
         return [control_app, data_app]
