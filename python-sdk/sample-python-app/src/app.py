@@ -42,7 +42,9 @@ logger.addHandler(logging.StreamHandler())
 
 tiedie_logger = logging.getLogger('tiedie')
 tiedie_logger.setLevel(logging.DEBUG)
-tiedie_logger.addHandler(logging.StreamHandler())
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s'))
+tiedie_logger.addHandler(handler)
 
 if os.environ.get("DOCKER_BUILD"):
     app.config.from_pyfile("/config/config.ini")
@@ -173,7 +175,7 @@ socketio.on_namespace(ConnectionStatusHandler('/connectionstatus'))
 @app.route("/")
 def index():
     """ Renders the index page for the web application. """
-    return render_template("index.html")
+    return redirect("/devices")
 
 
 @app.route("/devices")
@@ -185,7 +187,6 @@ def get_all_devices():
         return render_template("error.html", error="Failed to get devices")
 
     devices = response.body.resources
-    print(devices)
     return render_template("devices.html", devices=devices)
 
 
@@ -247,8 +248,6 @@ def add_device():
 
     if response.status_code != 201 or response.body is None or response.body.device_id is None:
         return render_template("error.html", error="Failed to create device")
-
-    print("body: ", response.body)
 
     topic = "data-app/" + response.body.device_id + "/connection"
 
@@ -431,8 +430,6 @@ def write_characteristic(device_id, service_id, char_id):
         characteristic_id=char_id)
 
     value = request.json["value"]
-    print("Writing the paramerter: ")
-    print("value: ", value)
     response = control_client.write(device, parameter, value)
 
     return response.body.model_dump_json() if response.body else ""
