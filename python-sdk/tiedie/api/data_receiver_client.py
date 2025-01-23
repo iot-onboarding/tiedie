@@ -12,10 +12,12 @@ handling data from an MQTT broker, particularly for IoT applications.
 """
 
 from typing import Any, Callable
+import logging
 import paho.mqtt.client as mqtt
 import cbor2
 from .auth import Authenticator
 
+logger = logging.getLogger('tiedie')
 
 class DataReceiverClient:
     """ class DataReceiverClient """
@@ -60,7 +62,7 @@ class DataReceiverClient:
             payload = msg.payload
             # data_subscription = data_app_pb2.DataSubscription()
             # data_subscription.ParseFromString(payload)
-            print("Received message: ", len(payload), payload.hex())
+            logger.debug("Received message: %d %s", len(payload), payload.hex())
             data = cbor2.loads(payload)
             callback(data)
 
@@ -76,15 +78,15 @@ class DataReceiverClient:
         self.mqtt_client.unsubscribe(topic)
 
     def __on_message(self, _userdata, message):
-        print("Received message: " + str(message.payload))
+        logger.debug("Received message: %s", str(message.payload))
 
     def __on_connect(self, _client, _userdata, _connect_flags, reason_code, _properties):
         if reason_code == 0:
-            print("Connected to broker")
+            logger.debug("Connected to broker")
             self.connected = True
         else:
-            print("Connection failed with error code " + str(reason_code))
+            logger.debug("Connection failed with error code %s", str(reason_code))
 
     def __on_disconnect(self, _client, _userdata, _flags, _reason_code, _properties):
-        print("Disconnected from broker")
+        logger.debug("Disconnected from broker")
         self.connected = False
