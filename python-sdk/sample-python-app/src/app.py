@@ -18,15 +18,16 @@ import os
 
 import logging
 from typing import Sequence
+from urllib.parse import quote, unquote
 from flask import Flask, render_template, request, redirect, jsonify
 from flask_socketio import SocketIO, namespace
 from tiedie.models import (Device, DataFormat, BleDataParameter,
                            AdvertisementRegistrationOptions,
-                           ConnectionRegistrationOptions,
                            DataRegistrationOptions, BleExtension,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
 from tiedie.models.common import DataParameter
+from tiedie.models.requests import SdfModel
 from tiedie.models.scim import Application, NullPairing, PairingJustWorks
 import configuration
 
@@ -35,6 +36,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 app = Flask(__name__)
 socketio = SocketIO(app, websocket=True, cors_allowed_origins="*")
+
+app.jinja_env.filters['quote'] = lambda s: quote(s, safe='')
 
 logger = logging.getLogger('socketio')
 logger.setLevel(logging.DEBUG)
@@ -66,7 +69,6 @@ subscriptionTopics = set()
 advertisementTopics = set()
 
 device_gatt_cache: dict[str, Sequence[DataParameter]] = {}
-
 
 class GattHandler(namespace.Namespace):
     """
@@ -190,12 +192,12 @@ def get_all_devices():
     return render_template("devices.html", devices=devices)
 
 
-@app.route("/subscriptions")
+@app.route("/data_app")
 def get_subscriptions():
     """ Displays subscription topics and BLE advertisement topics. """
-    return render_template("subscriptions.html",
-                           subscription_topics=subscriptionTopics,
-                           advertisement_topics=advertisementTopics)
+    response = control_client.get_data_app(data_endpoint_app.application_id)
+
+    return render_template("data_app.html", data_app=response.body)
 
 
 @app.route("/subscription",  methods=["GET"])
@@ -249,19 +251,55 @@ def add_device():
     if response.status_code != 201 or response.body is None or response.body.device_id is None:
         return render_template("error.html", error="Failed to create device")
 
-    topic = "data-app/" + response.body.device_id + "/connection"
-
-    control_client.register_event(
-        topic,
-        response.body,
-        ConnectionRegistrationOptions(
-            data_format=DataFormat.DEFAULT,
-            data_apps=[data_endpoint_app.application_id]
-        )
-    )
-
     return redirect("/devices")
 
+
+@app.route("/devices/<device_id>/update", methods=["GET", "POST"])
+def update_device(device_id):
+    """ Update device in the app """
+    response = onboarding_client.get_device(device_id)
+
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
+    device = response.body
+
+    if request.method == "GET":
+        return render_template("device_update.html", device=device)
+
+    content = request.form.to_dict()
+    print(request.form)
+
+    active = content.get('active', 'off') == 'on'
+    is_random = content.get('isRandom', 'off') == 'on'
+    version_support = request.form.getlist('versionSupport')
+
+    pairing_method = content.get('pairingMethod')
+    mobility = content.get('mobility', 'off') == 'on'
+
+    device = Device(
+        device_id=device_id,
+        display_name=content['displayName'],
+        active=active,
+        ble_extension=BleExtension(
+            device_mac_address=content['deviceMacAddress'],
+            version_support=version_support,
+            is_random=is_random,
+            mobility=mobility,
+            null_pairing= NullPairing() if pairing_method == 'null' else None,
+            pairing_just_works= PairingJustWorks() if pairing_method == 'justWorks' else None,
+        ),
+        endpoint_apps_extension=EndpointAppsExtension(applications=[
+            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
+        ])
+    )
+
+    response = onboarding_client.update_device(device)
+
+    if response.status_code != 201 or response.body is None or response.body.device_id is None:
+        return render_template("error.html", error="Failed to create device")
+
+    return redirect(f"/devices/{device_id}")
 
 @app.route("/devices/<device_id>")
 def get_device(device_id):
@@ -272,6 +310,17 @@ def get_device(device_id):
         return render_template("error.html", error="Failed to get device")
 
     device = response.body
+
+    sdf_models = {}
+
+    response = control_client.get_sdf_models()
+
+    if response.status_code == 200 and response.body is not None and len(response.body.root) > 0:
+        print(response.body)
+        for sdf_ref_resp in response.body.root:
+            response = control_client.get_sdf_model(sdf_ref_resp.sdf_ref)
+            if response.status_code == 200 and response.body is not None:
+                sdf_models[sdf_ref_resp.sdf_ref] = response.body
 
     parameters = device_gatt_cache.get(device_id)
 
@@ -286,7 +335,7 @@ def get_device(device_id):
 
 
     return render_template(
-        "device.html", device=device, parameters=parameters,
+        "device.html", device=device, parameters=parameters, sdf_models=sdf_models,
     )
 
 
@@ -434,6 +483,28 @@ def write_characteristic(device_id, service_id, char_id):
 
     return response.body.model_dump_json() if response.body else ""
 
+@app.route("/devices/<device_id>/read", methods=["POST"])
+def read_property(device_id):
+    """ Reads a property of an IoT device. """
+    if request.json is None:
+        return render_template("error.html", error="Invalid request")
+
+    property_name = request.json["sdfRef"]
+    response = control_client.read_property(device_id, property_name)
+
+    return response.body.model_dump_json() if response.body else ""
+
+@app.route("/devices/<device_id>/write", methods=["POST"])
+def write_property(device_id):
+    """ Writes a property of an IoT device. """
+    if request.json is None:
+        return render_template("error.html", error="Invalid request")
+
+    property_name = request.json["sdfRef"]
+    value = request.json["value"]
+    response = control_client.write_property(device_id, property_name, value)
+
+    return response.body.model_dump_json() if response.body else ""
 
 @app.route('/devices/<string:device_id>/svc/<string:service_id>/char/<string:char_id>/subscribe',
            methods=['POST'])
@@ -475,6 +546,63 @@ def subscribe_characteristic(device_id: str, service_id: str, char_id: str):
     return jsonify({'topic': topic})
 
 
+@app.route("/devices/<device_id>/sdf", methods=["POST"])
+def register_sdf_model(device_id: str):
+    """ Registers a new SDF model for a device. """
+
+    if 'sdfFile' not in request.files:
+        return render_template("error.html", error="No file part")
+
+    file = request.files['sdfFile']
+
+    sdf_file = file.stream.read()
+
+    sdf_model = SdfModel.model_validate_json(sdf_file)
+
+    sdf_ref = sdf_model.namespace[sdf_model.default_namespace]
+
+    if sdf_model.sdf_thing is not None and len(sdf_model.sdf_thing) > 0:
+        sdf_ref += "#/" + list(sdf_model.sdf_thing.keys())[0]
+    elif sdf_model.sdf_object is not None and len(sdf_model.sdf_object) > 0:
+        sdf_ref += "#/" + list(sdf_model.sdf_object.keys())[0]
+
+    response = control_client.get_sdf_models()
+
+    # if the response contains the same ref, update else register
+    if response.status_code == 200 and response.body is not None and len(response.body.root) > 0 and \
+            any(sdf_ref_resp.sdf_ref == sdf_ref for sdf_ref_resp in response.body.root):
+        print(response.body)
+        encoded_ref = quote(sdf_ref, safe='')
+        response = control_client.update_sdf_model(encoded_ref, sdf_model)
+    else:
+        response = control_client.register_sdf_model(sdf_model)
+
+    if response.http is not None and response.http.status_code != 200:
+        return render_template("error.html", error="Failed to register SDF model")
+
+    return redirect(f"/devices/{device_id}")
+
+
+@app.route("/devices/<device_id>/deleteSdf/<sdf_ref>", methods=["POST"])
+def delete_sdf_model(device_id: str, sdf_ref: str):
+    """ Deletes an SDF model from a device. """
+    response = onboarding_client.get_device(device_id)
+
+    unquoted_sdf_ref = unquote(sdf_ref)
+
+    if response.status_code != 200 or response.body is None:
+        return render_template("error.html", error="Failed to get device")
+
+    device = response.body
+
+    response = control_client.unregister_sdf_model(device, unquoted_sdf_ref)
+
+    if response.http is not None and response.http.status_code != 200:
+        return render_template("error.html", error="Failed to delete SDF model")
+
+    return redirect(f"/devices/{device_id}")
+
+
 @app.route('/advertisements', methods=['POST'])
 def subscribe_advertisement():
     """ FUNCTION TO subscribe TO advertisements"""
@@ -501,7 +629,6 @@ def subscribe_advertisement():
     advertisementTopics.add(topic)
 
     return jsonify({'topic': topic})
-
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=3000, debug=True)

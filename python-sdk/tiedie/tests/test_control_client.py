@@ -126,14 +126,14 @@ def test_connect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.post(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/{device_id}/action/connection",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {},
+                "propertyMap": {
+                    "ble": {}
+                },
                 "retries": 3,
                 "retryMultipleAPs": True,
             }),
@@ -141,22 +141,22 @@ def test_connect(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/{device_id}/action/connection",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "1801"
-                        }
-                    ]
+                "propertyMap": {
+                    "ble": {
+                        "services": [
+                            {
+                                "serviceID": "1800"
+                            },
+                            {
+                                "serviceID": "1801"
+                            }
+                        ]
+                    }
                 },
                 "retries": 5,
                 "retryMultipleAPs": False,
@@ -165,23 +165,23 @@ def test_connect(mock_server: responses.RequestsMock,
         content_type="application/json",
     )
     mock_server.post(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/{device_id}/action/connection",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "1801"
-                        }
-                    ],
-                    "bonding": "justworks"
+                "propertyMap": {
+                    "ble": {
+                        "services": [
+                            {
+                                "serviceID": "1800"
+                            },
+                            {
+                                "serviceID": "1801"
+                            }
+                        ],
+                        "bonding": "justworks"
+                    }
                 },
                 "retries": 5,
                 "retryMultipleAPs": False,
@@ -292,13 +292,13 @@ def test_disconnect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        f"https://control.example.com/nipc/action/connection/id/{device_id}",
+        f"https://control.example.com/nipc/{device_id}/action/connection",
         body=body,
         status=200,
         content_type="application/json",
     )
     mock_server.delete(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/{device_id}/action/connection",
         body=body2,
         status=200,
         match=[matchers.query_param_matcher(
@@ -340,7 +340,7 @@ def test_disconnect(mock_server: responses.RequestsMock,
         )
     )
 
-    response = control_client.disconnect(device1, device2)
+    response = control_client.disconnect(device2)
 
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS

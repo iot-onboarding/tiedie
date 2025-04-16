@@ -13,23 +13,32 @@ registration processes.
 
 """
 
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence
+
+import urllib.parse as url_parse
+
+from pydantic import RootModel
 
 from tiedie.models.ble import DataParameter
-from tiedie.models.common import RegistrationOptions
 from tiedie.models.requests import (
+    BleConnectProtocolMap,
     BleConnectRequest,
-    IDQuery,
-    Technology,
+    PropertyWriteRequest,
+    SdfModel,
     TiedieConnectRequest,
     TiedieReadRequest,
-    TiedieRegisterTopicRequest,
-    TiedieWriteRequest,
-    TopicQuery)
+    TiedieWriteRequest
+)
 from tiedie.models.responses import (
-    BleDiscoverResponse, MultiConnectionsResponse, TiedieResponse, ValueResponse)
+    BleDiscoverResponse, 
+    ModelRegistrationResponse,
+    PropertyResponse,
+    TiedieDeviceResponse, 
+    TiedieResponse, 
+    ValueResponse,
+    DataAppRegistration
+)
 from tiedie.models.scim import Device
-from tiedie.models.zigbee import ZigbeeDiscoverResponse
 
 from .auth import Authenticator
 from .http_client import AbstractHttpClient
@@ -73,13 +82,12 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            device=device,
-            ble=request,
+            protocol_map=BleConnectProtocolMap(ble=request),
             retries=retries,
             retry_multiple_aps=retry_multiple_aps)
 
         ble_discover_response = self.post_with_tiedie_response(
-            '/action/connection', tiedie_request, BleDiscoverResponse)
+            f'/{device.device_id}/action/connection', tiedie_request, BleDiscoverResponse)
 
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
@@ -88,26 +96,18 @@ class ControlClient(AbstractHttpClient):
             error_code=ble_discover_response.error_code,
         )
         if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
-                ble_discover_response.body.services is not None and \
-                ble_discover_response.body.services != []:
+                ble_discover_response.body.protocol_map is not None and \
+                ble_discover_response.body.protocol_map != []:
             parameter_list = ble_discover_response.body.to_parameter_list(
                 device.device_id)
             tiedie_response.body = parameter_list
 
         return tiedie_response
 
-    def disconnect(self, *device: Device) -> TiedieResponse[Optional[MultiConnectionsResponse]]:
+    def disconnect(self, device: Device):
         """ Disconnects from a connected IoT device. """
-        # if there is only one device
-        if len(device) == 1 and device[0].device_id is not None:
-            return self.delete_with_tiedie_response('/action/connection/id/' + device[0].device_id,
-                                                    None,
-                                                    MultiConnectionsResponse)
-
-        return self.delete_with_tiedie_response('/action/connection',
-                                                IDQuery(device_ids=[
-                                                    d.device_id for d in device
-                                                ]), MultiConnectionsResponse)
+        return self.delete_with_tiedie_response(f'/{device.device_id}/action/connection',
+                                                None, TiedieDeviceResponse)
 
     def discover(self, device: Device,
                  request=BleConnectRequest(),
@@ -136,39 +136,20 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            device=device, ble=request, retries=retries, retry_multiple_aps=retry_multiple_aps)
+            protocol_map=BleConnectProtocolMap(ble=request), retries=retries, retry_multiple_aps=retry_multiple_aps)
 
-        if tiedie_request.technology == Technology.BLE:
-            ble_discover_response = self.post_with_tiedie_response(
-                "/action/services/discover", tiedie_request, BleDiscoverResponse)
-            tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
-                http=ble_discover_response.http,
-                status=ble_discover_response.status,
-                reason=ble_discover_response.reason,
-                error_code=ble_discover_response.error_code,
-            )
-            if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
-                    ble_discover_response.body.services is not None and \
-                    ble_discover_response.body.services != []:
-                parameter_list = ble_discover_response.body.to_parameter_list(
-                    device.device_id)
-                tiedie_response.body = parameter_list
-
-            return tiedie_response
-
-        zigbee_discover_response = self.post_with_tiedie_response(
-            "/action/services/discover", tiedie_request, ZigbeeDiscoverResponse)
-
+        ble_discover_response = self.put_with_tiedie_response(
+        f'/{device.device_id}/action/connection', tiedie_request, BleDiscoverResponse)
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
-            http=zigbee_discover_response.http,
-            status=zigbee_discover_response.status,
-            reason=zigbee_discover_response.reason,
-            error_code=zigbee_discover_response.error_code,
+            http=ble_discover_response.http,
+            status=ble_discover_response.status,
+            reason=ble_discover_response.reason,
+            error_code=ble_discover_response.error_code,
         )
-        if isinstance(zigbee_discover_response, ZigbeeDiscoverResponse) and \
-                zigbee_discover_response.endpoints is not None and \
-                zigbee_discover_response.endpoints != []:
-            parameter_list = zigbee_discover_response.to_parameter_list(
+        if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
+                ble_discover_response.body.protocol_map is not None and \
+                ble_discover_response.body.protocol_map != []:
+            parameter_list = ble_discover_response.body.to_parameter_list(
                 device.device_id)
             tiedie_response.body = parameter_list
 
@@ -186,8 +167,8 @@ class ControlClient(AbstractHttpClient):
             ValueResponse: The response object containing the value.
         """
         tiedie_request = \
-            TiedieReadRequest(device=device, data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/action/property/read",
+            TiedieReadRequest(data_parameter=data_parameter)
+        return self.post_with_tiedie_response(f"{device.device_id}/action/property/read",
                                               tiedie_request, ValueResponse)
 
     def write(self, device: Device,
@@ -203,72 +184,163 @@ class ControlClient(AbstractHttpClient):
         Returns:
             ValueResponse: The response object containing the value.
         """
-        tiedie_request = TiedieWriteRequest(device=device,
-                                            data_parameter=data_parameter,
+        tiedie_request = TiedieWriteRequest(data_parameter=data_parameter,
                                             value=value)
-        return self.post_with_tiedie_response("/action/property/write",
+        return self.post_with_tiedie_response(f"{device.device_id}/action/property/write",
                                               tiedie_request, ValueResponse)
 
-    def subscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
-        """ Subscribes to a data stream topic for an IoT device.
+    def read_property(self, device: str, sdf_ref: str) -> TiedieResponse[Optional[PropertyResponse]]:
+        """ Reads a property from a device.
 
         Args:
-            device (Device): The device to subscribe to.
-            data_parameter (DataParameter): The data parameter to subscribe to.
+            device (str): The device to read from.
+            sdf_ref (str): The SDF reference of an SDF property to read.
 
         Returns:
-            TiedieResponse[None]: The response object containing the status of the request.
+            TiedieResponse[PropertyResponse]: The response object containing
+              the value of the property.
         """
-        tiedie_request = TiedieReadRequest(device=device,
-                                           data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/action/property/subscription/start",
-                                              tiedie_request, None)
+        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
+        return self.get_with_tiedie_response(f"/{device}/property/{encoded_sdf_ref}",
+                                             None,
+                                             PropertyResponse)
 
-    def unsubscribe(self, device: Device, data_parameter: DataParameter) -> TiedieResponse[None]:
-        """ Unsubscribes from a data stream topic for an IoT device.
+    def write_property(self, device: str, sdf_ref: str, value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
+        """ Writes a property to a device.
 
         Args:
-            device (Device): The device to unsubscribe from.
-            data_parameter (DataParameter): The data parameter to unsubscribe from.
+            device (str): The device to write to.
+            sdf_ref (str): The SDF reference of an SDF property to write.
+            value (str): The value to write in bytes.
 
         Returns:
-            TiedieResponse[None]: The response object containing the status of the request.
+            TiedieResponse[PropertyResponse]: The response object containing 
+            the value of the property.
         """
-        tiedie_request = TiedieReadRequest(device=device,
-                                           data_parameter=data_parameter)
-        return self.post_with_tiedie_response("/action/property/subscription/stop",
-                                                tiedie_request, None)
+        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
+        return self.put_with_tiedie_response(f"/{device}/property/{encoded_sdf_ref}",
+                                              PropertyWriteRequest(value=value),
+                                              PropertyResponse)
 
-    def register_event(self,
-                       topic: str,
-                       device: Optional[Device] = None,
-                       options: Optional[RegistrationOptions] = None) -> TiedieResponse[None]:
-        """ Registers a data stream topic for IoT devices.
+
+    def register_sdf_model(self, model: SdfModel):
+        """ Registers a SDF model for an IoT device.
 
         Args:
-            topic (str): The topic to register.
-            device (Optional[Device], optional): The device to register a topic for. 
-                Defaults to None.
-            options (Optional[RegistrationOptions], optional): Additional topic registration 
-                objects. Defaults to None.
+            device (Device): The device to register the model for.
+            model (str): The SDF model to register.
 
         Returns:
-            TiedieResponse[None]: The response object containing the status of the request.
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
         """
-        tiedie_request = \
-            TiedieRegisterTopicRequest(
-                event=topic, device=device, registration_options=options)
-        return self.post_with_tiedie_response("/registration/event",
-                                              tiedie_request, None)
+        return self.post_with_tiedie_response("/registration/model",
+                                              model, ModelRegistrationResponse)
 
-    def unregister_event(self, topic: str):
-        """ Unregisters a data stream topic for IoT devices.
+    def update_sdf_model(self, sdf_ref: str, model: SdfModel):
+        """ Updates a SDF model for an IoT device.
 
         Args:
-            topic (str): The topic to unregister.
+            device (Device): The device to update the model for.
+            model (str): The SDF model to update.
 
         Returns:
-            _type_: The response object containing the status of the request.
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
         """
-        return self.delete_with_tiedie_response("/registration/event",
-                                                TopicQuery(event=topic), None)
+        return self.put_with_tiedie_response(f"/registration/model/{sdf_ref}",
+                                              model, ModelRegistrationResponse)
+
+
+    def get_sdf_models(self):
+        """ Retrieves the SDF models registered for an IoT device.
+
+        Args:
+            device (Device): The device to retrieve the models for.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        return self.get("/registration/model",
+                            RootModel[List[ModelRegistrationResponse]])
+
+    def get_sdf_model(self, sdf_ref: str):
+        """ Retrieves the SDF model registered for an IoT device.
+
+        Args:
+            device (Device): The device to retrieve the model for.
+            model (str): The SDF model to retrieve.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
+        return self.get(f"/registration/model/{encoded_sdf_ref}", SdfModel)
+
+    def unregister_sdf_model(self, sdf_ref: str):
+        """ Unregisters a SDF model for an IoT device.
+
+        Args:
+            device (Device): The device to unregister the model for.
+            model (str): The SDF model to unregister.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
+        return self.delete_with_tiedie_response(f"/registration/model/{encoded_sdf_ref}",
+                                                None, ModelRegistrationResponse)
+
+    def get_data_app(self, data_app_id: str):
+        """ Retrieves the data app for an IoT device.
+
+        Args:
+            device (Device): The device to retrieve the data app for.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        return self.get(f"/registration/data-app/{data_app_id}", DataAppRegistration)
+
+    def create_data_app(self, data_app_id: str, data_app: DataAppRegistration):
+        """ Creates a data app for an IoT device.
+
+        Args:
+            device (Device): The device to create the data app for.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        return self.post_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+                                              data_app, DataAppRegistration)
+
+    def update_data_app(self, data_app_id: str, data_app: DataAppRegistration):
+        """ Updates a data app for an IoT device.
+
+        Args:
+            device (Device): The device to update the data app for.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        return self.put_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+                                              data_app, DataAppRegistration)
+
+    def delete_data_app(self, data_app_id: str):
+        """ Deletes a data app for an IoT device.
+
+        Args:
+            device (Device): The device to delete the data app for.
+
+        Returns:
+            HttpResponse[ModelRegistrationResponse]: The response object containing 
+                the status of the request.
+        """
+        return self.delete_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+                                                None, DataAppRegistration)

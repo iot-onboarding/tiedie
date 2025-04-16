@@ -43,6 +43,9 @@ class ClientConfig:
         self.data_app_host = app.config.get('DATA_APP_HOST')
         self.data_app_port = app.config.get('DATA_APP_PORT')
         self.data_app_id = app.config.get('DATA_APP_ID')
+        self.data_app_username = app.config.get('DATA_APP_USERNAME')
+        self.data_app_password = app.config.get('DATA_APP_PASSWORD')
+        self.data_app_mqtt_type = app.config.get('DATA_APP_MQTT_TYPE', 'client')
 
     def get_onboarding_client(self):
         """

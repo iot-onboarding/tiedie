@@ -33,7 +33,7 @@ from ble_models import (
     AdvFilter
 )
 
-control_app = Blueprint("control", __name__, url_prefix="/nipc")
+control_app = Blueprint("control", __name__, url_prefix="/nipc/draft-04")
 
 
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
@@ -80,43 +80,7 @@ def authenticate_user(func):
         return func(*args, **kwargs)
     return check_apikey
 
-
-@control_app.route('/connectivity/connection', methods=['GET'])
-@authenticate_user
-def get_connection():
-    """ Get connection state for a device """
-    ids = request.args.get("id", "")
-    device_ids = ids.split(",")
-
-    # get all device objects
-    devices = session.execute(
-        select(BleExtension).filter(BleExtension.device_id.in_(device_ids))).scalars().all()
-
-    connections = []
-
-    for device_id in device_ids:
-        device = next((d for d in devices if str(
-            d.device_id) == device_id), None)
-
-        if device is None:
-            connections.append({"id": device_id, "status": "FAILURE"})
-            continue
-
-        conn = ble_ap().get_connection(device.device_mac_address)
-
-        if conn:
-            connections.append({"id": device_id, "status": "SUCCESS"})
-        else:
-            connections.append({"id": device_id, "status": "FAILURE"})
-
-    return jsonify({
-        "status": "SUCCESS",
-        "requestID": uuid4(),
-        "connections": connections
-    }), HTTPStatus.OK
-
-
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['GET'])
+@control_app.route('<device_id>/action/connection', methods=['GET'])
 @authenticate_user
 def get_connection_by_id(device_id: str):
     """ Get connection state for a device """
@@ -134,28 +98,14 @@ def get_connection_by_id(device_id: str):
     return jsonify({"status": "FAILURE", "reason": "Connection not found"}), HTTPStatus.OK
 
 
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['POST'])
+@control_app.route('<device_id>/action/connection', methods=['POST'])
 @authenticate_user
-def connect_by_id(device_id: str):
-    """ Connect API """
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().connect(device.device_mac_address,
-                            BleConnectOptions(
-                                [], False, 3600),
-                            3)
-
-
-@control_app.route('/connectivity/connection', methods=['POST'])
-@authenticate_user
-def connect():
+def connect(device_id: str):
     """ Connect API """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
+    ble = request.json.get("protocolMap", {}).get("ble", {})
     retries = request.json.get("retries", 3)
     services = ble.get("services", [])
     cached = ble.get("cached", False)
@@ -171,7 +121,7 @@ def connect():
     return resp, respcode
 
 
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['DELETE'])
+@control_app.route('<device_id>/action/connection', methods=['DELETE'])
 @authenticate_user
 def disconnect_by_id(device_id: str):
     """ Disconnect API """
@@ -179,44 +129,22 @@ def disconnect_by_id(device_id: str):
 
     return ble_ap().disconnect(device.device_mac_address)
 
-
-@control_app.route('/connectivity/connection', methods=['DELETE'])
+@control_app.route('<device_id>/action/connection', methods=['PUT'])
 @authenticate_user
-def disconnect():
-    """ Disconnect API """
-    device_id = request.args.get("id")
-
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().disconnect(device.device_mac_address)
-
-
-@control_app.route('/connectivity/services/id/<device_id>', methods=['GET'])
-@authenticate_user
-def discover_by_id(device_id: str):
+def discover(device_id: str):
     """ Service discovery API """
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().discover(device.device_mac_address,
-                             BleConnectOptions(
-                                 [], False, 3600), 3)
-
-
-@control_app.route('/connectivity/services', methods=['GET'])
-@authenticate_user
-def discover():
-    """ Service discovery API """
-    if not request.args:
+    if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    device_id = request.args.get("id")
+    device_id = request.json.get("id")
+
+    ble = request.json.get("protocolMap", {}).get("ble", {})
+    retries = request.json.get("retries", 3)
+    services = ble.get("services", [])
+    cached = ble.get("cached", False)
+    cache_idle_purge = ble.get("cacheIdlePurge", 3600)
 
     device = session.get(BleExtension, device_id)
-
-    services = request.args.getlist("ble[services][serviceID]")
-    cached = request.args.get("ble[cached]", False)
-    cache_idle_purge = request.args.get("ble[cacheIdlePurge]", 3600)
-    retries = request.args.get("retries", 3)
 
     return ble_ap().discover(device.device_mac_address,
                              BleConnectOptions(
@@ -224,17 +152,16 @@ def discover():
                              retries)
 
 
-@control_app.route('/data/attribute', methods=['GET'])
+@control_app.route('/<device_id>/action/property/read', methods=['POST'])
 @authenticate_user
-def read():
+def read(device_id: str):
     """ Function Read """
-    if not request.args:
+    if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    device_id = request.args.get("id")
-
-    service_id = request.args["ble[serviceID]"].lower()
-    characteristic_id = request.args["ble[characteristicID]"].lower()
+    ble = request.json.get("propertyMap").get("ble")
+    service_id = ble["serviceID"].lower()
+    characteristic_id = ble["characteristicID"].lower()
 
     device = session.get(BleExtension, device_id)
 
@@ -244,16 +171,14 @@ def read():
     return resp, respcode
 
 
-@control_app.route('/data/attribute', methods=['POST', 'PUT'])
+@control_app.route('/<device_id>/action/property/write', methods=['POST'])
 @authenticate_user
-def write():
+def write(device_id: str):
     """ Function Write """
     if not request.json:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
+    ble = request.json.get("propertyMap").get("ble")
     service_id = ble["serviceID"].lower()
     characteristic_id = ble["characteristicID"].lower()
     value = request.json["value"].lower()
@@ -268,6 +193,24 @@ def write():
 
     return resp, respcode
 
+@control_app.route("/<device_id>/registration/model", methods=["POST"])
+@authenticate_user
+def register_model(device_id: str):
+    """ Register BLE model """
+    if not request.json:
+        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+
+    device = session.get(BleExtension, device_id)
+
+    if device is None:
+        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+
+    model = request.json
+
+    return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
+
+
+# TODO: Update below APIs to draft-04
 
 @control_app.route('/data/subscription', methods=['POST', 'PUT'])
 @authenticate_user
