@@ -6,34 +6,37 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 {% extends 'layout.html' %}
-<title>{% block title %}Subscriptions{% endblock %}</title>
+<title>{% block title %}Data App{% endblock %}</title>
 {% block main %}
-    <div id="main">
+<div id="main">
+    <h1>Data App</h1>
+    {% if data_app == None %}
+        <h2>Data App not found</h2>
+    {% else %}
+        {% if data_app.mqtt_broker != None %}
+            <h2>MQTT Broker</h2>
+            <p>URI: {{ data_app.mqtt_broker.uri }}</p>
+            <p>Username: {{ data_app.mqtt_broker.username }}</p>
+            <p>Password: {{ data_app.mqtt_broker.password }}</p>
+        {% endif %}
         <table class="table">
             <thead>
-                <th scope="col">Topic</th>
+                <th scope="col">Events</th>
                 <th scope="col"></th>
             </thead>
             <tbody>
-                {% for topic in advertisement_topics %}
+                {% for event in data_app.events %}
                 <tr>
-                    <td scope="row">{{ topic }}</td>
+                    <td scope="row">{{ event.event }}</td>
                     <td>
                         <a class="btn btn-primary" href="{{ url_for('get_advertisement', topic=topic) }}">View</a>
                     </td>
                 </tr>
                 {% endfor %}
-                {% for topic in subscription_topics %}
-                <tr>
-                    <td scope="row">{{ topic }}</td>
-                    <td>
-                        <a class="btn btn-primary" href="{{ url_for('get_subscription', topic=topic) }}">View</a>
-                    </td>
-                </tr>
-                {% endfor %}
             </tbody>
         </table>
-    </div>
+    {% endif %}
+</div>
 </body>
 
 </html>

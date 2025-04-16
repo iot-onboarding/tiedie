@@ -53,11 +53,19 @@ class AbstractHttpClient:
                 None
             )
 
+        http = TiedieHTTP(
+            status_code=response.status_code,
+            status_message=response.reason
+        )
+
         logger.debug("Response headers: %s", response.headers)
         logger.debug("Response: %s", response.text)
 
-        body = return_class.model_validate_json(
-            response.text)
+        try:
+            body = return_class.model_validate_json(
+                response.text)
+        except (ValueError, ValidationError):
+            body = None
 
         return HttpResponse[ReturnClass | None](
             response.status_code,
@@ -77,6 +85,26 @@ class AbstractHttpClient:
         logger.debug("Body: %s", data)
 
         response = self.http_client.post(
+            self.base_url + path,
+            data=data,
+            headers=self.headers,
+            verify=False,
+        )
+
+        return self._map_response(response, return_class)
+
+    def put(self,
+             path: str,
+             body: BaseModel,
+             return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
+        """ API PUT """
+        data = body.model_dump_json(by_alias=True, exclude_none=True)
+
+        logger.debug("PUT %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
+        response = self.http_client.put(
             self.base_url + path,
             data=data,
             headers=self.headers,
@@ -144,7 +172,8 @@ class AbstractHttpClient:
                 http=http,
                 body=resp
             )
-        except (ValueError, ValidationError):
+        except (ValueError, ValidationError) as e:
+            logger.debug("Error: %s", e)
             tiedie_response = TiedieResponse[None](
                 status=TiedieStatus.FAILURE,
                 http=http
@@ -200,10 +229,33 @@ class AbstractHttpClient:
         )
 
         return self._map_tiedie_response(response, return_class)
+    
+    def put_with_tiedie_response(self,
+                                 path: str,
+                                  body: BaseModel,
+                                  return_class: Optional[Type[TiedieReturnClass]]) -> \
+            TiedieResponse[Optional[TiedieReturnClass]]:
+        """ API POST with tiedie response """
+
+        data = body.model_dump_json(by_alias=True, exclude_none=True)
+
+        logger.debug("PUT %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
+        response = self.http_client.put(
+            self.base_url + path,
+            data=data,
+            headers=self.headers,
+            verify=False,
+        )
+
+        return self._map_tiedie_response(response, return_class)
+    
 
     def get_with_tiedie_response(self,
                                  path: str,
-                                 body: BaseModel,
+                                 body: Optional[BaseModel],
                                  return_class: Optional[Type[TiedieReturnClass]]) -> \
             TiedieResponse[Optional[TiedieReturnClass]]:
         """ API GET with tiedie response """
@@ -213,7 +265,6 @@ class AbstractHttpClient:
         logger.debug("GET %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
         logger.debug("Params: %s", params)
-
 
         response = self.http_client.get(
             self.base_url + path,

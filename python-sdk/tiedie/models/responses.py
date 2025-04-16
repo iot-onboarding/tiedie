@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import Base64Bytes, BaseModel, Field, RootModel
 
 from tiedie.models.ble import BleDataParameter, BleService
 
@@ -65,6 +65,10 @@ class ValueResponse(TiedieRawResponse):
 
     value: Optional[str] = None
 
+class BleServiceProtocolMap(BaseModel):
+    """ Represents a map of BLE service protocol. """
+
+    ble: list[BleService]
 
 class BleDiscoverResponse(TiedieRawResponse):
     """
@@ -72,13 +76,13 @@ class BleDiscoverResponse(TiedieRawResponse):
     and characteristics. It includes a list of services.
     """
 
-    services: list[BleService]
+    protocol_map: BleServiceProtocolMap = Field(alias=str("protocolMap"))
 
     def to_parameter_list(self, device_id: str) -> List[BleDataParameter]:
         """ Create a generic parameter list from the services and characteristics. """
         parameter_list: List[BleDataParameter] = []
 
-        for service in self.services:
+        for service in self.protocol_map.ble:
             if service.characteristics is None:
                 continue
             for characteristic in service.characteristics:
@@ -96,7 +100,39 @@ class TiedieDeviceResponse(TiedieRawResponse):
 
     device_id: Optional[str] = Field(alias=str("id"))
 
+class PropertyResponse(TiedieRawResponse):
+    """ Represents a response for a property. """
+
+    device_id: str = Field(alias=str("id"))
+    sdf_ref: str = Field(alias=str("sdfRef"))
+    value: Base64Bytes
+
 class MultiConnectionsResponse(TiedieRawResponse):
     """ Represents a response for connections from multiple BLE devices. """
 
     connections: List[TiedieDeviceResponse]
+
+class ModelRegistrationResponse(TiedieRawResponse):
+    """ Represents a response for SDF model registration. """
+
+    sdf_ref: str = Field(alias=str("sdfRef"))
+
+class Event(BaseModel):
+    """ Represents an event in the data app registration response. """
+
+    event: str
+
+class MqttBrokerConfig(BaseModel):
+    """ Represents the MQTT broker configuration. """
+
+    URI: str
+    username: str
+    password: str
+    broker_ca_cert: Optional[str] = Field(alias=str("brokerCACert"))
+
+class DataAppRegistration(TiedieRawResponse):
+    """ Represents a response for data app registration. """
+    events: List[Event]
+
+    mqtt_client: Optional[dict] = Field(alias=str("mqttClient"))
+    mqtt_broker: Optional[MqttBrokerConfig] = Field(alias=str("mqttBroker"))
