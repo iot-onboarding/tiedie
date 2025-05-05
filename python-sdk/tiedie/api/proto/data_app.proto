@@ -26,6 +26,7 @@ message DataSubscription {
         ZigbeeSubscription zigbee_subscription = 13;
         RawPayload raw_payload = 14;
         BLEConnectionStatus ble_connection_status = 15;
+        ApplicationEvent application_event = 16;
     }
 
     message BLESubscription {
@@ -54,5 +55,12 @@ message DataSubscription {
     message RawPayload {
         optional string context_id = 1;
     }
+
+    message ApplicationEvent {
+        string message = 1;
+    }
 }
 
+message DataBatch {
+    repeated DataSubscription messages = 1;
+}
