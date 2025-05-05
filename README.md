@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 
 # Welcome to TieDie IoT
 
-## Cisco IOS 17.13 Version
+## Cisco IoT Orchestrator 1.1
 
-This version is compatible with Cisco IOS 17.13 but varies from the
+This version is compatible with Cisco IoT Orchestrator 1.1 but varies from the
 IETF drafts.
 
 # Introduction
