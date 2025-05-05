@@ -41,7 +41,11 @@ SPDX-License-Identifier: Apache-2.0
             ws.addEventListener("data", event => {
                 console.log('Received message:', event.data);
 
-                var obj = JSON.parse(event.data);
+                var batch = JSON.parse(event.data);
+                if (batch.messages.length === 0) {
+                    return;
+                }
+                var obj = batch.messages[0];
                 var data = atob(obj.data);
                 console.log(data)
 

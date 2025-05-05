@@ -43,7 +43,11 @@ SPDX-License-Identifier: Apache-2.0
         
                 ws.on("data", event => {
  
-                    const obj = JSON.parse(event.data);
+                    const batch = JSON.parse(event.data);
+                    if (batch.messages.length === 0) {
+                        return;
+                    }
+                    const obj = batch.messages[0];
                     const data = atob(obj.data);
         
                     const macAddress = obj.bleAdvertisement.macAddress;

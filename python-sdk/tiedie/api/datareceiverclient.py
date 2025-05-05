@@ -33,10 +33,10 @@ class DataReceiverClient:
         self.mqttClient.loop_stop()
 
 
-    def subscribe(self, topic: str, callback: Callable[[Optional[data_app_pb2.DataSubscription]], None]):
+    def subscribe(self, topic: str, callback: Callable[[Optional[data_app_pb2.DataBatch]], None]):
         def on_message(client, userdata, msg):
             payload = msg.payload
-            data_subscription = data_app_pb2.DataSubscription()
+            data_subscription = data_app_pb2.DataBatch()
             data_subscription.ParseFromString(payload)
             callback(data_subscription)
 

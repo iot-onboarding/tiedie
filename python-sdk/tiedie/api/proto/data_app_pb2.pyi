@@ -1,12 +1,24 @@
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
+from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class DataBatch(_message.Message):
+    __slots__ = ["messages"]
+    MESSAGES_FIELD_NUMBER: _ClassVar[int]
+    messages: _containers.RepeatedCompositeFieldContainer[DataSubscription]
+    def __init__(self, messages: _Optional[_Iterable[_Union[DataSubscription, _Mapping]]] = ...) -> None: ...
+
 class DataSubscription(_message.Message):
-    __slots__ = ["ap_mac_address", "ble_advertisement", "ble_connection_status", "ble_subscription", "data", "device_id", "raw_payload", "timestamp", "zigbee_subscription"]
+    __slots__ = ["ap_mac_address", "application_event", "ble_advertisement", "ble_connection_status", "ble_subscription", "data", "device_id", "raw_payload", "timestamp", "zigbee_subscription"]
+    class ApplicationEvent(_message.Message):
+        __slots__ = ["message"]
+        MESSAGE_FIELD_NUMBER: _ClassVar[int]
+        message: str
+        def __init__(self, message: _Optional[str] = ...) -> None: ...
     class BLEAdvertisement(_message.Message):
         __slots__ = ["mac_address", "rssi"]
         MAC_ADDRESS_FIELD_NUMBER: _ClassVar[int]
@@ -46,6 +58,7 @@ class DataSubscription(_message.Message):
         cluster_id: int
         endpoint_id: int
         def __init__(self, endpoint_id: _Optional[int] = ..., cluster_id: _Optional[int] = ..., attribute_id: _Optional[int] = ..., attribute_type: _Optional[int] = ...) -> None: ...
+    APPLICATION_EVENT_FIELD_NUMBER: _ClassVar[int]
     AP_MAC_ADDRESS_FIELD_NUMBER: _ClassVar[int]
     BLE_ADVERTISEMENT_FIELD_NUMBER: _ClassVar[int]
     BLE_CONNECTION_STATUS_FIELD_NUMBER: _ClassVar[int]
@@ -56,6 +69,7 @@ class DataSubscription(_message.Message):
     TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
     ZIGBEE_SUBSCRIPTION_FIELD_NUMBER: _ClassVar[int]
     ap_mac_address: str
+    application_event: DataSubscription.ApplicationEvent
     ble_advertisement: DataSubscription.BLEAdvertisement
     ble_connection_status: DataSubscription.BLEConnectionStatus
     ble_subscription: DataSubscription.BLESubscription
@@ -64,4 +78,4 @@ class DataSubscription(_message.Message):
     raw_payload: DataSubscription.RawPayload
     timestamp: _timestamp_pb2.Timestamp
     zigbee_subscription: DataSubscription.ZigbeeSubscription
-    def __init__(self, device_id: _Optional[str] = ..., data: _Optional[bytes] = ..., timestamp: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., ap_mac_address: _Optional[str] = ..., ble_subscription: _Optional[_Union[DataSubscription.BLESubscription, _Mapping]] = ..., ble_advertisement: _Optional[_Union[DataSubscription.BLEAdvertisement, _Mapping]] = ..., zigbee_subscription: _Optional[_Union[DataSubscription.ZigbeeSubscription, _Mapping]] = ..., raw_payload: _Optional[_Union[DataSubscription.RawPayload, _Mapping]] = ..., ble_connection_status: _Optional[_Union[DataSubscription.BLEConnectionStatus, _Mapping]] = ...) -> None: ...
+    def __init__(self, device_id: _Optional[str] = ..., data: _Optional[bytes] = ..., timestamp: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., ap_mac_address: _Optional[str] = ..., ble_subscription: _Optional[_Union[DataSubscription.BLESubscription, _Mapping]] = ..., ble_advertisement: _Optional[_Union[DataSubscription.BLEAdvertisement, _Mapping]] = ..., zigbee_subscription: _Optional[_Union[DataSubscription.ZigbeeSubscription, _Mapping]] = ..., raw_payload: _Optional[_Union[DataSubscription.RawPayload, _Mapping]] = ..., ble_connection_status: _Optional[_Union[DataSubscription.BLEConnectionStatus, _Mapping]] = ..., application_event: _Optional[_Union[DataSubscription.ApplicationEvent, _Mapping]] = ...) -> None: ...
