@@ -285,7 +285,7 @@ def add_device():
             pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
-            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
+            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps if endpoint_app is not None and endpoint_app.application_id is not None
         ])
     )
 
