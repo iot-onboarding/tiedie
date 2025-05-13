@@ -210,12 +210,12 @@ class AbstractHttpClient:
 
     def post_with_tiedie_response(self,
                                   path: str,
-                                  body: BaseModel,
+                                  body: Optional[BaseModel],
                                   return_class: Optional[Type[TiedieReturnClass]]) -> \
             TiedieResponse[Optional[TiedieReturnClass]]:
         """ API POST with tiedie response """
 
-        data = body.model_dump_json(by_alias=True, exclude_none=True)
+        data = body.model_dump_json(by_alias=True, exclude_none=True) if body else None
 
         logger.debug("POST %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)

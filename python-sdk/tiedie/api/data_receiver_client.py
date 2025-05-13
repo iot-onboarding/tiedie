@@ -60,9 +60,6 @@ class DataReceiverClient:
         """
         def on_message(_client, _userdata, msg):
             payload = msg.payload
-            # data_subscription = data_app_pb2.DataSubscription()
-            # data_subscription.ParseFromString(payload)
-            logger.debug("Received message: %d %s", len(payload), payload.hex())
             data = cbor2.loads(payload)
             callback(data)
 

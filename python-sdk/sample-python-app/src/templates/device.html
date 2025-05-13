@@ -18,13 +18,6 @@ SPDX-License-Identifier: Apache-2.0
             <form class="ms-2" action="/devices/{{ device.device_id }}/delete" method="POST">
                 <button type="submit" class="btn btn-danger">Delete</button>
             </form>
-            <form class="ms-2" action="/devices/{{ device.device_id }}/advertisements" method="POST">
-                {% if parameters != None %}
-                    <button type="submit" class="btn btn-success" disabled>Subscribe to advertisements</button>
-                {% else %}
-                    <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
-                {% endif %}
-            </form>
         </div>
 
         {% if parameters != None %}
@@ -168,6 +161,7 @@ SPDX-License-Identifier: Apache-2.0
                 </thead>
                 <tbody>
                     {% for event_name, event in sdf_thing_or_object.sdf_event.items() %}
+                        {% set sdf_ref = path + "/sdfEvent/" + event_name %}
                         <tr>
                             <td class="ble-ad-data text-black" scope="row">
                                 {% if event.description != None %}
@@ -178,7 +172,11 @@ SPDX-License-Identifier: Apache-2.0
                                 <p class="ble-sdf-property">{{path}}/sdfEvent/{{event_name}}</p>
                             </td>
                             <td class="text-end">
-                                <button type="submit" class="btn btn-warning" disabled>Subscribe</button>
+                                {% if sdf_ref in events %}
+                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ sdf_ref }}')">Disable Event</button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-warning" onclick="enableEvent('{{ device.device_id }}', '{{ sdf_ref }}')">Enable Event</button>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
@@ -304,7 +302,7 @@ SPDX-License-Identifier: Apache-2.0
                         </form>                      
                         {% endif %}
                         {% if 'notify' in parameter.flags or 'indicate' in parameter.flags %}
-                        <button class="btn btn-warning" onclick="subscribe('{{ loop.index0 }}', '{{ device.device_id }}', '{{ parameter.service_id }}', '{{ parameter.characteristic_id }}')">Subscribe</button>
+                        <button class="btn btn-warning" disabled>Enable event to subscribe</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -432,45 +430,45 @@ SPDX-License-Identifier: Apache-2.0
             }
 
 
-            function subscribe(index, id, svcUUID, charUUID, value) {
-                // call API with svcUUID and charUUID
-                console.log("subscribe: " + svcUUID + ", " + charUUID);
+            function enableEvent(id, sdfRef) {
+                console.log("enableEvent: " + sdfRef + ", " + id);
 
-                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/subscribe`, {
+                fetch(`/devices/${id}/event`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        "sdfRef": sdfRef,
+                        "enable": true
+                    })
                 })
                     .then(response => response.json())
                     .then(data => {
                         console.log(data);
-                        var topic = data.topic;
-                        window.location.href = `/subscription?topic=${topic}`;
+                        window.location.reload();
                     });
             }
 
-            var path = window.location.pathname;
-            var id = path.split("/")[2];
+            function disableEvent(id, sdfRef) {
+                console.log("disableEvent: " + sdfRef + ", " + id);
 
-            var topic = `data-app/${id}/connection`;
-
-            var ws = io("ws://:3000/connectionstatus");
-
-            ws.on("connect", () => {
-                    console.log("Connected to server");
-                    ws.emit("subscribe", topic); 
-            });
-
-            ws.on("data", event => {
-                var obj = JSON.parse(event.data);
-
-                console.log(obj);
-
-                if (is_connected && !obj.bleConnectionStatus.connected) {
-                    window.location.reload();
-                }
-            });
+                fetch(`/devices/${id}/event`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "sdfRef": sdfRef,
+                        "enable": false
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        window.location.reload();
+                    });
+            }
     </script>
   </div>
 </body>

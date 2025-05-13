@@ -11,26 +11,30 @@ reading, subscribing, writing, and managing topics for IoT devices
 using BLE and Zigbee technologies.
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, computed_field
 from pydantic.alias_generators import to_camel
-from tiedie.models.ble import (AdvertisementRegistrationOptions,
-                               BleAdvertisementTopic,
-                               BleConnectRequest,
-                               BleConnectionTopic,
+from tiedie.models.ble import (BleConnectRequest,
                                BleDataParameter,
-                               BleGattTopic,
                                BleReadRequest, BleTopicType)
-from tiedie.models.common import (ConnectionRegistrationOptions, DataApp,
-                                  DataFormat,
-                                  DataParameter,
-                                  DataRegistrationOptions,
-                                  RegistrationOptions,
-                                  Technology)
+from tiedie.models.common import DataParameter
 
-from tiedie.models.scim import Device
-from tiedie.models.zigbee import ZigbeeDataParameter, ZigbeeReadRequest, ZigbeeRegisterTopicRequest
+from tiedie.models.zigbee import ZigbeeDataParameter, ZigbeeReadRequest
+
+class BlePropertyProtocolMap(BaseModel):
+    """ Object with BLE property protocol map """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    service_id: str = Field(alias=str("serviceID"))
+    characteristic_id: str = Field(alias=str("characteristicID"))
+
+
+class PropertyProtocolMap(BaseModel):
+    """ Object with protocol map for property """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    ble: BlePropertyProtocolMap
 
 
 class TiedieReadRequest(BaseModel):
@@ -40,35 +44,7 @@ class TiedieReadRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    data_parameter: DataParameter = Field(exclude=True)
-
-    @computed_field
-    @property
-    def ble(self) -> Optional[BleReadRequest]:
-        """ Returns the BLE read request. """
-        if self.technology == Technology.BLE and \
-                isinstance(self.data_parameter, BleDataParameter):
-            return BleReadRequest(
-                service_id=self.data_parameter.service_id,  # pylint: disable=no-member
-                characteristic_id=self.data_parameter.characteristic_id  # pylint: disable=no-member
-            )
-
-        return None
-
-    @computed_field
-    @property
-    def zigbee(self) -> Optional[ZigbeeReadRequest]:
-        """ Returns the Zigbee read request. """
-        if self.technology == Technology.ZIGBEE and \
-                isinstance(self.data_parameter, ZigbeeDataParameter):
-            return ZigbeeReadRequest(
-                endpoint_id=self.data_parameter.endpoint_id,  # pylint: disable=no-member
-                cluster_id=self.data_parameter.cluster_id,  # pylint: disable=no-member
-                attribute_id=self.data_parameter.attribute_id,  # pylint: disable=no-member
-                type=self.data_parameter.attribute_type  # pylint: disable=no-member
-            )
-
-        return None
+    protocol_map: PropertyProtocolMap
 
 
 class TiedieWriteRequest(TiedieReadRequest):
@@ -95,19 +71,6 @@ class TiedieConnectRequest(BaseModel):
     protocol_map: BleConnectProtocolMap
     retries: Optional[int] = 3
     retry_multiple_aps: Optional[bool] = Field(alias=str("retryMultipleAPs"), default=True)
-
-class BlePropertyProtocolMap(BaseModel):
-    """ Object with BLE property protocol map """
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
-
-    service_id: str = Field(alias=str("serviceID"))
-    characteristic_id: str = Field(alias=str("characteristicID"))
-
-class PropertyProtocolMap(BaseModel):
-    """ Object with protocol map for property """
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
-
-    ble: BlePropertyProtocolMap
 
 class SdfProperty(BaseModel):
     """ Object with SDF property """
