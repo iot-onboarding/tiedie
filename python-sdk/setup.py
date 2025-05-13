@@ -15,6 +15,7 @@ setup(
     install_requires=[
         'attr',
         'requests',
+        'requests-oauth2client',
         'urllib3',
         'paho-mqtt',
         'protobuf',

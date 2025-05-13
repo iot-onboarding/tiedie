@@ -1,0 +1,23 @@
+<!--
+Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
+All rights reserved.
+See LICENSE file in this distribution.
+SPDX-License-Identifier: Apache-2.0
+-->
+
+{% extends 'layout.html' %}
+
+<title>{% block title %}Devices{% endblock %}</title>
+
+{% block main %}
+    <div id="main">
+        <!-- center button with the text "Connect to OAuth" and submits a form to /oauth2/authorize -->
+        <h1>OAuth2 Authorization</h1>
+        <p>Click the button below to authorize the application.</p>
+        <form action="/oauth2/authorize" method="POST">
+            <button type="submit" class="btn btn-primary">Connect to OAuth</button>
+        </form>
+    </div>
+</body>
+
+{% endblock %}

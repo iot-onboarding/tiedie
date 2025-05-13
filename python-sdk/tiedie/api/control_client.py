@@ -27,14 +27,18 @@ from tiedie.models.requests import (
     SdfModel,
     TiedieConnectRequest,
     TiedieReadRequest,
-    TiedieWriteRequest
+    TiedieWriteRequest,
+    PropertyProtocolMap,
+    BlePropertyProtocolMap,
 )
 from tiedie.models.responses import (
-    BleDiscoverResponse, 
+    BleDiscoverResponse,
     ModelRegistrationResponse,
     PropertyResponse,
-    TiedieDeviceResponse, 
-    TiedieResponse, 
+    TiedieDeviceResponse,
+    TiedieEventResponse,
+    TiedieEventsResponse,
+    TiedieResponse,
     ValueResponse,
     DataAppRegistration
 )
@@ -109,6 +113,38 @@ class ControlClient(AbstractHttpClient):
         return self.delete_with_tiedie_response(f'/{device.device_id}/action/connection',
                                                 None, TiedieDeviceResponse)
 
+    def get_connection(self, device: Device) -> TiedieResponse[Optional[Sequence[DataParameter]]]:
+        """ Retrieves the connection status of an IoT device.
+
+        Args:
+            device (Device): The device to retrieve the connection status for.
+
+        Returns:
+            TiedieResponse[Optional[Sequence[DataParameter]]]: The `TieDieResponse` object contains
+            the state of the request. 
+            A list of DataParameter objects is present if the service discovery was successful.
+        """
+        if device.device_id is None:
+            raise ValueError("Device ID is required for connection")
+
+        ble_discover_response = self.get_with_tiedie_response(f'/{device.device_id}/action/connection',
+                                             None, BleDiscoverResponse)
+
+        tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
+            http=ble_discover_response.http,
+            status=ble_discover_response.status,
+            reason=ble_discover_response.reason,
+            error_code=ble_discover_response.error_code,
+        )
+        if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
+                ble_discover_response.body.protocol_map is not None and \
+                ble_discover_response.body.protocol_map != []:
+            parameter_list = ble_discover_response.body.to_parameter_list(
+                device.device_id)
+            tiedie_response.body = parameter_list
+
+        return tiedie_response
+
     def discover(self, device: Device,
                  request=BleConnectRequest(),
                  retries=3,
@@ -155,38 +191,49 @@ class ControlClient(AbstractHttpClient):
 
         return tiedie_response
 
-    def read(self, device: Device, data_parameter: DataParameter) \
+    def read(self, device: Device, service_id: str, characteristic_id: str) \
             -> TiedieResponse[Optional[ValueResponse]]:
         """ Reads a value from a GATT characteristic of an IoT device.
 
         Args:
             device (Device): The device to read from.
-            data_parameter (DataParameter): The data parameter to read.
+            service_id (str): The service ID of the GATT characteristic.
+            characteristic_id (str): The characteristic ID of the GATT
+                characteristic.
 
         Returns:
             ValueResponse: The response object containing the value.
         """
         tiedie_request = \
-            TiedieReadRequest(data_parameter=data_parameter)
-        return self.post_with_tiedie_response(f"{device.device_id}/action/property/read",
+            TiedieReadRequest(protocol_map=PropertyProtocolMap(
+                ble=BlePropertyProtocolMap(
+                    service_id=service_id,
+                    characteristic_id=characteristic_id)))
+        return self.post_with_tiedie_response(f"/{device.device_id}/action/property/read",
                                               tiedie_request, ValueResponse)
 
     def write(self, device: Device,
-              data_parameter: DataParameter,
+              service_id: str, 
+              characteristic_id: str,
               value: str) -> TiedieResponse[Optional[ValueResponse]]:
         """ Writes a value to a GATT characteristic of an IoT device.
 
         Args:
             device (Device): The device to write to.
-            data_parameter (DataParameter): The data parameter to write to.
+            service_id (str): The service ID of the GATT characteristic.
+            characteristic_id (str): The characteristic ID of the GATT
+                characteristic.
             value (str): The value to write.
 
         Returns:
             ValueResponse: The response object containing the value.
         """
-        tiedie_request = TiedieWriteRequest(data_parameter=data_parameter,
+        tiedie_request = TiedieWriteRequest(protocol_map=PropertyProtocolMap(
+                ble=BlePropertyProtocolMap(
+                    service_id=service_id,
+                    characteristic_id=characteristic_id)),
                                             value=value)
-        return self.post_with_tiedie_response(f"{device.device_id}/action/property/write",
+        return self.post_with_tiedie_response(f"/{device.device_id}/action/property/write",
                                               tiedie_request, ValueResponse)
 
     def read_property(self, device: str, sdf_ref: str) -> TiedieResponse[Optional[PropertyResponse]]:
@@ -304,7 +351,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.get(f"/registration/data-app/{data_app_id}", DataAppRegistration)
+        return self.get_with_tiedie_response(f"/registration/data-app/{data_app_id}", None, DataAppRegistration)
 
     def create_data_app(self, data_app_id: str, data_app: DataAppRegistration):
         """ Creates a data app for an IoT device.
@@ -344,3 +391,53 @@ class ControlClient(AbstractHttpClient):
         """
         return self.delete_with_tiedie_response(f"/registration/data-app/{data_app_id}",
                                                 None, DataAppRegistration)
+
+    def enable_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+        """Enable event reporting for a specific device and event.
+
+        Args:
+            device_id (str): The unique identifier of the device.
+            event (str): The event name to enable.
+
+        Returns:
+            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+        """
+        encoded_sdf_ref = url_parse.quote(event, safe='')
+        return self.post_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+
+    def disable_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+        """Disable event reporting for a specific device and event.
+
+        Args:
+            device_id (str): The unique identifier of the device.
+            event (str): The event name to disable.
+
+        Returns:
+            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+        """
+        encoded_sdf_ref = url_parse.quote(event, safe='')
+        return self.delete_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+
+    def get_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+        """Retrieve the status of a specific event for a device.
+
+        Args:
+            device_id (str): The unique identifier of the device.
+            event (str): The event name to check.
+
+        Returns:
+            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+        """
+        encoded_sdf_ref = url_parse.quote(event, safe='')
+        return self.get_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+
+    def get_all_events(self, device_id: str) -> TiedieResponse[Optional[TiedieEventsResponse]]:
+        """Retrieve the status of all events for a device.
+
+        Args:
+            device_id (str): The unique identifier of the device.
+
+        Returns:
+            TiedieResponse[Optional[List[TiedieEventResponse]]]: Response object.
+        """
+        return self.get_with_tiedie_response(f"/{device_id}/event", None, TiedieEventsResponse)

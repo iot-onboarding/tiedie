@@ -29,10 +29,18 @@ SPDX-License-Identifier: Apache-2.0
                 <tr>
                     <td scope="row">{{ event.event }}</td>
                     <td>
-                        <a class="btn btn-primary" href="{{ url_for('get_advertisement', topic=topic) }}">View</a>
+                        <a class="btn btn-primary" href="{{ url_for('get_subscription', event=event.event) }}">View</a>
                     </td>
                 </tr>
                 {% endfor %}
+                {% if data_app.mqtt_broker.custom_topic != None %}
+                <tr>
+                    <td scope="row">{{ data_app.mqtt_broker.custom_topic }}</td>
+                    <td>
+                        <a class="btn btn-primary" href="{{ url_for('get_subscription', event=data_app.mqtt_broker.custom_topic) }}">View</a>
+                    </td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     {% endif %}

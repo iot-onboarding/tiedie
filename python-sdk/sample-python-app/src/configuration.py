@@ -10,10 +10,12 @@ import base64
 from flask import Flask
 
 import OpenSSL.crypto
+from typing import Optional
+from requests_oauth2client import OAuth2Client
 from tiedie.api.onboarding_client import OnboardingClient
 from tiedie.api.control_client import ControlClient
 from tiedie.api.data_receiver_client import DataReceiverClient
-from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
+from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator, OAuth2Authenticator
 from tiedie.models.scim import AppCertificateInfo, EndpointApp, EndpointAppType
 
 
@@ -45,13 +47,36 @@ class ClientConfig:
         self.data_app_id = app.config.get('DATA_APP_ID')
         self.data_app_username = app.config.get('DATA_APP_USERNAME')
         self.data_app_password = app.config.get('DATA_APP_PASSWORD')
+        self.data_app_ca_cert_path = app.config.get('DATA_APP_CA_CERT_PATH')
         self.data_app_mqtt_type = app.config.get('DATA_APP_MQTT_TYPE', 'client')
+
+        self.oauth_client_id = app.config.get('OAUTH_CLIENT_ID')
+        self.oauth_client_secret = app.config.get('OAUTH_CLIENT_SECRET')
+        self.oauth_auth_endpoint = app.config.get('OAUTH_AUTH_ENDPOINT')
+        self.oauth_token_endpoint = app.config.get('OAUTH_TOKEN_ENDPOINT')
+        self.oauth_redirect_uri = app.config.get('OAUTH_REDIRECT_URI')
+        self.oauth_scopes = app.config.get('OAUTH_SCOPES')
+
+        if self.oauth_client_id is not None:
+            # initialize authenticator with OAuth2
+            if self.oauth_auth_endpoint is None or self.oauth_token_endpoint is None or self.oauth_client_id is None or self.oauth_client_secret is None or self.oauth_redirect_uri is None:
+                raise ValueError("OAuth2 endpoints and client ID/secret must be provided.")
+            
+            self.oauth2client = OAuth2Client(
+                self.oauth_token_endpoint,
+                authorization_endpoint=self.oauth_auth_endpoint,
+                redirect_uri=self.oauth_redirect_uri,
+                auth=(self.oauth_client_id, self.oauth_client_secret),
+            )            
+            self.oauth_authenticator = OAuth2Authenticator(self.oauth2client)
 
     def get_onboarding_client(self):
         """
         Returns an onboarding client.
         """
-        if self.onboarding_app_cert_path is not None and self.onboarding_app_key_path is not None:
+        if self.oauth_client_id is not None:
+            authenticator = self.oauth_authenticator
+        elif self.onboarding_app_cert_path is not None and self.onboarding_app_key_path is not None:
             # initialize authenticator with certificate
             authenticator = CertificateAuthenticator(
                 self.client_ca_path, self.onboarding_app_cert_path, self.onboarding_app_key_path)
@@ -61,11 +86,14 @@ class ClientConfig:
 
         return OnboardingClient(self.onboarding_app_base_url, authenticator)
 
-    def get_control_client(self, control_app_endpoint: EndpointApp):
+    def get_control_client(self, control_app_endpoint: Optional[EndpointApp]):
         """
         Returns a control client.
         """
-        if control_app_endpoint.certificate_info is not None:
+        
+        if self.oauth_client_id is not None:
+            authenticator = self.oauth_authenticator
+        elif control_app_endpoint is not None and control_app_endpoint.certificate_info is not None:
             authenticator = CertificateAuthenticator(
                 self.client_ca_path, self.control_app_cert_path, self.control_app_key_path)
         else:
@@ -86,6 +114,14 @@ class ClientConfig:
                 data_app_endpoint.application_id,
                 self.client_ca_path,
                 data_app_endpoint.client_token
+            )
+        
+        if self.data_app_mqtt_type == 'broker':
+            # Use the broker CA cert for authentication
+            authenticator = ApiKeyAuthenticator(
+                self.data_app_username,
+                self.data_app_ca_cert_path,
+                self.data_app_password,
             )
 
         return DataReceiverClient(self.data_app_host,
@@ -125,7 +161,7 @@ class ClientConfig:
                             if app.application_type == "deviceControl" and
                             app.application_name == self.control_app_id), None)
 
-        if control_app is None:
+        if control_app is None and self.oauth_client_id is None:
             # create certificateInfo only if certs exist
             certificate_info = None
             if self.control_app_cert_path is not None and self.control_app_key_path is not None:

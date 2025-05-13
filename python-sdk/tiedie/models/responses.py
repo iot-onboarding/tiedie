@@ -15,8 +15,9 @@ including handling Tiedie responses, data responses, and discovery-related intea
 from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, List, Optional, TypeVar
+from pydantic.alias_generators import to_camel
 
-from pydantic import Base64Bytes, BaseModel, Field, RootModel
+from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
 
 from tiedie.models.ble import BleDataParameter, BleService
 
@@ -76,7 +77,9 @@ class BleDiscoverResponse(TiedieRawResponse):
     and characteristics. It includes a list of services.
     """
 
-    protocol_map: BleServiceProtocolMap = Field(alias=str("protocolMap"))
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    protocol_map: BleServiceProtocolMap
 
     def to_parameter_list(self, device_id: str) -> List[BleDataParameter]:
         """ Create a generic parameter list from the services and characteristics. """
@@ -124,15 +127,30 @@ class Event(BaseModel):
 
 class MqttBrokerConfig(BaseModel):
     """ Represents the MQTT broker configuration. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    URI: str
+    uri: str = Field(alias=str("URI"))
     username: str
     password: str
-    broker_ca_cert: Optional[str] = Field(alias=str("brokerCACert"))
+    broker_ca_cert: Optional[str] = Field(alias=str("brokerCACert"), default=None)
+    custom_topic: Optional[str] = Field(alias=str("customTopic"), default=None)
 
 class DataAppRegistration(TiedieRawResponse):
     """ Represents a response for data app registration. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
     events: List[Event]
 
-    mqtt_client: Optional[dict] = Field(alias=str("mqttClient"))
-    mqtt_broker: Optional[MqttBrokerConfig] = Field(alias=str("mqttBroker"))
+    mqtt_client: Optional[dict] = None
+    mqtt_broker: Optional[MqttBrokerConfig]
+
+class TiedieEventResponse(TiedieRawResponse):
+    """ Represents a response for an event. """
+
+    event: str
+    device_id: str = Field(alias=str("id"))
+
+class TiedieEventsResponse(TiedieRawResponse):
+    """ Represents a response for multiple events. """
+
+    events: List[TiedieEventResponse]

@@ -69,60 +69,64 @@ def test_connect(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
-        "services": [
-            {
-                "serviceID": "1800",
-                "characteristics": [
+        "id": device_id,
+        "MapprotocolMap": {
+            "ble": {
+                "services": [
                     {
-                        "characteristicID": "2a00",
-                        "flags": [
-                            "read",
-                            "write"
-                        ],
-                        "descriptors": [
+                        "serviceID": "1800",
+                        "characteristics": [
                             {
-                                "descriptorID": "2a10"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a01",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a00",
+                                "flags": [
+                                    "read",
+                                    "write"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a10"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a11"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a04",
-                        "flags": [
-                            "read",
-                            "notify"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a01",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a11"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a14"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2aa6",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a04",
+                                "flags": [
+                                    "read",
+                                    "notify"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a14"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a16"
+                                "characteristicID": "2aa6",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a16"
+                                    }
+                                ]
                             }
                         ]
                     }
                 ]
             }
-        ]
+        }
     }, separators=(',', ':'))
 
     mock_server.post(
@@ -131,7 +135,7 @@ def test_connect(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "propertyMap": {
+                "protocolMap": {
                     "ble": {}
                 },
                 "retries": 3,
@@ -146,7 +150,7 @@ def test_connect(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "propertyMap": {
+                "protocolMap": {
                     "ble": {
                         "services": [
                             {
@@ -170,7 +174,7 @@ def test_connect(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "propertyMap": {
+                "protocolMap": {
                     "ble": {
                         "services": [
                             {
@@ -267,25 +271,20 @@ def test_disconnect(mock_server: responses.RequestsMock,
     device_id2 = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
         "connections": [
             {
-                "status": "SUCCESS",
-                "id": device_id
+                                "id": device_id
             }
         ]
     }, separators=(',', ':'))
 
     body2 = json.dumps({
-        "status": "SUCCESS",
         "connections": [
             {
-                "status": "SUCCESS",
-                "id": device_id
+                                "id": device_id
             },
             {
-                "status": "FAILURE",
-                "reason": "Device not connected",
+                                "reason": "Device not connected",
                 "id": device_id2
             }
         ]
@@ -360,60 +359,63 @@ def test_discovery(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
-        "services": [
-            {
-                "serviceID": "1800",
-                "characteristics": [
+        "protocolMap": {
+            "ble": {
+                "services": [
                     {
-                        "characteristicID": "2a00",
-                        "flags": [
-                            "read",
-                            "write"
-                        ],
-                        "descriptors": [
+                        "serviceID": "1800",
+                        "characteristics": [
                             {
-                                "descriptorID": "2a10"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a01",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a00",
+                                "flags": [
+                                    "read",
+                                    "write"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a10"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a11"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a04",
-                        "flags": [
-                            "read",
-                            "notify"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a01",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a11"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a14"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2aa6",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a04",
+                                "flags": [
+                                    "read",
+                                    "notify"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a14"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a16"
+                                "characteristicID": "2aa6",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a16"
+                                    }
+                                ]
                             }
                         ]
                     }
                 ]
             }
-        ]
+        }
     }, separators=(',', ':'))
 
     mock_server.post(
@@ -423,7 +425,6 @@ def test_discovery(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {},
                 "retries": 3,
                 "retryMultipleAPs": True
@@ -438,7 +439,6 @@ def test_discovery(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {
                     "services": [
                         {
@@ -458,14 +458,12 @@ def test_discovery(mock_server: responses.RequestsMock,
     mock_server.post(
         "https://control.example.com/nipc/action/services/discover",
         body=json.dumps({
-            "status": "FAILURE",
             "message": "No connection"
         }),
         status=400,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {
                     "services": [
                         {
@@ -553,7 +551,6 @@ def test_read(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
         "value": "00001111"
     }, separators=(',', ':'))
 
@@ -564,7 +561,6 @@ def test_read(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {
                     "serviceID": "1800",
                     "characteristicID": "2a00"
@@ -586,11 +582,10 @@ def test_read(mock_server: responses.RequestsMock,
         )
     )
 
-    response = control_client.read(device, BleDataParameter(
-        device_id=device_id,
+    response = control_client.read(device,
         service_id="1800",
         characteristic_id="2a00"
-    ))
+    )
 
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
@@ -605,7 +600,6 @@ def test_write(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
         "value": "00001111"
     }, separators=(',', ':'))
 
@@ -616,7 +610,6 @@ def test_write(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "value": "00001111",
                 "ble": {
                     "serviceID": "1800",
@@ -641,12 +634,9 @@ def test_write(mock_server: responses.RequestsMock,
 
     response = control_client.write(
         device,
-        BleDataParameter(
-            device_id=device_id,
-            service_id="1800",
-            characteristic_id="2a00"
-        ),
-        "00001111")
+        service_id="1800",
+        characteristic_id="2a00",
+        value="00001111")
 
     assert response.http and response.http.status_code == 200
     assert response.status == TiedieStatus.SUCCESS
@@ -660,9 +650,7 @@ def test_subscribe(mock_server: responses.RequestsMock,
 
     device_id = str(uuid4())
 
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
+    body = json.dumps({}, separators=(',', ':'))
 
     mock_server.post(
         "https://control.example.com/nipc/action/property/subscription/start",
@@ -671,7 +659,6 @@ def test_subscribe(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {
                     "serviceID": "1800",
                     "characteristicID": "2a00"
@@ -712,9 +699,7 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
 
     device_id = str(uuid4())
 
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
+    body = json.dumps({}, separators=(',', ':'))
 
     mock_server.post(
         "https://control.example.com/nipc/action/property/subscription/stop",
@@ -723,7 +708,6 @@ def test_unsubscribe(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "id": device_id,
-                "technology": "ble",
                 "ble": {
                     "serviceID": "1800",
                     "characteristicID": "2a00"
@@ -768,9 +752,7 @@ def test_register_event(mock_server: responses.RequestsMock,
     data_app_1 = str(uuid4())
     data_app_2 = str(uuid4())
 
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
+    body = json.dumps({}, separators=(',', ':'))
 
     mock_server.post(
         "https://control.example.com/nipc/registration/event",
@@ -778,10 +760,8 @@ def test_register_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "technology": "ble",
                 "id": device_id,
                 "event": topic,
-                "dataFormat": "default",
                 "dataApps": [
                     {
                         "dataAppID": data_app_1
@@ -805,10 +785,8 @@ def test_register_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "technology": "ble",
                 "id": device_id,
                 "event": topic,
-                "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
                 }, {
@@ -827,9 +805,7 @@ def test_register_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "technology": "ble",
                 "event": topic,
-                "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
                 }, {
@@ -858,10 +834,8 @@ def test_register_event(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "technology": "ble",
                 "id": device_id,
                 "event": topic,
-                "dataFormat": "default",
                 "dataApps": [{
                     "dataAppID": data_app_1
                 }, {
@@ -930,9 +904,7 @@ def test_unregister_event(mock_server: responses.RequestsMock,
 
     topic = "enterprise/hospital/pulse_oximeter"
 
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
+    body = json.dumps({}, separators=(',', ':'))
 
     mock_server.delete(
         "https://control.example.com/nipc/registration/event",
