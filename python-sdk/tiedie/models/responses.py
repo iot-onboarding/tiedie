@@ -107,7 +107,14 @@ class PropertyResponse(TiedieRawResponse):
     """ Represents a response for a property. """
 
     device_id: str = Field(alias=str("id"))
-    sdf_ref: str = Field(alias=str("sdfRef"))
+    property: str = Field(alias=str("property"))
+    value: Base64Bytes
+
+class ActionResponse(TiedieRawResponse):
+    """ Represents a response for an action. """
+
+    device_id: str = Field(alias=str("id"))
+    action: str = Field(alias=str("action"))
     value: Base64Bytes
 
 class MultiConnectionsResponse(TiedieRawResponse):
