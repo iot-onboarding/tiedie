@@ -53,11 +53,6 @@ class AbstractHttpClient:
                 None
             )
 
-        http = TiedieHTTP(
-            status_code=response.status_code,
-            status_message=response.reason
-        )
-
         logger.debug("Response headers: %s", response.headers)
         logger.debug("Response: %s", response.text)
 
@@ -229,7 +224,7 @@ class AbstractHttpClient:
         )
 
         return self._map_tiedie_response(response, return_class)
-    
+
     def put_with_tiedie_response(self,
                                  path: str,
                                   body: BaseModel,
@@ -251,7 +246,7 @@ class AbstractHttpClient:
         )
 
         return self._map_tiedie_response(response, return_class)
-    
+
 
     def get_with_tiedie_response(self,
                                  path: str,

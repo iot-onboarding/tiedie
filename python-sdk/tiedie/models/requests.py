@@ -13,14 +13,9 @@ using BLE and Zigbee technologies.
 
 from typing import Optional
 
-from pydantic import Base64Bytes, BaseModel, ConfigDict, Field, computed_field
+from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
-from tiedie.models.ble import (BleConnectRequest,
-                               BleDataParameter,
-                               BleReadRequest, BleTopicType)
-from tiedie.models.common import DataParameter
-
-from tiedie.models.zigbee import ZigbeeDataParameter, ZigbeeReadRequest
+from tiedie.models.ble import (BleConnectRequest, BleTopicType)
 
 class BlePropertyProtocolMap(BaseModel):
     """ Object with BLE property protocol map """
