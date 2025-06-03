@@ -29,7 +29,7 @@ class OnboardingClient(AbstractHttpClient):
             HttpResponse[Device | None]: Response object containing the Device object.
         """
         return self.post("/Devices", device, Device)
-    
+
     def update_device(self, device: Device) -> HttpResponse[Device | None]:
         """Update an existing device.
 

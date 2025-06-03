@@ -10,8 +10,7 @@ from typing import Optional
 import OpenSSL.crypto
 import paho.mqtt.client as mqtt
 import requests
-from requests_oauth2client import *
-
+from requests_oauth2client import OAuth2Client, OAuth2AuthorizationCodeAuth
 
 class Authenticator:
     """
@@ -113,7 +112,7 @@ class CertificateAuthenticator(Authenticator):
                                 certfile=self.cert_path, keyfile=self.key_path)
             mqtt_client.tls_insecure_set(insecure_tls)
         return mqtt_client
-    
+
 class OAuth2Authenticator(Authenticator):
     """
     Authenticator implementation for OAuth2 based authentication.

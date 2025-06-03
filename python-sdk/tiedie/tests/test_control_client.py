@@ -462,7 +462,9 @@ def test_register_sdf_model(mock_server: responses.RequestsMock):
             }
         }
     }
-    body = json.dumps({"sdfName": "https://example.com/thermometer#/sdfObject/healthsensor"}, separators=(',', ':'))
+    body = json.dumps({
+        "sdfName": "https://example.com/thermometer#/sdfObject/healthsensor"
+    }, separators=(',', ':'))
     mock_server.post(
         "https://control.example.com/nipc/registration/model",
         body=body,
@@ -472,7 +474,8 @@ def test_register_sdf_model(mock_server: responses.RequestsMock):
     )
     response = requests.post(
         "https://control.example.com/nipc/registration/model",
-        json=sdf_model
+        json=sdf_model,
+        timeout=10
     )
     assert response.status_code == 200
     assert response.json()["sdfName"] == "https://example.com/thermometer#/sdfObject/healthsensor"
@@ -494,7 +497,8 @@ def test_property_read_api(mock_server: responses.RequestsMock):
         content_type="application/json",
     )
     response = requests.get(
-        f"https://control.example.com/nipc/{device_id}/property/{property_ref}"
+        f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
+        timeout=10
     )
     assert response.status_code == 200
     data = response.json()
@@ -523,7 +527,8 @@ def test_property_write_api(mock_server: responses.RequestsMock):
     )
     response = requests.put(
         f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
-        json=req_body
+        json=req_body,
+        timeout=10
     )
     assert response.status_code == 200
     data = response.json()
@@ -550,7 +555,8 @@ def test_register_data_app(mock_server: responses.RequestsMock):
     )
     response = requests.post(
         f"https://control.example.com/nipc/registration/data-app/{data_app_id}",
-        json=req_body
+        json=req_body,
+        timeout=10
     )
     assert response.status_code == 200
     data = response.json()
@@ -573,7 +579,8 @@ def test_enable_event(mock_server: responses.RequestsMock):
         content_type="application/json",
     )
     response = requests.post(
-        f"https://control.example.com/nipc/{device_id}/event/{event_ref}"
+        f"https://control.example.com/nipc/{device_id}/event/{event_ref}",
+        timeout=10
     )
     assert response.status_code == 200
     data = response.json()

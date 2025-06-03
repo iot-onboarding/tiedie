@@ -127,8 +127,10 @@ class ControlClient(AbstractHttpClient):
         if device.device_id is None:
             raise ValueError("Device ID is required for connection")
 
-        ble_discover_response = self.get_with_tiedie_response(f'/{device.device_id}/action/connection',
-                                             None, BleDiscoverResponse)
+        ble_discover_response = self.get_with_tiedie_response(
+            f'/{device.device_id}/action/connection',
+            None, BleDiscoverResponse
+        )
 
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
@@ -172,7 +174,10 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            protocol_map=BleConnectProtocolMap(ble=request), retries=retries, retry_multiple_aps=retry_multiple_aps)
+            protocol_map=BleConnectProtocolMap(ble=request),
+            retries=retries,
+            retry_multiple_aps=retry_multiple_aps
+        )
 
         ble_discover_response = self.put_with_tiedie_response(
         f'/{device.device_id}/action/connection', tiedie_request, BleDiscoverResponse)
@@ -213,7 +218,7 @@ class ControlClient(AbstractHttpClient):
                                               tiedie_request, ValueResponse)
 
     def write(self, device: Device,
-              service_id: str, 
+              service_id: str,
               characteristic_id: str,
               value: str) -> TiedieResponse[Optional[ValueResponse]]:
         """ Writes a value to a GATT characteristic of an IoT device.
@@ -236,7 +241,9 @@ class ControlClient(AbstractHttpClient):
         return self.post_with_tiedie_response(f"/{device.device_id}/action/property/write",
                                               tiedie_request, ValueResponse)
 
-    def read_property(self, device: str, sdf_name: str) -> TiedieResponse[Optional[PropertyResponse]]:
+    def read_property(self,
+                      device: str,
+                      sdf_name: str) -> TiedieResponse[Optional[PropertyResponse]]:
         """ Reads a property from a device.
 
         Args:
@@ -252,7 +259,10 @@ class ControlClient(AbstractHttpClient):
                                              None,
                                              PropertyResponse)
 
-    def write_property(self, device: str, sdf_name: str, value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
+    def write_property(self,
+                        device: str,
+                        sdf_name: str,
+                        value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
         """ Writes a property to a device.
 
         Args:
@@ -351,7 +361,11 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.get_with_tiedie_response(f"/registration/data-app/{data_app_id}", None, DataAppRegistration)
+        return self.get_with_tiedie_response(
+            f"/registration/data-app/{data_app_id}",
+            None,
+            DataAppRegistration
+        )
 
     def create_data_app(self, data_app_id: str, data_app: DataAppRegistration):
         """ Creates a data app for an IoT device.
@@ -392,7 +406,9 @@ class ControlClient(AbstractHttpClient):
         return self.delete_with_tiedie_response(f"/registration/data-app/{data_app_id}",
                                                 None, DataAppRegistration)
 
-    def enable_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+    def enable_event(self,
+                     device_id: str,
+                     event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
         """Enable event reporting for a specific device and event.
 
         Args:
@@ -403,9 +419,15 @@ class ControlClient(AbstractHttpClient):
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
         encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.post_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
+        return self.post_with_tiedie_response(
+            f"/{device_id}/event/{encoded_sdf_name}",
+            None,
+            TiedieEventResponse
+        )
 
-    def disable_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+    def disable_event(self,
+                      device_id: str,
+                      event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
         """Disable event reporting for a specific device and event.
 
         Args:
@@ -416,9 +438,14 @@ class ControlClient(AbstractHttpClient):
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
         encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.delete_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
+        return self.delete_with_tiedie_response(
+            f"/{device_id}/event/{encoded_sdf_name}",
+            None,
+            TiedieEventResponse)
 
-    def get_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+    def get_event(self,
+                  device_id: str,
+                  event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
         """Retrieve the status of a specific event for a device.
 
         Args:
@@ -429,7 +456,11 @@ class ControlClient(AbstractHttpClient):
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
         encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.get_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
+        return self.get_with_tiedie_response(
+            f"/{device_id}/event/{encoded_sdf_name}",
+            None,
+            TiedieEventResponse
+        )
 
     def get_all_events(self, device_id: str) -> TiedieResponse[Optional[TiedieEventsResponse]]:
         """Retrieve the status of all events for a device.
