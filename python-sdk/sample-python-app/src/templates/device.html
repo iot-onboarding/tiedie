@@ -90,7 +90,7 @@ SPDX-License-Identifier: Apache-2.0
                 </thead>
                 <tbody>
                     {% for property_name, property in sdf_thing_or_object.sdf_property.items() %}
-                        {% set sdf_ref = path + "/sdfProperty/" + property_name %}
+                        {% set sdf_name = path + "/sdfProperty/" + property_name %}
                         <tr>
                             <td class="ble-ad-data text-black" scope="row">
                                 {% if property.description != None %}
@@ -98,16 +98,16 @@ SPDX-License-Identifier: Apache-2.0
                                 {% else %}
                                     {{property_name}}
                                 {% endif %}
-                                <p class="ble-sdf-property">{{sdf_ref}}</p>
+                                <p class="ble-sdf-property">{{sdf_name}}</p>
                             </td>
-                            <td class="ble-ad-data text-black" id="property-{{ sdf_ref }}"></td>
+                            <td class="ble-ad-data text-black" id="property-{{ sdf_name }}"></td>
                             <td class="text-end">
                                 {% if property.readable %}
-                                <button class="btn btn-primary" onclick="readProperty('{{ device.device_id }}', '{{ sdf_ref }}')">Read</button>
+                                <button class="btn btn-primary" onclick="readProperty('{{ device.device_id }}', '{{ sdf_name }}')">Read</button>
                                 {% endif %}
                                 {% if property.writable %}
-                                <form onsubmit="writeProperty('{{ device.device_id }}', '{{ sdf_ref }}', this.querySelector('input').value); return false;" class="input-group mt-3">
-                                    <input type="text" class="form-control" placeholder="Enter value" id="writeProperty-{{ sdf_ref }}">
+                                <form onsubmit="writeProperty('{{ device.device_id }}', '{{ sdf_name }}', this.querySelector('input').value); return false;" class="input-group mt-3">
+                                    <input type="text" class="form-control" placeholder="Enter value" id="writeProperty-{{ sdf_name }}">
                                     <button type="submit" class="btn btn-primary">Write</button>
                                 </form>                      
                                 {% endif %}
@@ -128,7 +128,7 @@ SPDX-License-Identifier: Apache-2.0
                 </thead>
                 <tbody>
                     {% for action_name, action in sdf_thing_or_object.sdf_action.items() %}
-                        {% set sdf_ref = path + "/sdfAction/" + action_name %}
+                        {% set sdf_name = path + "/sdfAction/" + action_name %}
                         <tr>
                             <td class="ble-ad-data text-black" scope="row">
                                 {% if action.description != None %}
@@ -136,9 +136,9 @@ SPDX-License-Identifier: Apache-2.0
                                 {% else %}
                                     {{action_name}}
                                 {% endif %}
-                                <p class="ble-sdf-property">{{sdf_ref}}</p>
+                                <p class="ble-sdf-property">{{sdf_name}}</p>
                             </td>
-                            <td class="ble-ad-data text-black" id="action-{{ sdf_ref }}"></td>
+                            <td class="ble-ad-data text-black" id="action-{{ sdf_name }}"></td>
                             <td class="text-end">
                                 <form onsubmit="" class="input-group mt-3">
                                     <input type="text" class="form-control" placeholder="Enter value" id="action-{{ loop.index0 }}">
@@ -161,7 +161,7 @@ SPDX-License-Identifier: Apache-2.0
                 </thead>
                 <tbody>
                     {% for event_name, event in sdf_thing_or_object.sdf_event.items() %}
-                        {% set sdf_ref = path + "/sdfEvent/" + event_name %}
+                        {% set sdf_name = path + "/sdfEvent/" + event_name %}
                         <tr>
                             <td class="ble-ad-data text-black" scope="row">
                                 {% if event.description != None %}
@@ -172,10 +172,10 @@ SPDX-License-Identifier: Apache-2.0
                                 <p class="ble-sdf-property">{{path}}/sdfEvent/{{event_name}}</p>
                             </td>
                             <td class="text-end">
-                                {% if sdf_ref in events %}
-                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ sdf_ref }}')">Disable Event</button>
+                                {% if sdf_name in events %}
+                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ sdf_name }}')">Disable Event</button>
                                 {% else %}
-                                    <button type="submit" class="btn btn-warning" onclick="enableEvent('{{ device.device_id }}', '{{ sdf_ref }}')">Enable Event</button>
+                                    <button type="submit" class="btn btn-warning" onclick="enableEvent('{{ device.device_id }}', '{{ sdf_name }}')">Enable Event</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -209,18 +209,18 @@ SPDX-License-Identifier: Apache-2.0
     <div class="row border my-3 p-3">
         <select class="form-select" id="sdf_select">
             <option value="" selected>Select SDF model</option>
-            {% for sdf_ref, sdf_model in sdf_models.items() %}
-                <option value="{{ sdf_ref }}">{{ sdf_ref }}</option>
+            {% for sdf_name, sdf_model in sdf_models.items() %}
+                <option value="{{ sdf_name }}">{{ sdf_name }}</option>
             {% endfor %}
         </select>
     </div>
 
-    {% for sdf_ref, sdf_model in sdf_models.items() %}
-        <div class="row border my-3 p-3" hidden id="div-{{ sdf_ref }}">
+    {% for sdf_name, sdf_model in sdf_models.items() %}
+        <div class="row border my-3 p-3" hidden id="div-{{ sdf_name }}">
             <div class="d-flex">
                 <h3 class="flex-grow-1">SDF Model</h3>
-                {% if sdf_model != None and sdf_ref != None %}
-                <form class="text-end col" action="{{ url_for('delete_sdf_model', device_id=device.device_id, sdf_ref=sdf_ref | quote) }}" method="POST">
+                {% if sdf_model != None and sdf_name != None %}
+                <form class="text-end col" action="{{ url_for('delete_sdf_model', device_id=device.device_id, sdf_name=sdf_name | quote) }}" method="POST">
                     <button type="submit" class="btn btn-danger">Delete SDF model</button>
                 </form>
                 {% endif %}
@@ -375,9 +375,9 @@ SPDX-License-Identifier: Apache-2.0
                     });
             }
 
-            function readProperty(id, sdfRef) {
+            function readProperty(id, sdfName) {
                 // call API with svcUUID and charUUID
-                console.log("readProperty: " + sdfRef + ", " + id);
+                console.log("readProperty: " + sdfName + ", " + id);
 
                 fetch(`/devices/${id}/read`, {
                     method: 'POST',
@@ -385,7 +385,7 @@ SPDX-License-Identifier: Apache-2.0
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        "sdfRef": sdfRef
+                        "sdfName": sdfName
                     })
                 })
                     .then(response => response.json())
@@ -395,13 +395,13 @@ SPDX-License-Identifier: Apache-2.0
                         const hex = bytes.split('').map(function (c) {
                             return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
                         }).join('');
-                        document.getElementById("property-" + sdfRef).innerHTML = hex;
+                        document.getElementById("property-" + sdfName).innerHTML = hex;
                     });
             }
 
-            function writeProperty(id, sdfRef, value) {
+            function writeProperty(id, sdfName, value) {
                 // call API with svcUUID and charUUID
-                console.log("writeProperty: " + sdfRef + ", " + id);
+                console.log("writeProperty: " + sdfName + ", " + id);
 
                 const bytes = value
                                 .match(/.{1,2}/g)
@@ -414,7 +414,7 @@ SPDX-License-Identifier: Apache-2.0
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        "sdfRef": sdfRef,
+                        "sdfName": sdfName,
                         "value": value
                     })
                 })
@@ -425,13 +425,13 @@ SPDX-License-Identifier: Apache-2.0
                         const hex = bytes.split('').map(function (c) {
                             return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
                         }).join('');
-                        document.getElementById("property-" + sdfRef).innerHTML = hex;
+                        document.getElementById("property-" + sdfName).innerHTML = hex;
                     });
             }
 
 
-            function enableEvent(id, sdfRef) {
-                console.log("enableEvent: " + sdfRef + ", " + id);
+            function enableEvent(id, sdfName) {
+                console.log("enableEvent: " + sdfName + ", " + id);
 
                 fetch(`/devices/${id}/event`, {
                     method: 'POST',
@@ -439,7 +439,7 @@ SPDX-License-Identifier: Apache-2.0
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        "sdfRef": sdfRef,
+                        "sdfName": sdfName,
                         "enable": true
                     })
                 })
@@ -450,8 +450,8 @@ SPDX-License-Identifier: Apache-2.0
                     });
             }
 
-            function disableEvent(id, sdfRef) {
-                console.log("disableEvent: " + sdfRef + ", " + id);
+            function disableEvent(id, sdfName) {
+                console.log("disableEvent: " + sdfName + ", " + id);
 
                 fetch(`/devices/${id}/event`, {
                     method: 'POST',
@@ -459,7 +459,7 @@ SPDX-License-Identifier: Apache-2.0
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        "sdfRef": sdfRef,
+                        "sdfName": sdfName,
                         "enable": false
                     })
                 })

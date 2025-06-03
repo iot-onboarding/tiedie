@@ -96,8 +96,8 @@ class ControlClient(AbstractHttpClient):
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
             status=ble_discover_response.status,
-            reason=ble_discover_response.reason,
-            error_code=ble_discover_response.error_code,
+            detail=ble_discover_response.detail,
+            nipc_status=ble_discover_response.nipc_status,
         )
         if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
                 ble_discover_response.body.protocol_map is not None and \
@@ -133,8 +133,8 @@ class ControlClient(AbstractHttpClient):
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
             status=ble_discover_response.status,
-            reason=ble_discover_response.reason,
-            error_code=ble_discover_response.error_code,
+            detail=ble_discover_response.detail,
+            nipc_status=ble_discover_response.nipc_status,
         )
         if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
                 ble_discover_response.body.protocol_map is not None and \
@@ -179,8 +179,8 @@ class ControlClient(AbstractHttpClient):
         tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
             status=ble_discover_response.status,
-            reason=ble_discover_response.reason,
-            error_code=ble_discover_response.error_code,
+            detail=ble_discover_response.detail,
+            nipc_status=ble_discover_response.nipc_status,
         )
         if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
                 ble_discover_response.body.protocol_map is not None and \
@@ -236,36 +236,36 @@ class ControlClient(AbstractHttpClient):
         return self.post_with_tiedie_response(f"/{device.device_id}/action/property/write",
                                               tiedie_request, ValueResponse)
 
-    def read_property(self, device: str, sdf_ref: str) -> TiedieResponse[Optional[PropertyResponse]]:
+    def read_property(self, device: str, sdf_name: str) -> TiedieResponse[Optional[PropertyResponse]]:
         """ Reads a property from a device.
 
         Args:
             device (str): The device to read from.
-            sdf_ref (str): The SDF reference of an SDF property to read.
+            sdf_name (str): The SDF reference of an SDF property to read.
 
         Returns:
             TiedieResponse[PropertyResponse]: The response object containing
               the value of the property.
         """
-        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
-        return self.get_with_tiedie_response(f"/{device}/property/{encoded_sdf_ref}",
+        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
+        return self.get_with_tiedie_response(f"/{device}/property/{encoded_sdf_name}",
                                              None,
                                              PropertyResponse)
 
-    def write_property(self, device: str, sdf_ref: str, value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
+    def write_property(self, device: str, sdf_name: str, value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
         """ Writes a property to a device.
 
         Args:
             device (str): The device to write to.
-            sdf_ref (str): The SDF reference of an SDF property to write.
+            sdf_name (str): The SDF reference of an SDF property to write.
             value (str): The value to write in bytes.
 
         Returns:
             TiedieResponse[PropertyResponse]: The response object containing 
             the value of the property.
         """
-        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
-        return self.put_with_tiedie_response(f"/{device}/property/{encoded_sdf_ref}",
+        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
+        return self.put_with_tiedie_response(f"/{device}/property/{encoded_sdf_name}",
                                               PropertyWriteRequest(value=value),
                                               PropertyResponse)
 
@@ -284,7 +284,7 @@ class ControlClient(AbstractHttpClient):
         return self.post_with_tiedie_response("/registration/model",
                                               model, ModelRegistrationResponse)
 
-    def update_sdf_model(self, sdf_ref: str, model: SdfModel):
+    def update_sdf_model(self, sdf_name: str, model: SdfModel):
         """ Updates a SDF model for an IoT device.
 
         Args:
@@ -295,7 +295,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.put_with_tiedie_response(f"/registration/model/{sdf_ref}",
+        return self.put_with_tiedie_response(f"/registration/model/{sdf_name}",
                                               model, ModelRegistrationResponse)
 
 
@@ -312,7 +312,7 @@ class ControlClient(AbstractHttpClient):
         return self.get("/registration/model",
                             RootModel[List[ModelRegistrationResponse]])
 
-    def get_sdf_model(self, sdf_ref: str):
+    def get_sdf_model(self, sdf_name: str):
         """ Retrieves the SDF model registered for an IoT device.
 
         Args:
@@ -323,10 +323,10 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
-        return self.get(f"/registration/model/{encoded_sdf_ref}", SdfModel)
+        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
+        return self.get(f"/registration/model/{encoded_sdf_name}", SdfModel)
 
-    def unregister_sdf_model(self, sdf_ref: str):
+    def unregister_sdf_model(self, sdf_name: str):
         """ Unregisters a SDF model for an IoT device.
 
         Args:
@@ -337,8 +337,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        encoded_sdf_ref = url_parse.quote(sdf_ref, safe='')
-        return self.delete_with_tiedie_response(f"/registration/model/{encoded_sdf_ref}",
+        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
+        return self.delete_with_tiedie_response(f"/registration/model/{encoded_sdf_name}",
                                                 None, ModelRegistrationResponse)
 
     def get_data_app(self, data_app_id: str):
@@ -402,8 +402,8 @@ class ControlClient(AbstractHttpClient):
         Returns:
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
-        encoded_sdf_ref = url_parse.quote(event, safe='')
-        return self.post_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+        encoded_sdf_name = url_parse.quote(event, safe='')
+        return self.post_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
 
     def disable_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
         """Disable event reporting for a specific device and event.
@@ -415,8 +415,8 @@ class ControlClient(AbstractHttpClient):
         Returns:
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
-        encoded_sdf_ref = url_parse.quote(event, safe='')
-        return self.delete_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+        encoded_sdf_name = url_parse.quote(event, safe='')
+        return self.delete_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
 
     def get_event(self, device_id: str, event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
         """Retrieve the status of a specific event for a device.
@@ -428,8 +428,8 @@ class ControlClient(AbstractHttpClient):
         Returns:
             TiedieResponse[Optional[TiedieEventResponse]]: Response object.
         """
-        encoded_sdf_ref = url_parse.quote(event, safe='')
-        return self.get_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_ref}", None, TiedieEventResponse)
+        encoded_sdf_name = url_parse.quote(event, safe='')
+        return self.get_with_tiedie_response(f"/{device_id}/event/{encoded_sdf_name}", None, TiedieEventResponse)
 
     def get_all_events(self, device_id: str) -> TiedieResponse[Optional[TiedieEventsResponse]]:
         """Retrieve the status of all events for a device.

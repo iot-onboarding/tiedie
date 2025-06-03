@@ -209,7 +209,7 @@ class SubscriptionHandler(namespace.Namespace):
                 print(e)
 
         print(event)
-        topic = quote(event, safe='')
+        topic = event
         data_receiver_client.subscribe(topic, callback)
 
     def on_unsubscribe(self, event):
@@ -361,10 +361,10 @@ def get_device(device_id):
 
     if response.status_code == 200 and response.body is not None and len(response.body.root) > 0:
         print(response.body)
-        for sdf_ref_resp in response.body.root:
-            response = control_client.get_sdf_model(sdf_ref_resp.sdf_ref)
+        for sdf_name_resp in response.body.root:
+            response = control_client.get_sdf_model(sdf_name_resp.sdf_name)
             if response.status_code == 200 and response.body is not None:
-                sdf_models[sdf_ref_resp.sdf_ref] = response.body
+                sdf_models[sdf_name_resp.sdf_name] = response.body
 
     tiedie_response = control_client.get_connection(device)
 
@@ -490,7 +490,7 @@ def read_property(device_id):
     if request.json is None:
         return render_template("error.html", error="Invalid request")
 
-    property_name = request.json["sdfRef"]
+    property_name = request.json["sdfName"]
     response = control_client.read_property(device_id, property_name)
 
     return response.body.model_dump_json() if response.body else ""
@@ -502,7 +502,7 @@ def write_property(device_id):
     if request.json is None:
         return render_template("error.html", error="Invalid request")
 
-    property_name = request.json["sdfRef"]
+    property_name = request.json["sdfName"]
     value = request.json["value"]
     response = control_client.write_property(device_id, property_name, value)
 
@@ -522,21 +522,21 @@ def register_sdf_model(device_id: str):
 
     sdf_model = SdfModel.model_validate_json(sdf_file)
 
-    sdf_ref = sdf_model.namespace[sdf_model.default_namespace]
+    sdf_name = sdf_model.namespace[sdf_model.default_namespace]
 
     if sdf_model.sdf_thing is not None and len(sdf_model.sdf_thing) > 0:
-        sdf_ref += "#/" + list(sdf_model.sdf_thing.keys())[0]
+        sdf_name += "#/" + list(sdf_model.sdf_thing.keys())[0]
     elif sdf_model.sdf_object is not None and len(sdf_model.sdf_object) > 0:
-        sdf_ref += "#/" + list(sdf_model.sdf_object.keys())[0]
+        sdf_name += "#/" + list(sdf_model.sdf_object.keys())[0]
 
     response = control_client.get_sdf_models()
 
     # if the response contains the same ref, update else register
     if response.status_code == 200 and response.body is not None and \
             len(response.body.root) > 0 and \
-            any(sdf_ref_resp.sdf_ref == sdf_ref for sdf_ref_resp in response.body.root):
+            any(sdf_name_resp.sdf_name == sdf_name for sdf_name_resp in response.body.root):
         print(response.body)
-        encoded_ref = quote(sdf_ref, safe='')
+        encoded_ref = quote(sdf_name, safe='')
         response = control_client.update_sdf_model(encoded_ref, sdf_model)
     else:
         response = control_client.register_sdf_model(sdf_model)
@@ -547,12 +547,12 @@ def register_sdf_model(device_id: str):
     return redirect(f"/devices/{device_id}")
 
 
-@app.route("/devices/<device_id>/deleteSdf/<sdf_ref>", methods=["POST"])
-def delete_sdf_model(device_id: str, sdf_ref: str):
+@app.route("/devices/<device_id>/deleteSdf/<sdf_name>", methods=["POST"])
+def delete_sdf_model(device_id: str, sdf_name: str):
     """ Deletes an SDF model from a device. """
-    unquoted_sdf_ref = unquote(sdf_ref)
+    unquoted_sdf_name = unquote(sdf_name)
 
-    response = control_client.unregister_sdf_model(unquoted_sdf_ref)
+    response = control_client.unregister_sdf_model(unquoted_sdf_name)
 
     if response.http is not None and response.http.status_code != 200:
         return render_template("error.html", error="Failed to delete SDF model")
@@ -566,20 +566,20 @@ def register_event(device_id: str):
     if request.json is None:
         return render_template("error.html", error="Invalid request")
 
-    sdf_ref = request.json["sdfRef"]
+    sdf_name = request.json["sdfName"]
     enable = request.json["enable"]
 
     if enable:
-        update_data_app(sdf_ref, enable)
+        update_data_app(sdf_name, enable)
 
     if enable:
-        response = control_client.enable_event(device_id, sdf_ref)
+        response = control_client.enable_event(device_id, sdf_name)
     else:
-        response = control_client.disable_event(device_id, sdf_ref)
+        response = control_client.disable_event(device_id, sdf_name)
 
     # remove event from data app if the event was disabled successfully
     if response.http and response.http.status_code == 200 and not enable:
-        update_data_app(sdf_ref, enable)
+        update_data_app(sdf_name, enable)
 
     return response.body.model_dump_json() if response.body else ""
 
