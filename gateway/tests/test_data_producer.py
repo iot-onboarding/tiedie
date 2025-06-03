@@ -155,7 +155,7 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
     device_id = response.json["id"]
 
     response = client.post(
-        "/nipc/draft-04/registration/topic",
+        "/nipc/registration/topic",
         json={
             "id": device_id,
             "topic": "ble/notifications",
