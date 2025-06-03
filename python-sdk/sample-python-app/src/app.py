@@ -57,59 +57,61 @@ else:
 
 client_config = configuration.ClientConfig(app)
 
-az_request = None
-onboarding_client = None
-control_client = None
-data_receiver_client = None
+app.az_request = None
+app.onboarding_client = None
+app.control_client = None
+app.data_receiver_client = None
+app.endpoint_apps = []
+app.data_endpoint_app = None
 
 def init_clients():
-    """ Initializes the clients for onboarding, control, and data receiver. """
-    global onboarding_client, control_client, data_receiver_client, endpoint_apps, data_endpoint_app
-
-    if onboarding_client is None:
+    """Initializes the clients for onboarding, control, and data receiver."""
+    if app.onboarding_client is None:
         print("Initializing clients...")
-        onboarding_client = client_config.get_onboarding_client()
-        endpoint_apps = client_config.get_endpoint_apps(onboarding_client)
-
-        data_endpoint_app = endpoint_apps[1]
-        control_client = client_config.get_control_client(
-            control_app_endpoint=endpoint_apps[0])
-        data_receiver_client = client_config.get_data_receiver_client(
-            data_app_endpoint=data_endpoint_app)
+        app.onboarding_client = client_config.get_onboarding_client()
+        app.endpoint_apps = client_config.get_endpoint_apps(app.onboarding_client)
+        app.data_endpoint_app = app.endpoint_apps[1]
+        app.control_client = client_config.get_control_client(
+            control_app_endpoint=app.endpoint_apps[0]
+        )
+        app.data_receiver_client = client_config.get_data_receiver_client(
+            data_app_endpoint=app.data_endpoint_app
+        )
 
 @app.before_request
 def redirect_to_oauth():
-    """ Redirects to OAuth2 authorization endpoint if client ID is provided. """
-    global az_request
-    if client_config.oauth_client_id is not None and az_request is None and not request.path.startswith("/oauth"):
+    """Redirects to OAuth2 authorization endpoint if client ID is provided."""
+    if client_config.oauth_client_id is not None and \
+        app.az_request is None and not request.path.startswith("/oauth"):
         return redirect("/oauth2/authorize")
     if not request.path.startswith("/oauth"):
         init_clients()
+    return None
 
 
 @app.route("/oauth2/authorize", methods=["GET", "POST"])
 def oauth2_authorize():
-    """ Redirects to OAuth2 authorization endpoint. """
-    global az_request
+    """Redirects to OAuth2 authorization endpoint."""
     if request.method == "GET":
         return render_template("oauth2_authorize.html")
     if client_config.oauth2client is not None:
-        az_request = client_config.oauth2client.authorization_request(scope=client_config.oauth_scopes)
-        return redirect(az_request.uri)
-    else:
-        return render_template("error.html", error="OAuth2 client not configured.")
+        app.az_request = client_config.oauth2client.authorization_request(
+            scope=client_config.oauth_scopes
+        )
+        return redirect(app.az_request.uri)
+
+    return render_template("error.html", error="OAuth2 client not configured.")
 
 
 @app.route("/oauth_callback")
 def oauth_callback():
-    """ Handles the OAuth2 callback and retrieves the access token. """
-    global az_request
+    """Handles the OAuth2 callback and retrieves the access token."""
     if client_config.oauth2client is None:
         return render_template("error.html", error="OAuth2 client not configured.")
 
-    az_response = az_request.validate_callback(request.url)
+    az_response = app.az_request.validate_callback(request.url)
     if az_response.code is None:
-        az_request = None
+        app.az_request = None
     client_config.oauth_authenticator.session_auth = OAuth2AuthorizationCodeAuth(
         client_config.oauth2client,
         code=az_response,
@@ -119,11 +121,12 @@ def oauth_callback():
 
 
 def update_data_app(event: str, enable: bool):
-    """ function to update data app """
-    response = control_client.get_data_app(data_endpoint_app.application_id)
+    """Function to update data app."""
+    response = app.control_client.get_data_app(
+        app.data_endpoint_app.application_id
+    )
     if response.http and response.http.status_code != 200 or response.body is None:
         if client_config.data_app_mqtt_type == "broker":
-            # read DATA_APP_CA_CERT_PATH from config
             ca_cert = None
             ca_cert_path = client_config.data_app_ca_cert_path
             if ca_cert_path is not None:
@@ -135,27 +138,25 @@ def update_data_app(event: str, enable: bool):
                 password=client_config.data_app_password,
                 broker_ca_cert=ca_cert,
             )
-            # register data app
-            response = control_client.create_data_app(
-                data_endpoint_app.application_id,
+            response = app.control_client.create_data_app(
+                app.data_endpoint_app.application_id,
                 DataAppRegistration(
                     events=[Event(event=event)],
                     mqtt_client=None,
                     mqtt_broker=mqtt_broker,
-                ))
+                )
+            )
         else:
-            # register data app
-            response = control_client.create_data_app(
-                data_endpoint_app.application_id,
+            response = app.control_client.create_data_app(
+                app.data_endpoint_app.application_id,
                 DataAppRegistration(
                     events=[Event(event=event)],
                     mqtt_client={},
                     mqtt_broker=None,
-                ))
+                )
+            )
     else:
         data_app = response.body
-        # update data app
-        # append new events to the existing events
         events = data_app.events
         if enable:
             if event not in [e.event for e in events]:
@@ -165,20 +166,19 @@ def update_data_app(event: str, enable: bool):
                 if e.event == event:
                     events.remove(e)
                     break
-
         if len(events) == 0:
-            # remove data app
-            response = control_client.delete_data_app(
-                data_endpoint_app.application_id)
+            response = app.control_client.delete_data_app(
+                app.data_endpoint_app.application_id
+            )
             return
-
-        response = control_client.update_data_app(
-            data_endpoint_app.application_id,
+        response = app.control_client.update_data_app(
+            app.data_endpoint_app.application_id,
             DataAppRegistration(
                 events=events,
                 mqtt_client=data_app.mqtt_client,
                 mqtt_broker=data_app.mqtt_broker,
-            ))
+            )
+        )
 
 
 class SubscriptionHandler(namespace.Namespace):
@@ -189,11 +189,11 @@ class SubscriptionHandler(namespace.Namespace):
 
     def on_connect(self, *_):
         """ function to define what happens on connection """
-        data_receiver_client.connect()
+        app.data_receiver_client.connect()
 
     def on_disconnect(self):
         """ function to define what happens on disconnection """
-        data_receiver_client.disconnect()
+        app.data_receiver_client.disconnect()
 
     def on_subscribe(self, event):
         """ function to define what happens on subscription """
@@ -210,12 +210,12 @@ class SubscriptionHandler(namespace.Namespace):
 
         print(event)
         topic = event
-        data_receiver_client.subscribe(topic, callback)
+        app.data_receiver_client.subscribe(topic, callback)
 
     def on_unsubscribe(self, event):
         """ function to define what happens on unsubscription """
         topic = quote(event, safe='')
-        data_receiver_client.unsubscribe(topic)
+        app.data_receiver_client.unsubscribe(topic)
 
     def on_error(self, error):
         """ function to define what happens on error """
@@ -234,7 +234,7 @@ def index():
 @app.route("/devices")
 def get_all_devices():
     """ Displays a list of all IoT devices. """
-    response = onboarding_client.get_devices()
+    response = app.onboarding_client.get_devices()
 
     if response.status_code != 200 or response.body is None:
         return render_template("error.html", error="Failed to get devices")
@@ -246,7 +246,9 @@ def get_all_devices():
 @app.route("/data_app")
 def get_subscriptions():
     """ Displays subscription topics and BLE advertisement topics. """
-    topic = quote(f'data-app/{data_endpoint_app.application_id}/#')
+    topic = quote(
+        f'data-app/{app.data_endpoint_app.application_id}/#'
+    )
     # redirect to get_subscription with the topic
     return redirect(f"/subscription?event={topic}")
 
@@ -285,14 +287,19 @@ def add_device():
             pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
-            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps if endpoint_app is not None and endpoint_app.application_id is not None
+            Application(value=endpoint_app.application_id)
+            for endpoint_app in app.endpoint_apps
+            if endpoint_app is not None and endpoint_app.application_id is not None
         ])
     )
 
-    response = onboarding_client.create_device(device)
+    response = app.onboarding_client.create_device(device)
 
     if response.status_code != 201 or response.body is None or response.body.device_id is None:
-        return render_template("error.html", error="Failed to create device")
+        return render_template(
+            "error.html",
+            error="Failed to create device"
+        )
 
     return redirect("/devices")
 
@@ -300,10 +307,13 @@ def add_device():
 @app.route("/devices/<device_id>/update", methods=["GET", "POST"])
 def update_device(device_id):
     """ Update device in the app """
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
@@ -333,14 +343,18 @@ def update_device(device_id):
             pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
         ),
         endpoint_apps_extension=EndpointAppsExtension(applications=[
-            Application(value=endpoint_app.application_id) for endpoint_app in endpoint_apps
+            Application(value=endpoint_app.application_id)
+            for endpoint_app in app.endpoint_apps
         ])
     )
 
-    response = onboarding_client.update_device(device)
+    response = app.onboarding_client.update_device(device)
 
     if response.status_code != 201 or response.body is None or response.body.device_id is None:
-        return render_template("error.html", error="Failed to create device")
+        return render_template(
+            "error.html",
+            error="Failed to create device"
+        )
 
     return redirect(f"/devices/{device_id}")
 
@@ -348,28 +362,30 @@ def update_device(device_id):
 @app.route("/devices/<device_id>")
 def get_device(device_id):
     """ function to get get device """
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
     sdf_models = {}
 
-    response = control_client.get_sdf_models()
+    response = app.control_client.get_sdf_models()
 
     if response.status_code == 200 and response.body is not None and len(response.body.root) > 0:
         print(response.body)
         for sdf_name_resp in response.body.root:
-            response = control_client.get_sdf_model(sdf_name_resp.sdf_name)
+            response = app.control_client.get_sdf_model(sdf_name_resp.sdf_name)
             if response.status_code == 200 and response.body is not None:
                 sdf_models[sdf_name_resp.sdf_name] = response.body
 
-    tiedie_response = control_client.get_connection(device)
+    tiedie_response = app.control_client.get_connection(device)
 
     parameters = None
-    # pass the parameters to the template
     if tiedie_response.http and tiedie_response.http.status_code == 200 and \
             tiedie_response.body is not None:
         parameters = [
@@ -377,8 +393,7 @@ def get_device(device_id):
         ]
 
     events = []
-    response = control_client.get_all_events(device_id)
-    # pass the events to the template
+    response = app.control_client.get_all_events(device_id)
     if response.http and response.http.status_code == 200 and response.body is not None:
         events = [response.event for response in response.body.events]
 
@@ -400,22 +415,29 @@ def connect_device(device_id):
     if service_uuids:
         services = [uuid.strip() for uuid in service_uuids.split(",")]
 
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
-    tiedie_response = control_client.connect(device,
-                                             BleConnectRequest(services=[
-                                                 BleService(service_id=service)
-                                                 for service in services
-                                             ]))
+    tiedie_response = app.control_client.connect(
+        device,
+        BleConnectRequest(services=[
+            BleService(service_id=service)
+            for service in services
+        ])
+    )
 
     if tiedie_response.http is None or tiedie_response.http.status_code != 200:
-        return render_template("error.html",
-                               error="Failed to connect to device")
+        return render_template(
+            "error.html",
+            error="Failed to connect to device"
+        )
 
     return redirect(f"/devices/{device_id}")
 
@@ -423,14 +445,17 @@ def connect_device(device_id):
 @app.route("/devices/<device_id>/disconnect", methods=["POST"])
 def disconnect_device(device_id):
     """ function to disconnect a connected device """
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
-    tiedie_response = control_client.disconnect(device)
+    tiedie_response = app.control_client.disconnect(device)
 
     if tiedie_response.http is None or tiedie_response.http.status_code != 200:
         return render_template("error.html")
@@ -441,7 +466,7 @@ def disconnect_device(device_id):
 @app.route("/devices/<device_id>/delete", methods=["POST"])
 def delete_device(device_id):
     """ function to delete device filter """
-    response = onboarding_client.delete_device(device_id)
+    response = app.onboarding_client.delete_device(device_id)
 
     if response.status_code != 204:
         return render_template("error.html")
@@ -453,14 +478,17 @@ def delete_device(device_id):
            methods=["POST"])
 def read_characteristic(device_id, service_id, char_id):
     """ Reads a GATT characteristic of an IoT device. """
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
-    response = control_client.read(device, service_id, char_id)
+    response = app.control_client.read(device, service_id, char_id)
     return response.body.model_dump_json() if response.body else ""
 
 
@@ -471,15 +499,18 @@ def write_characteristic(device_id: str, service_id: str, char_id: str):
     if request.json is None:
         return ""
 
-    response = onboarding_client.get_device(device_id)
+    response = app.onboarding_client.get_device(device_id)
 
     if response.status_code != 200 or response.body is None:
-        return render_template("error.html", error="Failed to get device")
+        return render_template(
+            "error.html",
+            error="Failed to get device"
+        )
 
     device = response.body
 
     value: str = request.json["value"]
-    response = control_client.write(device, service_id, char_id, value)
+    response = app.control_client.write(device, service_id, char_id, value)
 
     return response.body.model_dump_json() if response.body else ""
 
@@ -488,10 +519,13 @@ def write_characteristic(device_id: str, service_id: str, char_id: str):
 def read_property(device_id):
     """ Reads a property of an IoT device. """
     if request.json is None:
-        return render_template("error.html", error="Invalid request")
+        return render_template(
+            "error.html",
+            error="Invalid request"
+        )
 
     property_name = request.json["sdfName"]
-    response = control_client.read_property(device_id, property_name)
+    response = app.control_client.read_property(device_id, property_name)
 
     return response.body.model_dump_json() if response.body else ""
 
@@ -500,11 +534,14 @@ def read_property(device_id):
 def write_property(device_id):
     """ Writes a property of an IoT device. """
     if request.json is None:
-        return render_template("error.html", error="Invalid request")
+        return render_template(
+            "error.html",
+            error="Invalid request"
+        )
 
     property_name = request.json["sdfName"]
     value = request.json["value"]
-    response = control_client.write_property(device_id, property_name, value)
+    response = app.control_client.write_property(device_id, property_name, value)
 
     return response.body.model_dump_json() if response.body else ""
 
@@ -514,7 +551,10 @@ def register_sdf_model(device_id: str):
     """ Registers a new SDF model for a device. """
 
     if 'sdfFile' not in request.files:
-        return render_template("error.html", error="No file part")
+        return render_template(
+            "error.html",
+            error="No file part"
+        )
 
     file = request.files['sdfFile']
 
@@ -529,20 +569,22 @@ def register_sdf_model(device_id: str):
     elif sdf_model.sdf_object is not None and len(sdf_model.sdf_object) > 0:
         sdf_name += "#/" + list(sdf_model.sdf_object.keys())[0]
 
-    response = control_client.get_sdf_models()
+    response = app.control_client.get_sdf_models()
 
-    # if the response contains the same ref, update else register
     if response.status_code == 200 and response.body is not None and \
             len(response.body.root) > 0 and \
             any(sdf_name_resp.sdf_name == sdf_name for sdf_name_resp in response.body.root):
         print(response.body)
         encoded_ref = quote(sdf_name, safe='')
-        response = control_client.update_sdf_model(encoded_ref, sdf_model)
+        response = app.control_client.update_sdf_model(encoded_ref, sdf_model)
     else:
-        response = control_client.register_sdf_model(sdf_model)
+        response = app.control_client.register_sdf_model(sdf_model)
 
     if response.http is not None and response.http.status_code != 200:
-        return render_template("error.html", error="Failed to register SDF model")
+        return render_template(
+            "error.html",
+            error="Failed to register SDF model"
+        )
 
     return redirect(f"/devices/{device_id}")
 
@@ -552,10 +594,13 @@ def delete_sdf_model(device_id: str, sdf_name: str):
     """ Deletes an SDF model from a device. """
     unquoted_sdf_name = unquote(sdf_name)
 
-    response = control_client.unregister_sdf_model(unquoted_sdf_name)
+    response = app.control_client.unregister_sdf_model(unquoted_sdf_name)
 
     if response.http is not None and response.http.status_code != 200:
-        return render_template("error.html", error="Failed to delete SDF model")
+        return render_template(
+            "error.html",
+            error="Failed to delete SDF model"
+        )
 
     return redirect(f"/devices/{device_id}")
 
@@ -564,7 +609,10 @@ def delete_sdf_model(device_id: str, sdf_name: str):
 def register_event(device_id: str):
     """ Registers a new event for a device. """
     if request.json is None:
-        return render_template("error.html", error="Invalid request")
+        return render_template(
+            "error.html",
+            error="Invalid request"
+        )
 
     sdf_name = request.json["sdfName"]
     enable = request.json["enable"]
@@ -573,11 +621,10 @@ def register_event(device_id: str):
         update_data_app(sdf_name, enable)
 
     if enable:
-        response = control_client.enable_event(device_id, sdf_name)
+        response = app.control_client.enable_event(device_id, sdf_name)
     else:
-        response = control_client.disable_event(device_id, sdf_name)
+        response = app.control_client.disable_event(device_id, sdf_name)
 
-    # remove event from data app if the event was disabled successfully
     if response.http and response.http.status_code == 200 and not enable:
         update_data_app(sdf_name, enable)
 
