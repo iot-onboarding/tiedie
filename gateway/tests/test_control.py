@@ -149,14 +149,14 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
     device = create_device(client, api_key)
 
     response = client.post(
-        f"/nipc/draft-04/{device["id"]}/action/connection",
+        "/nipc/connectivity/connection",
         headers={
             "x-api-key": control_api_key
         },
         json={
-            "protocolMap": {
-                "ble": {}
-            },
+            "id": device["id"],
+            "technology": "ble",
+            "ble": {},
             "retries": 3,
             "retryMultipleAPs": True
         }
@@ -165,47 +165,50 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
     assert response.json is not None
 
     assert response.json == {
-        "protocolMap": {
-            "ble": [
-                {
-                    "serviceID": "180d",
-                    "characteristics": [
-                        {
-                            "characteristicID": "2a37",
-                            "descriptors": [
-                                {
-                                    "descriptorID": "2902"
-                                }
-                            ],
-                            "flags": [
-                                "notify"
-                            ]
-                        },
-                        {
-                            "characteristicID": "2a38",
-                            "flags": [
-                                "read"
-                            ]
-                        },
-                        {
-                            "characteristicID": "2a39",
-                            "flags": [
-                                "write"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
+        "status": "SUCCESS",
+        "requestID": response.json["requestID"],
+        "services": [
+            {
+                "serviceID": "180d",
+                "characteristics": [
+                    {
+                        "characteristicID": "2a37",
+                        "descriptors": [
+                            {
+                                "descriptorID": "2902"
+                            }
+                        ],
+                        "flags": [
+                            "notify"
+                        ]
+                    },
+                    {
+                        "characteristicID": "2a38",
+                        "flags": [
+                            "read"
+                        ]
+                    },
+                    {
+                        "characteristicID": "2a39",
+                        "flags": [
+                            "write"
+                        ]
+                    }
+                ]
+            }
+        ],
     }
 
     device_id_2 = str(uuid.uuid4())
 
     response = client.get(
-        f"/nipc/draft-04/{device["id"]}/action/connection",
+        "/nipc/connectivity/connection",
         headers={
             "x-api-key": control_api_key
         },
+        query_string={
+            "id": device["id"] + "," + device_id_2
+        }
     )
 
     assert response.json is not None
@@ -224,25 +227,16 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
         ]
     }
 
-    response = client.delete(
-        f"/nipc/draft-04/{device["id"]}/action/connection",
+    response = client.get(
+        f"/nipc/connectivity/connection/id/{device['id']}",
         headers={
             "x-api-key": control_api_key
-        },
+        }
     )
 
     assert response.json is not None
     assert response.json == {
         "status": "SUCCESS",
         "requestID": response.json["requestID"],
-        "connections": [
-            {
-                "id": device["id"],
-                "status": "SUCCESS",
-            },
-            {
-                "id": device_id_2,
-                "status": "FAILURE",
-            }
-        ]
+        "id": device["id"]
     }
