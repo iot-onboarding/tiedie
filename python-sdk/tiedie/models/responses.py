@@ -41,8 +41,8 @@ class TiedieRawResponse(BaseModel):
     """ Raw representation of the TieDie response """
 
     status: Optional[TiedieStatus] = None
-    reason: Optional[str] = None
-    error_code: Optional[int] = None
+    detail: Optional[str] = None
+    nipc_status: Optional[int] = None
 
     http: Optional[TiedieHTTP] = None
 
@@ -125,7 +125,7 @@ class MultiConnectionsResponse(TiedieRawResponse):
 class ModelRegistrationResponse(TiedieRawResponse):
     """ Represents a response for SDF model registration. """
 
-    sdf_ref: str = Field(alias=str("sdfRef"))
+    sdf_name: str = Field(alias=str("sdfName"))
 
 class Event(BaseModel):
     """ Represents an event in the data app registration response. """
