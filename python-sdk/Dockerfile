@@ -19,7 +19,7 @@ ENV DOCKER_BUILD=1
 WORKDIR /app
 
 COPY tiedie /app/tiedie
-COPY setup.py /app
+COPY pyproject.toml /app
 
 RUN python -m pip install .
 
