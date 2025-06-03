@@ -205,12 +205,8 @@ def register_model(device_id: str):
     if device is None:
         return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-    model = request.json
-
     return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
 
-
-# TODO: Update below APIs to draft-04
 
 @control_app.route('/data/subscription', methods=['POST', 'PUT'])
 @authenticate_user
