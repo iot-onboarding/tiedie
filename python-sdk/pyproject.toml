@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiedie"
+version = "1.0"
+description = "Tiedie SDK for Python"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "attrs",
+    "requests",
+    "requests-oauth2client",
+    "urllib3",
+    "paho-mqtt",
+    "protobuf",
+    "cryptography",
+    "certifi",
+    "pyOpenSSL",
+    "pydantic",
+    "cbor2"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "responses",
+    "pytest-cov>=4.1"
+]
