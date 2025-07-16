@@ -10,10 +10,10 @@ Test gateway data producer.
 import os
 import time
 import uuid
+import urllib.parse
 import cbor2
 import paho.mqtt.client as mqtt
 import pytest
-import urllib.parse
 from flask import Flask
 from flask.testing import FlaskClient
 from testcontainers.postgres import PostgresContainer
