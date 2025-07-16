@@ -11,8 +11,6 @@ provides response data, and is part of a larger system/application.
 
 """
 
-from http import HTTPStatus
-from flask import Response, jsonify
 import bgapi
 from silabs.ble_operations.operation import Operation
 
@@ -75,13 +73,6 @@ class ConnectOperation(Operation):
             # is true if connection was opened before
             if self.is_set():
                 self.is_done = True
-
-    def response(self) -> tuple[Response, int]:
-        """ Returns a success response with handle if set, otherwise failure. """
-        if self.is_set():
-            return jsonify({"status": "SUCCESS", "handle": self.handle}), HTTPStatus.OK
-
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     def __is_public_address(self, address: str) -> bool:
         first_byte = int(address[0:2], 16)

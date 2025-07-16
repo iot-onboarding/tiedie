@@ -35,11 +35,25 @@ import traceback
 import bgapi
 from bgapi.connector import ConnectorException
 import serial.tools.list_ports
+from .status import Status
 
 LOG_FORMAT_SINGLE = "%(asctime)s: %(levelname)s - %(message)s"
 LOG_FORMAT = "%(asctime)s: %(name)s %(levelname)s - %(message)s"
 BT_XAPI = os.path.join(os.path.dirname(__file__), "../api/sl_bt.xapi")
 
+# Patch bgapi package to use a modified version of CommandFailedError
+class CommandFailedError(bgapi.bglib.CommandError):
+    """ Convert errorcode into Status object. """
+    def __init__(self, response, command=None):
+        self.errorcode = Status(response._errorcode)
+        self.response = response
+        self.command = command
+        msg = f"Command failed with result {self.errorcode:#06x}: '{self.errorcode}'"
+        if command:
+            msg += f"\n> {command}\n< {response}"
+        super().__init__(msg)
+
+bgapi.bglib.CommandFailedError = CommandFailedError
 
 class GenericApp(threading.Thread):
     """ Generic application class. """
@@ -161,7 +175,7 @@ class BluetoothApp(GenericApp):
 
     def reset(self):
         """ Reset Bluetooth device. """
-        self.lib.bt.system.reset(self.lib.bt.system.BOOT_MODE_BOOT_MODE_NORMAL)
+        self.lib.bt.system.reboot()
 
 
 class CustomHelpFormatter(argparse.ArgumentDefaultsHelpFormatter,
@@ -332,11 +346,7 @@ def get_connector(args=None):
 
 def get_device_list():
     """ Find Segger J-Link devices based on USB vendor ID. """
-    device_list = []
-    for com in serial.tools.list_ports.comports():
-        if com.vid == 0x1366:
-            device_list.append(com.device)
-    return device_list
+    return [com.device for com in serial.tools.list_ports.comports() if com.vid == 0x1366]
 
 
 def connector_from_str(param):

@@ -23,7 +23,7 @@ from database import db
 # pylint: disable-next=unused-import
 from models import OnboardingAppKey, Device
 # pylint: disable-next=unused-import
-from ble_models import BleExtension, GattTopic
+from nipc_models import BleExtension, SdfModel
 from tests.mosquitto_container import MosquittoContainer
 
 
@@ -103,12 +103,91 @@ def fixture_data_producer(mqtt_client: mqtt.Client, app: Flask):
     yield DataProducer(mqtt_client, app)
 
 
-def test_publish_notification(mqtt_client2: mqtt.Client,
-                              data_producer: DataProducer,
-                              client: FlaskClient,
-                              api_key: str):
-    """ Test publish notification """
+@pytest.fixture(name="sdf_model")
+def fixture_sdf_model(app: Flask):
+    """ Create test SDF model """
+    with app.app_context():
+        sdf_model = SdfModel(
+            sdf_name="https://example.com/thermometer",
+            model={
+                "namespace": {"tm": "https://example.com/thermometer"},
+                "sdfThing": {
+                    "thermometer": {
+                        "sdfProperty": {
+                            "temperature": {
+                                "type": "number",
+                                "minimum": -40,
+                                "maximum": 125,
+                                "unit": "Cel",
+                                "writable": False,
+                                "protocolMap": {
+                                    "ble": {
+                                        "serviceID": "180d",
+                                        "characteristicID": "2a38"
+                                    }
+                                }
+                            },
+                            "temperature_control": {
+                                "type": "number",
+                                "minimum": -40,
+                                "maximum": 125,
+                                "unit": "Cel",
+                                "writable": True,
+                                "protocolMap": {
+                                    "ble": {
+                                        "serviceID": "180d",
+                                        "characteristicID": "2a39"
+                                    }
+                                }
+                            },
+                            "humidity": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 100,
+                                "unit": "%",
+                                "writable": False,
+                                "protocolMap": {
+                                    "ble": {
+                                        "serviceID": "180d",
+                                        "characteristicID": "2a38"
+                                    }
+                                }
+                            }
+                        },
+                        "sdfEvent": {
+                            "isPresent": {
+                                "description": "BLE advertisements",
+                                "sdfOutputData": {
+                                    "protocolMap": {
+                                        "ble": {
+                                            "type": "advertisements"
+                                        }
+                                    }
+                                }
+                            },
+                            "isConnected": {
+                                "description": "BLE connection event",
+                                "sdfOutputData": {
+                                    "protocolMap": {
+                                        "ble": {
+                                            "type": "connection_events"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        db.session.add(sdf_model)
+        db.session.commit()
+        yield sdf_model
 
+
+@pytest.fixture(name="control_api_key")
+def fixture_control_api_key(client: FlaskClient, api_key: str):
+    """ Create control app and return API key """
     response = client.post(
         "/scim/v2/EndpointApps",
         json={
@@ -120,12 +199,37 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
             "x-api-key": api_key
         }
     )
-
+    
     assert response.status_code == 201
+    assert response.json is not None
+    
+    return response.json.get("clientToken")
 
-    control_app_id = response.json["id"]
-    control_api_key = response.json["clientToken"]
 
+@pytest.fixture(name="data_app")
+def fixture_data_app(client: FlaskClient, api_key: str):
+    """ Create telemetry data app """
+    response = client.post(
+        "/scim/v2/EndpointApps",
+        json={
+            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
+            "applicationType": "telemetry",
+            "applicationName": "Telemetry Data App",
+        },
+        headers={
+            "x-api-key": api_key
+        }
+    )
+    
+    assert response.status_code == 201
+    assert response.json is not None
+    
+    return response.json
+
+
+@pytest.fixture(name="device")
+def fixture_device(client: FlaskClient, api_key: str):
+    """ Create BLE device """
     response = client.post(
         "/scim/v2/Devices",
         json={
@@ -138,43 +242,105 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
                 "deviceMacAddress": "AA:BB:CC:11:22:33",
                 "isRandom": False,
                 "mobility": True
-            },
-            "urn:ietf:params:scim:schemas:extension:endpointAppExt:2.0:Device": {
-                "applications": [
-                    {
-                        "value": control_app_id
-                    }
-                ]
             }
         }, headers={
             "x-api-key": api_key
         }
     )
-
+    
     assert response.status_code == 201
-    device_id = response.json["id"]
+    assert response.json is not None
+    
+    return response.json
 
-    response = client.post(
-        "/nipc/registration/topic",
-        json={
-            "id": device_id,
-            "topic": "ble/notifications",
-            "dataFormat": "default",
-            "ble": {
-                "type": "gatt",
-                "serviceID": "180d",
-                "characteristicID": "2a37"
+
+@pytest.fixture(name="registered_data_app")
+def fixture_registered_data_app(client: FlaskClient, data_app: dict, sdf_model: SdfModel):  # pylint: disable=unused-argument
+    """ Register data app with events """
+    data_app_id = data_app["id"]
+    data_app_token = data_app["clientToken"]
+    event_name = "https://example.com/thermometer#/sdfThing/thermometer/sdfEvent/isPresent"
+    
+    data_app_registration = {
+        "events": [
+            {
+                "event": event_name
             }
-        }, headers={
+        ],
+        "mqttClient": {}
+    }
+    
+    response = client.post(
+        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        json=data_app_registration,
+        headers={
+            "x-api-key": data_app_token
+        }
+    )
+    
+    assert response.status_code == 200
+    assert response.json == data_app_registration
+    
+    return {
+        "data_app_id": data_app_id,
+        "event_name": event_name,
+        "registration": data_app_registration
+    }
+
+
+def test_publish_notification(mqtt_client2: mqtt.Client,
+                              data_producer: DataProducer,
+                              client: FlaskClient,
+                              control_api_key: str,
+                              device: dict,
+                              registered_data_app: dict,
+                              sdf_model: SdfModel):  # pylint: disable=unused-argument
+    """ Test publish notification with data app registration and event subscription """
+    
+    # Get values from fixtures
+    device_id = device["id"]
+    data_app_id = registered_data_app["data_app_id"]
+    event_name = registered_data_app["event_name"]
+    
+    # Step 1: Enable event on the device (similar to test_device_events)
+    import urllib.parse
+    encoded_event_name = urllib.parse.quote(event_name)
+    response = client.post(
+        f"/nipc/devices/{device_id}/events?eventName={encoded_event_name}",
+        headers={
             "x-api-key": control_api_key
         }
     )
-
+    
+    assert response.status_code == 201
+    assert "Location" in response.headers
+    location_header = response.headers["Location"]
+    instance_id = location_header.split("instanceId=")[1]
+    
+    # Step 2: Verify event is enabled
+    response = client.get(
+        f"/nipc/devices/{device_id}/events?instanceId={instance_id}",
+        headers={
+            "x-api-key": control_api_key
+        }
+    )
+    
     assert response.status_code == 200
+    assert response.json is not None
+    assert len(response.json) == 1
+    assert response.json[0]["event"] == event_name
+    assert response.json[0]["instanceId"] == instance_id
 
+    # Step 3: Generate topic based on data_producer.py logic and set up MQTT subscription
+    # Create topic from event name using the same logic as data_producer.py
+    namespace, json_pointer = event_name.split('#', 1)
+    expected_topic = f"data-app/{data_app_id}/{namespace}/{json_pointer}"
+    
     def on_message(_client, _userdata, message: mqtt.MQTTMessage):
         print(
             f"Received message '{message.payload}' on topic '{message.topic}'")
+        # Verify we received the message on the expected topic
+        assert message.topic == expected_topic
         data_subscription = cbor2.loads(message.payload)
         assert data_subscription["deviceID"] == device_id
         assert data_subscription["bleSubscription"]["serviceID"] == "180d"
@@ -182,8 +348,10 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
         assert data_subscription["data"] == b"\x00\x00"
 
     mqtt_client2.on_message = on_message
-    mqtt_client2.subscribe("ble/notifications")
+    mqtt_client2.subscribe(expected_topic)
+    print(f"Subscribed to topic: {expected_topic}")
 
+    # Step 4: Publish notification and test end-to-end flow
     data_producer.publish_notification("AA:BB:CC:11:22:33",
                                        "180d",
                                        "2a37",
