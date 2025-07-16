@@ -9,11 +9,9 @@ Class for background operations handling events and generating responses.
 
 """
 
-from http import HTTPStatus
 import logging
 import threading
 import bgapi
-from flask import Response, jsonify
 
 class Operation(threading.Event):
     """ class for handling Bluetooth operations with response generation. """
@@ -33,6 +31,6 @@ class Operation(threading.Event):
         if event_callback is not None:
             event_callback(evt)
 
-    def response(self) -> tuple[Response, int]:
-        """ response function """
-        return jsonify({}), HTTPStatus.OK
+    def response(self):
+        """ Returns a response object for the operation. """
+        return None

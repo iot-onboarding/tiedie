@@ -13,7 +13,7 @@ from typing import List, Optional
 
 import uuid
 from sqlalchemy import Boolean, Column, DateTime, \
-    ForeignKey, String, ARRAY
+    ForeignKey, String, ARRAY, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 from config import EXTERNAL_HOST, EXTERNAL_PORT, MQTT_PORT

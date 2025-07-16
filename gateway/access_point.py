@@ -14,11 +14,26 @@ to characteristics.
 import dataclasses
 import threading
 import logging
+import abc
 from typing import Optional
-from flask import Response
 
 from data_producer import DataProducer
-from silabs.ble_operations.discover import Service
+from access_point_responses import (
+    DiscoverResponse, ReadResponse, WriteResponse,
+    SubscribeResponse, UnsubscribeResponse
+)
+
+@dataclasses.dataclass
+class Service:
+    """
+    This class represents a service in Bluetooth Low Energy (BLE)
+    with a UUID and a service handle, containing characteristics as a
+    dictionary.
+    """
+    service_id: str
+    service_handle: int
+    characteristics: dict[str, "Characteristic"] = dataclasses.field(
+        default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -52,56 +67,62 @@ class AccessPoint:
         """ Get a connection request by address """
         return self.conn_reqs.get(address, None)
 
+    @abc.abstractmethod
     def start(self):
         """ Start the access point """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def stop(self):
         """ Stop the access point """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def connectable(self):
         """ Check if new connections can be established """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def start_scan(self):
         """ Start scanning for devices """
-        raise NotImplementedError()
 
+    @abc.abstractmethod
     def connect(self,
-                address,
+                address: str,
                 ble_connect_options: BleConnectOptions,
-                retries=3) -> tuple[Response, int]:
-        """ Connect to a device """
-        raise NotImplementedError()
+                retries: int = 3) -> None:
+        """Connect to a device. Returns None on success or raises ConnectionError on failure."""
 
+    @abc.abstractmethod
     def discover(self,
-                 address,
+                 address: str,
                  ble_connect_options: BleConnectOptions,
-                 retries=3) -> tuple[Response, int]:
-        """ Discover services of a device """
-        raise NotImplementedError()
+                 retries: int = 3) -> DiscoverResponse:
+        """Discover services of a device. Returns a DiscoverResponse or raises DiscoveryError."""
 
-    def read(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
-        """ Read a characteristic of a device """
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def read(self, address: str, service_uuid: str, char_uuid: str) -> ReadResponse:
+        """Read a characteristic of a device. Returns a ReadResponse or raises ReadError."""
 
+    @abc.abstractmethod
     def write(self,
               address: str,
               service_uuid: str,
               char_uuid: str,
-              value: str) -> tuple[Response, int]:
-        """ Write a characteristic of a device """
-        raise NotImplementedError()
+              value: str) -> WriteResponse:
+        """Write a characteristic of a device. Returns a WriteResponse or raises WriteError."""
 
-    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
-        """ Start a GATT notification/indication of a device """
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> SubscribeResponse:
+        """
+        Start a GATT notification/indication of a device. 
+        Returns a SubscribeResponse or raises SubscribeError.
+        """
 
-    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
-        """ Stop a GATT notification/indication of a device """
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> UnsubscribeResponse:
+        """
+        Stop a GATT notification/indication of a device.
+        Returns an UnsubscribeResponse or raises UnsubscribeError.
+        """
 
-    def disconnect(self, address: str) -> tuple[Response, int]:
-        """ Disconnect a device """
-        raise NotImplementedError()
+    @abc.abstractmethod
+    def disconnect(self, address: str) -> None:
+        """Disconnect a device. Returns None on success or raises DisconnectError on failure."""

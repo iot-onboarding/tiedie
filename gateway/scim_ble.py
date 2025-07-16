@@ -8,7 +8,7 @@ This module implements BLE dispatch for SCIM.
 """
 
 from tiedie_exceptions import DeviceExists
-from ble_models import BleExtension
+from nipc_models import BleExtension
 from database import session
 from scim_extensions import scim_ext_create, scim_ext_read, \
     scim_ext_update, scim_ext_delete

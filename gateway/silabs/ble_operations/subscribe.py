@@ -17,6 +17,7 @@ from flask import Response, jsonify
 
 from silabs.ble_operations.operation import Operation
 from data_producer import DataProducer
+from access_point_responses import SubscribeResponse
 
 
 class SubscribeOperation(Operation):
@@ -92,12 +93,10 @@ class SubscribeOperation(Operation):
             if self.__disable:
                 self.is_done = True
 
-    def response(self) -> tuple[Response, int]:
-        """ Response Function """
+    def response(self):
         if self.is_set():
-            return jsonify({"status": "SUCCESS", "requestID": uuid.uuid4()}), HTTPStatus.OK
-
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+            return SubscribeResponse(address=self.address, service_uuid=self.service_uuid, char_uuid=self.char_uuid, subscribed=True)
+        return SubscribeResponse(address=self.address, service_uuid=self.service_uuid, char_uuid=self.char_uuid, subscribed=False)
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.handle})"
