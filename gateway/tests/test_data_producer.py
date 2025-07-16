@@ -13,6 +13,7 @@ import uuid
 import cbor2
 import paho.mqtt.client as mqtt
 import pytest
+import urllib.parse
 from flask import Flask
 from flask.testing import FlaskClient
 from testcontainers.postgres import PostgresContainer
@@ -302,7 +303,6 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
     event_name = registered_data_app["event_name"]
 
     # Step 1: Enable event on the device (similar to test_device_events)
-    import urllib.parse
     encoded_event_name = urllib.parse.quote(event_name)
     response = client.post(
         f"/nipc/devices/{device_id}/events?eventName={encoded_event_name}",
