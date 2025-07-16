@@ -124,7 +124,12 @@ class MockAccessPoint(AccessPoint):
             raise BleReadError("Invalid service or characteristic uuid")
 
         value = b"test"  # mock value
-        return ReadResponse(address=address, service_uuid=service_uuid, char_uuid=char_uuid, value=value)
+        return ReadResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            value=value
+        )
 
     def write(self,
               address: str,
@@ -135,7 +140,13 @@ class MockAccessPoint(AccessPoint):
         if address not in self.conn_reqs:
             raise BleWriteError("not connected")
 
-        return WriteResponse(address=address, service_uuid=service_uuid, char_uuid=char_uuid, value=value, success=True)
+        return WriteResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            value=value,
+            success=True
+        )
 
     def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> SubscribeResponse:
         if address not in self.conn_reqs:
@@ -145,7 +156,10 @@ class MockAccessPoint(AccessPoint):
         if key in self._subscription_threads:
             raise BleSubscribeError("already subscribed")
 
-        thread = threading.Thread(target=self._send_subscribe_data, args=(address, service_uuid, char_uuid))
+        thread = threading.Thread(
+            target=self._send_subscribe_data,
+            args=(address, service_uuid, char_uuid)
+        )
         self._subscription_threads[key] = thread
         thread.start()
 

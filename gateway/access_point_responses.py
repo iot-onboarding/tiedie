@@ -1,14 +1,23 @@
+"""
+
+Class for responses from a Bluetooth Low Energy (BLE) access point,
+part of a BLE communication application. Handles responses to write operations.
+
+"""
+
 from dataclasses import dataclass
 from typing import List
 from ble_types import Service
 
 @dataclass
 class DiscoverResponse:
+    """Handles responses to discover operations."""
     address: str
     services: List[Service]
 
 @dataclass
 class ReadResponse:
+    """Handles responses to read operations."""
     address: str
     service_uuid: str
     char_uuid: str
@@ -16,6 +25,7 @@ class ReadResponse:
 
 @dataclass
 class WriteResponse:
+    """Handles responses to write operations."""
     address: str
     service_uuid: str
     char_uuid: str
@@ -24,6 +34,7 @@ class WriteResponse:
 
 @dataclass
 class SubscribeResponse:
+    """Handles responses to subscribe operations."""
     address: str
     service_uuid: str
     char_uuid: str
@@ -31,6 +42,7 @@ class SubscribeResponse:
 
 @dataclass
 class UnsubscribeResponse:
+    """Handles responses to unsubscribe operations."""
     address: str
     service_uuid: str
     char_uuid: str
