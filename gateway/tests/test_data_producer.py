@@ -199,10 +199,10 @@ def fixture_control_api_key(client: FlaskClient, api_key: str):
             "x-api-key": api_key
         }
     )
-    
+
     assert response.status_code == 201
     assert response.json is not None
-    
+
     return response.json.get("clientToken")
 
 
@@ -220,10 +220,10 @@ def fixture_data_app(client: FlaskClient, api_key: str):
             "x-api-key": api_key
         }
     )
-    
+
     assert response.status_code == 201
     assert response.json is not None
-    
+
     return response.json
 
 
@@ -247,10 +247,10 @@ def fixture_device(client: FlaskClient, api_key: str):
             "x-api-key": api_key
         }
     )
-    
+
     assert response.status_code == 201
     assert response.json is not None
-    
+
     return response.json
 
 
@@ -260,7 +260,7 @@ def fixture_registered_data_app(client: FlaskClient, data_app: dict, sdf_model: 
     data_app_id = data_app["id"]
     data_app_token = data_app["clientToken"]
     event_name = "https://example.com/thermometer#/sdfThing/thermometer/sdfEvent/isPresent"
-    
+
     data_app_registration = {
         "events": [
             {
@@ -269,7 +269,7 @@ def fixture_registered_data_app(client: FlaskClient, data_app: dict, sdf_model: 
         ],
         "mqttClient": {}
     }
-    
+
     response = client.post(
         f"/nipc/registration/data-app?dataAppId={data_app_id}",
         json=data_app_registration,
@@ -277,10 +277,10 @@ def fixture_registered_data_app(client: FlaskClient, data_app: dict, sdf_model: 
             "x-api-key": data_app_token
         }
     )
-    
+
     assert response.status_code == 200
     assert response.json == data_app_registration
-    
+
     return {
         "data_app_id": data_app_id,
         "event_name": event_name,
@@ -296,12 +296,11 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
                               registered_data_app: dict,
                               sdf_model: SdfModel):  # pylint: disable=unused-argument
     """ Test publish notification with data app registration and event subscription """
-    
     # Get values from fixtures
     device_id = device["id"]
     data_app_id = registered_data_app["data_app_id"]
     event_name = registered_data_app["event_name"]
-    
+
     # Step 1: Enable event on the device (similar to test_device_events)
     import urllib.parse
     encoded_event_name = urllib.parse.quote(event_name)
@@ -311,12 +310,12 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
             "x-api-key": control_api_key
         }
     )
-    
+
     assert response.status_code == 201
     assert "Location" in response.headers
     location_header = response.headers["Location"]
     instance_id = location_header.split("instanceId=")[1]
-    
+
     # Step 2: Verify event is enabled
     response = client.get(
         f"/nipc/devices/{device_id}/events?instanceId={instance_id}",
@@ -324,7 +323,7 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
             "x-api-key": control_api_key
         }
     )
-    
+
     assert response.status_code == 200
     assert response.json is not None
     assert len(response.json) == 1
@@ -335,7 +334,7 @@ def test_publish_notification(mqtt_client2: mqtt.Client,
     # Create topic from event name using the same logic as data_producer.py
     namespace, json_pointer = event_name.split('#', 1)
     expected_topic = f"data-app/{data_app_id}/{namespace}/{json_pointer}"
-    
+
     def on_message(_client, _userdata, message: mqtt.MQTTMessage):
         print(
             f"Received message '{message.payload}' on topic '{message.topic}'")

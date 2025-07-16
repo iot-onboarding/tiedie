@@ -115,7 +115,8 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     assert resp2.status_code == 409
     assert resp2.json is not None
     print("Duplicate registration error response:", resp2.json)
-    assert resp2.json["type"] == "https://www.iana.org/assignments/http-problem-types#nipc-sdf-model-already-registered"
+    assert resp2.json["type"] == ("https://www.iana.org/assignments/"
+                                 "http-problem-types#nipc-sdf-model-already-registered")
     assert resp2.json["status"] == 409
 
     # List models
@@ -173,7 +174,8 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     assert resp_forbidden.status_code == 400
     assert resp_forbidden.json is not None
     print("Namespace update error response:", resp_forbidden.json)
-    assert resp_forbidden.json["type"] == "https://www.iana.org/assignments/http-problem-types#nipc-invalid-sdf-url"
+    assert resp_forbidden.json["type"] == ("https://www.iana.org/assignments/"
+                                         "http-problem-types#nipc-invalid-sdf-url")
     assert resp_forbidden.json["status"] == 400
 
     # Attempt to update defaultNamespace (should fail)
