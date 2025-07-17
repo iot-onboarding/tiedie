@@ -65,6 +65,8 @@ class SilabsAccessPoint(AccessPoint):
 
         if not operation.is_set():
             raise BleConnectionError("connection operation failed")
+        else:
+            self.conn_reqs[address] = ConnectionRequest(address, operation.handle, {})
 
     def discover(self,
                  address: str,

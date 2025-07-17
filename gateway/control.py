@@ -586,7 +586,9 @@ def read_properties(device_id: str):
                 })
 
         # if device is not connected, connect first
+        implicit_connect = False
         if device.device_mac_address not in ble_ap().conn_reqs:
+            implicit_connect = True
             ble_ap().connect(device.device_mac_address, BleConnectOptions())
             ble_ap().discover(device.device_mac_address, BleConnectOptions(
                 services=[service_id for _, service_id, _ in services]
@@ -608,6 +610,10 @@ def read_properties(device_id: str):
                     "title": "Property Read Error",
                     "detail": f"Failed to read property {property_name}: {str(e)}"
                 })
+
+        if implicit_connect:
+            ble_ap().disconnect(device.device_mac_address)
+
         return jsonify(results), HTTPStatus.OK
     except Exception as e: # pylint: disable=broad-except
         return create_nipc_problem_response(
@@ -696,7 +702,9 @@ def write_properties(device_id: str):
                 })
 
         # if device is not connected, connect first
+        implicit_connect = False
         if device.device_mac_address not in ble_ap().conn_reqs:
+            implicit_connect = True
             ble_ap().connect(device.device_mac_address, BleConnectOptions())
             ble_ap().discover(device.device_mac_address, BleConnectOptions(
                 services=[service_id for _, service_id, _, _ in services]
@@ -746,6 +754,10 @@ def write_properties(device_id: str):
                     "title": "Property Write Error",
                     "detail": f"Failed to write property {property_name}: {str(e)}"
                 })
+
+        if implicit_connect:
+            ble_ap().disconnect(device.device_mac_address)
+
         return jsonify(results), HTTPStatus.OK
     except Exception as e: # pylint: disable=broad-except
         return create_nipc_problem_response(
@@ -1253,12 +1265,12 @@ def get_events(device_id: str):
     try:
         instance_ids = request.args.getlist('instanceId')
         if not instance_ids:
-            return create_nipc_problem_response(
-                NipcProblemTypes.INVALID_ID,
-                HTTPStatus.BAD_REQUEST,
-                "Bad Request",
-                "Missing instanceId query parameter"
-            )
+            # return all events for the device
+            events = session.query(Event).filter_by(device_id=device_id).all()
+            return jsonify([
+                {"event": event.event_name, "instanceId": event.instance_id}
+                for event in events
+            ]), HTTPStatus.OK
         events = []
         for instance_id in instance_ids:
             event = session.query(Event).filter_by(

@@ -485,26 +485,25 @@ def test_property_read_api(mock_server: responses.RequestsMock):
     """Test reading a property using the property API"""
     device_id = str(uuid4())
     property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
-    body = json.dumps({
-        "id": device_id,
+    body = json.dumps([{
         "property": property_ref,
         "value": "dGVzdA=="
-    }, separators=(',', ':'))
+    }], separators=(',', ':'))
     mock_server.get(
-        f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
+        f"https://control.example.com/nipc/devices/{device_id}/properties?propertyName={property_ref}",
         body=body,
         status=200,
         content_type="application/json",
     )
     response = requests.get(
-        f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
+        f"https://control.example.com/nipc/devices/{device_id}/properties?propertyName={property_ref}",
         timeout=10
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == device_id
-    assert data["property"] == property_ref
-    assert data["value"] == "dGVzdA=="
+    assert len(data) == 1
+    assert data[0]["property"] == property_ref
+    assert data[0]["value"] == "dGVzdA=="
 
 
 def test_property_write_api(mock_server: responses.RequestsMock):
@@ -512,29 +511,32 @@ def test_property_write_api(mock_server: responses.RequestsMock):
     device_id = str(uuid4())
     property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
     value = "dGVzdA=="
-    req_body = {"value": value}
-    resp_body = json.dumps({
-        "id": device_id,
-        "property": property_ref,
-        "value": value
-    }, separators=(',', ':'))
+    req_body = [
+        {
+            "property": property_ref,
+            "value": value
+        }
+    ]
+    resp_body = json.dumps([{
+        "status": 200
+    }], separators=(',', ':'))
     mock_server.put(
-        f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
+        f"https://control.example.com/nipc/devices/{device_id}/properties",
         body=resp_body,
         status=200,
         match=[matchers.json_params_matcher(req_body)],
         content_type="application/json",
     )
     response = requests.put(
-        f"https://control.example.com/nipc/{device_id}/property/{property_ref}",
+        f"https://control.example.com/nipc/devices/{device_id}/properties",
         json=req_body,
         timeout=10
     )
     assert response.status_code == 200
     data = response.json()
-    assert data["id"] == device_id
-    assert data["property"] == property_ref
-    assert data["value"] == value
+    assert len(data) == 1
+    assert data[0]["property"] == property_ref
+    assert data[0]["value"] == value
 
 
 def test_register_data_app(mock_server: responses.RequestsMock):
@@ -547,14 +549,14 @@ def test_register_data_app(mock_server: responses.RequestsMock):
     }
     resp_body = json.dumps(req_body, separators=(',', ':'))
     mock_server.post(
-        f"https://control.example.com/nipc/registration/data-app/{data_app_id}",
+        f"https://control.example.com/nipc/registration/data-app?dataAppId={data_app_id}",
         body=resp_body,
         status=200,
         match=[matchers.json_params_matcher(req_body)],
         content_type="application/json",
     )
     response = requests.post(
-        f"https://control.example.com/nipc/registration/data-app/{data_app_id}",
+        f"https://control.example.com/nipc/registration/data-app?dataAppId={data_app_id}",
         json=req_body,
         timeout=10
     )
