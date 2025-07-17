@@ -7,14 +7,14 @@
 
 """
 
-This Python module manages Tiedie IoT platform responses and requests, 
+This Python module manages Tiedie IoT platform responses and requests,
 including handling Tiedie responses, data responses, and discovery-related inteactions.
 
 """
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Generic, List, Optional, TypeVar, Union
+from typing import Generic, List, Optional, TypeVar
 from pydantic.alias_generators import to_camel
 
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
@@ -25,7 +25,7 @@ from tiedie.models.ble import BleDataParameter, BleService
 class NipcProblemTypes(str, Enum):
     """
     NIPC Problem Details error types as defined in the NIPC draft
-    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-09) 
+    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-09)
     Section 6 and IANA registry Section 10.4.
     """
     # Base URI for IANA HTTP Problem Types registry
@@ -75,11 +75,11 @@ class NipcProblemTypes(str, Enum):
 
 class ProblemDetails(BaseModel):
     """RFC 9457 Problem Details for HTTP APIs.
-    
+
     Used for error responses with application/problem+json content type.
     """
     model_config = ConfigDict(populate_by_name=True)
-    
+
     type: NipcProblemTypes = Field(..., description="URI identifying the problem type")
     status: int = Field(..., description="HTTP status code")
     title: str = Field(..., description="Human-readable summary of the problem type")
@@ -88,10 +88,9 @@ class ProblemDetails(BaseModel):
 
 class SuccessResponse(BaseModel):
     """Base class for successful NIPC responses.
-    
+
     Success responses return HTTP 200 with specific response schemas.
     """
-    pass
 
 
 T_co = TypeVar('T_co', covariant=True)
@@ -106,24 +105,24 @@ class TiedieHTTP(BaseModel):
 
 class NipcResponse(BaseModel, Generic[T_co]):
     """NIPC API Response that can contain either success data or error details.
-    
+
     Follows the new NIPC specification with proper HTTP status handling.
     For errors, contains ProblemDetails. For success, contains the response body.
     """
     # HTTP metadata
     http: Optional[TiedieHTTP] = None
-    
+
     # Response body for successful requests (HTTP 200)
     body: Optional[T_co] = None
-    
-    # Error details for failed requests (HTTP 4xx/5xx) 
+
+    # Error details for failed requests (HTTP 4xx/5xx)
     error: Optional[ProblemDetails] = None
-    
+
     @property
     def is_success(self) -> bool:
         """Returns True if the response indicates success."""
         return self.error is None and (self.http is None or self.http.status_code < 400)
-    
+
     @property
     def is_error(self) -> bool:
         """Returns True if the response indicates an error."""
@@ -230,7 +229,7 @@ class DataAppRegistration(SuccessResponse):
     events: List[Event]
 
     mqtt_client: Optional[dict] = None
-    mqtt_broker: Optional[MqttBrokerConfig]
+    mqtt_broker: Optional[MqttBrokerConfig] = None
 
 class TiedieEventResponse(SuccessResponse):
     """ Represents a response for an event. """

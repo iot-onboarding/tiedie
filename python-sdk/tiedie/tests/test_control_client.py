@@ -6,17 +6,18 @@
 """ Test Control Client """
 
 import json
+import urllib.parse as url_parse
 from uuid import uuid4
 
 import pytest
 import responses
 from responses import matchers
-import requests
 
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 from tiedie.api.control_client import ControlClient
 from tiedie.models.ble import BleDataParameter
-from tiedie.models.responses import TiedieStatus
+from tiedie.models.requests import SdfModel
+from tiedie.models.responses import DataAppRegistration, Event
 from tiedie.models.scim import (BleExtension, Device, PairingJustWorks,
                                 PairingPassKey)
 
@@ -128,7 +129,7 @@ def test_connect(mock_server: responses.RequestsMock,
 
     # Only mock the default connect request (no services/bonding)
     mock_server.post(
-        f"https://control.example.com/nipc/{device_id}/action/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
         body=body,
         status=200,
         match=[
@@ -159,8 +160,8 @@ def test_connect(mock_server: responses.RequestsMock,
     response = control_client.connect(device)
 
     assert response.http and response.http.status_code == 200
-    # Accept both SUCCESS and FAILURE, but body must be present for SUCCESS
-    if response.status == TiedieStatus.SUCCESS:
+    # Check if response is successful, body must be present for success
+    if response.is_success:
         assert response.body is not None
         assert isinstance(response.body[0], BleDataParameter)
         assert isinstance(response.body[1], BleDataParameter)
@@ -193,7 +194,7 @@ def test_disconnect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        f"https://control.example.com/nipc/{device_id}/action/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
         body=body,
         status=200,
         content_type="application/json",
@@ -214,7 +215,7 @@ def test_disconnect(mock_server: responses.RequestsMock,
     response = control_client.disconnect(device)
 
     assert response.http and response.http.status_code == 200
-    if response.status == TiedieStatus.SUCCESS:
+    if response.is_success:
         assert response.body is not None
 
 
@@ -284,9 +285,9 @@ def test_discovery(mock_server: responses.RequestsMock,
         }
     }, separators=(',', ':'))
 
-    # Discovery uses PUT and /action/connection endpoint
+    # Discovery uses PUT and /manage/connection endpoint
     mock_server.put(
-        f"https://control.example.com/nipc/{device_id}/action/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
         body=body,
         status=200,
         match=[
@@ -316,7 +317,7 @@ def test_discovery(mock_server: responses.RequestsMock,
     response = control_client.discover(device)
 
     assert response.http and response.http.status_code == 200
-    if response.status == TiedieStatus.SUCCESS:
+    if response.is_success:
         assert response.body is not None
         assert isinstance(response.body[0], BleDataParameter)
         assert isinstance(response.body[1], BleDataParameter)
@@ -350,7 +351,7 @@ def test_read(mock_server: responses.RequestsMock,
 
     # Remove 'id' from expected request body
     mock_server.post(
-        f"https://control.example.com/nipc/{device_id}/action/property/read",
+        f"https://control.example.com/nipc/extensions/{device_id}/properties/read",
         body=body,
         status=200,
         match=[
@@ -384,7 +385,7 @@ def test_read(mock_server: responses.RequestsMock,
     )
 
     assert response.http and response.http.status_code == 200
-    if response.status == TiedieStatus.SUCCESS:
+    if response.is_success:
         assert response.body is not None
         assert response.body.value == "00001111"
 
@@ -401,7 +402,7 @@ def test_write(mock_server: responses.RequestsMock,
 
     # Remove 'id' from expected request body
     mock_server.post(
-        f"https://control.example.com/nipc/{device_id}/action/property/write",
+        f"https://control.example.com/nipc/extensions/{device_id}/properties/write",
         body=body,
         status=200,
         match=[
@@ -437,20 +438,23 @@ def test_write(mock_server: responses.RequestsMock,
         value="00001111")
 
     assert response.http and response.http.status_code == 200
-    if response.status == TiedieStatus.SUCCESS:
+    if response.is_success:
         assert response.body is not None
         assert response.body.value == "00001111"
 
 
-def test_register_sdf_model(mock_server: responses.RequestsMock):
+def test_register_sdf_model(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test registering an SDF model"""
-    sdf_model = {
+    sdf_model_data = {
         "namespace": {"thermometer": "https://example.com/thermometer"},
         "defaultNamespace": "thermometer",
         "sdfObject": {
             "healthsensor": {
                 "sdfProperty": {
                     "temperature": {
+                        "observable": True,
+                        "readable": True,
+                        "writable": True,
                         "protocolMap": {
                             "ble": {
                                 "serviceID": "1809",
@@ -462,26 +466,28 @@ def test_register_sdf_model(mock_server: responses.RequestsMock):
             }
         }
     }
-    body = json.dumps({
+    body = json.dumps([{
         "sdfName": "https://example.com/thermometer#/sdfObject/healthsensor"
-    }, separators=(',', ':'))
+    }], separators=(',', ':'))
     mock_server.post(
         "https://control.example.com/nipc/registration/model",
         body=body,
         status=200,
-        match=[matchers.json_params_matcher(sdf_model)],
+        match=[matchers.json_params_matcher(sdf_model_data)],
         content_type="application/json",
     )
-    response = requests.post(
-        "https://control.example.com/nipc/registration/model",
-        json=sdf_model,
-        timeout=10
-    )
-    assert response.status_code == 200
-    assert response.json()["sdfName"] == "https://example.com/thermometer#/sdfObject/healthsensor"
+    sdf_model = SdfModel(**sdf_model_data)
+    response = control_client.register_sdf_model(sdf_model)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        expected_sdf_name = "https://example.com/thermometer#/sdfObject/healthsensor"
+        assert response.body.root[0].sdf_name == expected_sdf_name
 
 
-def test_property_read_api(mock_server: responses.RequestsMock):
+def test_property_read_api(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test reading a property using the property API"""
     device_id = str(uuid4())
     property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
@@ -489,24 +495,25 @@ def test_property_read_api(mock_server: responses.RequestsMock):
         "property": property_ref,
         "value": "dGVzdA=="
     }], separators=(',', ':'))
+    encoded_property_ref = url_parse.quote(property_ref)
     mock_server.get(
-        f"https://control.example.com/nipc/devices/{device_id}/properties?propertyName={property_ref}",
+        f"https://control.example.com/nipc/devices/{device_id}/properties"
+        f"?propertyName={encoded_property_ref}",
         body=body,
         status=200,
         content_type="application/json",
     )
-    response = requests.get(
-        f"https://control.example.com/nipc/devices/{device_id}/properties?propertyName={property_ref}",
-        timeout=10
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["property"] == property_ref
-    assert data[0]["value"] == "dGVzdA=="
+    response = control_client.read_property(device_id, property_ref)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        assert response.body.root[0].property == property_ref
+        assert response.body.root[0].value == b"test"
 
 
-def test_property_write_api(mock_server: responses.RequestsMock):
+def test_property_write_api(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test writing a property using the property API"""
     device_id = str(uuid4())
     property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
@@ -527,19 +534,16 @@ def test_property_write_api(mock_server: responses.RequestsMock):
         match=[matchers.json_params_matcher(req_body)],
         content_type="application/json",
     )
-    response = requests.put(
-        f"https://control.example.com/nipc/devices/{device_id}/properties",
-        json=req_body,
-        timeout=10
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["property"] == property_ref
-    assert data[0]["value"] == value
+    response = control_client.write_property(device_id, property_ref, value)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        assert response.body.root[0].status == 200
 
 
-def test_register_data_app(mock_server: responses.RequestsMock):
+def test_register_data_app(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test registering a data app"""
     data_app_id = str(uuid4())
     event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
@@ -555,36 +559,43 @@ def test_register_data_app(mock_server: responses.RequestsMock):
         match=[matchers.json_params_matcher(req_body)],
         content_type="application/json",
     )
-    response = requests.post(
-        f"https://control.example.com/nipc/registration/data-app?dataAppId={data_app_id}",
-        json=req_body,
-        timeout=10
+    data_app = DataAppRegistration(
+        events=[Event(event=event_ref)],
+        mqtt_client={},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["events"][0]["event"] == event_ref
-    assert "mqttClient" in data
+    response = control_client.create_data_app(data_app_id, data_app)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert response.body.events[0].event == event_ref
+        assert response.body.mqtt_client == {}
 
 
-def test_enable_event(mock_server: responses.RequestsMock):
+def test_enable_event(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test enabling an event"""
     device_id = str(uuid4())
     event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
-    resp_body = json.dumps({
-        "id": device_id,
-        "event": event_ref
-    }, separators=(',', ':'))
+    instance_id = str(uuid4())
+
+    encoded_event_ref = url_parse.quote(event_ref)
+    location_header = (
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?instanceId={instance_id}"
+    )
+    post_url = (
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?eventName={encoded_event_ref}"
+    )
     mock_server.post(
-        f"https://control.example.com/nipc/{device_id}/event/{event_ref}",
-        body=resp_body,
+        post_url,
+        body="",
         status=200,
+        headers={"Location": location_header},
         content_type="application/json",
     )
-    response = requests.post(
-        f"https://control.example.com/nipc/{device_id}/event/{event_ref}",
-        timeout=10
-    )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == device_id
-    assert data["event"] == event_ref
+    response = control_client.enable_event(device_id, event_ref)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body == instance_id
