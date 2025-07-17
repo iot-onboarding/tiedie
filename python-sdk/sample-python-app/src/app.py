@@ -395,7 +395,7 @@ def get_device(device_id):
     events = []
     response = app.control_client.get_all_events(device_id)
     if response.http and response.http.status_code == 200 and response.body is not None:
-        events = [resp for resp in response.body.root]
+        events = list(response.body.root)
 
     return render_template(
         "device.html",
