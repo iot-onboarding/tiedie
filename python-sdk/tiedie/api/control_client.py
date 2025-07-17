@@ -67,11 +67,11 @@ class ControlClient(AbstractHttpClient):
 
         Args:
             device (Device): The device to connect to.
-            request (BleConnectRequest, optional): The connection request object. 
+            request (BleConnectRequest, optional): The connection request object.
                 Defaults to None.
-            retries (int, optional): The number of times to retry the connection. 
+            retries (int, optional): The number of times to retry the connection.
                 Defaults to 3.
-            retry_multiple_aps (bool, optional): Whether to retry the connection with multiple 
+            retry_multiple_aps (bool, optional): Whether to retry the connection with multiple
                 access points. Defaults to True.
 
         Raises:
@@ -79,7 +79,7 @@ class ControlClient(AbstractHttpClient):
 
         Returns:
             TiedieResponse[Optional[Sequence[DataParameter]]]: The `TieDieResponse` object contains
-            the state of the request. 
+            the state of the request.
             A list of DataParameter objects is present if the service discovery was successful.
 
         """
@@ -95,8 +95,10 @@ class ControlClient(AbstractHttpClient):
             f'/devices/{device.device_id}/manage/connection', tiedie_request, BleDiscoverResponse)
 
         # Handle success case: extract parameter list from BLE discovery response
-        if ble_discover_response.is_success and isinstance(ble_discover_response.body, BleDiscoverResponse):
-            if ble_discover_response.body.protocol_map is not None and ble_discover_response.body.protocol_map != []:
+        if (ble_discover_response.is_success and
+                isinstance(ble_discover_response.body, BleDiscoverResponse)):
+            protocol_map = ble_discover_response.body.protocol_map
+            if protocol_map is not None and protocol_map != []:
                 parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
@@ -123,7 +125,7 @@ class ControlClient(AbstractHttpClient):
 
         Returns:
             NipcResponse[Optional[Sequence[DataParameter]]]: The NIPC response object contains
-            the state of the request. 
+            the state of the request.
             A list of DataParameter objects is present if the service discovery was successful.
         """
         if device.device_id is None:
@@ -135,14 +137,16 @@ class ControlClient(AbstractHttpClient):
         )
 
         # Handle success case: extract parameter list from BLE discovery response
-        if ble_discover_response.is_success and isinstance(ble_discover_response.body, BleDiscoverResponse):
-            if ble_discover_response.body.protocol_map is not None and ble_discover_response.body.protocol_map != []:
+        if (ble_discover_response.is_success and
+                isinstance(ble_discover_response.body, BleDiscoverResponse)):
+            protocol_map = ble_discover_response.body.protocol_map
+            if protocol_map is not None and protocol_map != []:
                 parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
                     body=parameter_list
                 )
-        
+
         # Handle error case or empty response
         return NipcResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
@@ -155,14 +159,14 @@ class ControlClient(AbstractHttpClient):
                  retries=3,
                  retry_multiple_aps=True) \
             -> NipcResponse[Optional[Sequence[DataParameter]]]:
-        """Discovers services and characteristics of an IoT device. 
+        """Discovers services and characteristics of an IoT device.
 
         Raises:
             ValueError: Raised if device ID is not present in the device
 
         Args:
             device (Device): The device to discover.
-            request (BleConnectRequest, optional): The connection request object. 
+            request (BleConnectRequest, optional): The connection request object.
                 Defaults to None.
             retries (int, optional): The number of times to retry the connection.
             retry_multiple_aps (bool, optional): Whether to retry the connection with multiple
@@ -170,7 +174,7 @@ class ControlClient(AbstractHttpClient):
 
         Returns:
             NipcResponse[Optional[Sequence[DataParameter]]]: The NIPC response object contains
-            the state of the request. 
+            the state of the request.
             A list of DataParameter objects is present if the service discovery was successful.
         """
         if device.device_id is None:
@@ -245,12 +249,14 @@ class ControlClient(AbstractHttpClient):
                     service_id=service_id,
                     characteristic_id=characteristic_id)),
                                             value=value)
-        return self.post_with_nipc_response(f"/extensions/{device.device_id}/properties/write",
-                                           tiedie_request, ValueResponse)
+        endpoint = f"/extensions/{device.device_id}/properties/write"
+        return self.post_with_nipc_response(endpoint, tiedie_request, ValueResponse)
 
     def read_property(self,
                       device: str,
-                      sdf_name: str) -> NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]:
+                      sdf_name: str) -> NipcResponse[
+                          Optional[Union[PropertyResponse, ProblemDetails]]
+                      ]:
         """ Reads a property from a device.
 
         Args:
@@ -258,20 +264,20 @@ class ControlClient(AbstractHttpClient):
             sdf_name (str): The SDF reference of an SDF property to read.
 
         Returns:
-            NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]: The NIPC response object containing
-              the value of the property.
+            NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]:
+                The NIPC response object containing the value of the property.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
-        return self.get_with_nipc_response(
-            f"/devices/{device}/properties?propertyName={encoded_sdf_name}",
-            None,
-            RootModel[List[Union[PropertyResponse, ProblemDetails]]]
-        )
+        endpoint = f"/devices/{device}/properties?propertyName={encoded_sdf_name}"
+        response_type = RootModel[List[Union[PropertyResponse, ProblemDetails]]]
+        return self.get_with_nipc_response(endpoint, None, response_type)
 
     def write_property(self,
                         device: str,
                         sdf_name: str,
-                        value: str) -> NipcResponse[Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]]:
+                        value: str) -> NipcResponse[
+                            Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]
+                        ]:
         """ Writes a property to a device.
 
         Args:
@@ -280,8 +286,8 @@ class ControlClient(AbstractHttpClient):
             value (str): The value to write in bytes.
 
         Returns:
-            NipcResponse[Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]]: The NIPC response object containing 
-            the value of the property.
+            NipcResponse[Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]]:
+                The NIPC response object containing the value of the property.
         """
         return self.put_with_nipc_response(
             f"/devices/{device}/properties",
@@ -298,7 +304,7 @@ class ControlClient(AbstractHttpClient):
             model (str): The SDF model to register.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.post_with_nipc_response("/registration/model",
@@ -312,7 +318,7 @@ class ControlClient(AbstractHttpClient):
             model (str): The SDF model to update.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
@@ -327,7 +333,7 @@ class ControlClient(AbstractHttpClient):
             device (Device): The device to retrieve the models for.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.get("/registration/model",
@@ -341,7 +347,7 @@ class ControlClient(AbstractHttpClient):
             model (str): The SDF model to retrieve.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
@@ -355,7 +361,7 @@ class ControlClient(AbstractHttpClient):
             model (str): The SDF model to unregister.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
@@ -369,7 +375,7 @@ class ControlClient(AbstractHttpClient):
             device (Device): The device to retrieve the data app for.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.get_with_nipc_response(
@@ -385,7 +391,7 @@ class ControlClient(AbstractHttpClient):
             device (Device): The device to create the data app for.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.post_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
@@ -398,7 +404,7 @@ class ControlClient(AbstractHttpClient):
             device (Device): The device to update the data app for.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.put_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
@@ -411,7 +417,7 @@ class ControlClient(AbstractHttpClient):
             device (Device): The device to delete the data app for.
 
         Returns:
-            HttpResponse[ModelRegistrationResponse]: The response object containing 
+            HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
         return self.delete_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
@@ -473,7 +479,9 @@ class ControlClient(AbstractHttpClient):
             RootModel[List[TiedieEventResponse]]
         )
 
-    def get_all_events(self, device_id: str) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
+    def get_all_events(
+            self, device_id: str
+    ) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
         """Retrieve the status of all events for a device.
 
         Args:
@@ -482,4 +490,6 @@ class ControlClient(AbstractHttpClient):
         Returns:
             NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
         """
-        return self.get_with_nipc_response(f"/devices/{device_id}/events", None, RootModel[List[TiedieEventResponse]])
+        endpoint = f"/devices/{device_id}/events"
+        response_type = RootModel[List[TiedieEventResponse]]
+        return self.get_with_nipc_response(endpoint, None, response_type)

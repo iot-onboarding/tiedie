@@ -18,6 +18,8 @@ import os
 
 import logging
 from urllib.parse import quote, unquote
+import configuration
+
 from flask import Flask, render_template, request, redirect
 from flask_socketio import SocketIO, namespace
 from requests_oauth2client import OAuth2AuthorizationCodeAuth
@@ -29,7 +31,6 @@ from tiedie.models.ble import BleConnectRequest, BleService
 from tiedie.models.requests import SdfModel
 from tiedie.models.responses import Event, MqttBrokerConfig
 from tiedie.models.scim import Application, NullPairing, PairingJustWorks
-import configuration
 
 
 sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))

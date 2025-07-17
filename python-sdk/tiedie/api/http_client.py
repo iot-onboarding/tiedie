@@ -6,7 +6,7 @@
 
 """
 
-This moddules defines a client for making HTTP requests, handling responses, 
+This moddules defines a client for making HTTP requests, handling responses,
 and mapping them to specific classes, particularly for IoT applications.
 
 """
@@ -145,8 +145,8 @@ class AbstractHttpClient:
                           return_class: Optional[Type[NipcReturnClass]]) \
             -> NipcResponse[Optional[NipcReturnClass]]:
         """Map HTTP response to NIPC response format.
-        
-        Handles both success responses (HTTP 200 with JSON) and error responses 
+
+        Handles both success responses (HTTP 200 with JSON) and error responses
         (HTTP 4xx/5xx with Problem Details format).
         """
         http = TiedieHTTP(
@@ -165,8 +165,8 @@ class AbstractHttpClient:
         # Handle success response (2xx)
         return self._handle_success_response(response, http, return_class)
 
-    def _handle_error_response(self, 
-                              response: requests.Response, 
+    def _handle_error_response(self,
+                              response: requests.Response,
                               http: TiedieHTTP) -> NipcResponse[None]:
         """Handle error responses with Problem Details format."""
         content_type = response.headers.get('content-type', '').lower()
@@ -176,16 +176,15 @@ class AbstractHttpClient:
                 # Parse RFC 9457 Problem Details format
                 problem_details = ProblemDetails.model_validate_json(response.text)
                 return NipcResponse[None](http=http, error=problem_details)
-            else:
-                # Fallback: try to parse as JSON and extract error info
-                error_data = json.loads(response.text) if response.text else {}
-                problem_details = ProblemDetails(
-                    type="about:blank",  # RFC 9457 default for generic errors
-                    status=response.status_code,
-                    title=response.reason or "HTTP Error",
-                    detail=error_data.get('detail') or error_data.get('message') or response.text
-                )
-                return NipcResponse[None](http=http, error=problem_details)
+            # Fallback: try to parse as JSON and extract error info
+            error_data = json.loads(response.text) if response.text else {}
+            problem_details = ProblemDetails(
+                type="about:blank",  # RFC 9457 default for generic errors
+                status=response.status_code,
+                title=response.reason or "HTTP Error",
+                detail=error_data.get('detail') or error_data.get('message') or response.text
+            )
+            return NipcResponse[None](http=http, error=problem_details)
         except (ValueError, ValidationError, json.JSONDecodeError) as e:
             logger.debug("Error parsing error response: %s", e)
             # Create generic problem details for unparseable errors
@@ -197,14 +196,14 @@ class AbstractHttpClient:
             )
             return NipcResponse[None](http=http, error=problem_details)
 
-    def _handle_success_response(self, 
-                                response: requests.Response, 
+    def _handle_success_response(self,
+                                response: requests.Response,
                                 http: TiedieHTTP,
                                 return_class: Optional[Type[NipcReturnClass]]) \
         -> NipcResponse[Optional[NipcReturnClass]]:
         """Handle successful responses."""
         if return_class is None:
-            return NipcResponse[None](http=http, body=None)        
+            return NipcResponse[None](http=http, body=None)
         try:
             body = return_class.model_validate_json(response.text)
             return NipcResponse[Optional[NipcReturnClass]](http=http, body=body)
@@ -248,10 +247,10 @@ class AbstractHttpClient:
 
     def _serialize_body(self, body: Optional[Union[BaseModel, List[BaseModel]]]) -> Optional[str]:
         """Serialize body parameter to JSON string.
-        
+
         Args:
             body: Either a single BaseModel, a list of BaseModel instances, or None
-            
+
         Returns:
             JSON string representation of the body, or None if body is None
         """
