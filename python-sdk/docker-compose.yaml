@@ -5,7 +5,7 @@
 
 services:
   tiedie-sample-app:
-    image: tiedie-sample-app:latest
+    image: containers.cisco.com/iot_services/tiedie-sample-app:latest 
     build:
       context: .
       dockerfile: ./Dockerfile

@@ -13,7 +13,7 @@ registration processes.
 
 """
 
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Union
 
 import urllib.parse as url_parse
 
@@ -34,11 +34,12 @@ from tiedie.models.requests import (
 from tiedie.models.responses import (
     BleDiscoverResponse,
     ModelRegistrationResponse,
+    ProblemDetails,
     PropertyResponse,
+    PropertyWriteResponse,
     TiedieDeviceResponse,
     TiedieEventResponse,
-    TiedieEventsResponse,
-    TiedieResponse,
+    NipcResponse,
     ValueResponse,
     DataAppRegistration
 )
@@ -60,7 +61,7 @@ class ControlClient(AbstractHttpClient):
                 request: BleConnectRequest = BleConnectRequest(),
                 retries=3,
                 retry_multiple_aps=True) \
-            -> TiedieResponse[Optional[Sequence[DataParameter]]]:
+            -> NipcResponse[Optional[Sequence[DataParameter]]]:
         """Initiates a connection with an IoT device and retrieves GATT
         services.
 
@@ -90,68 +91,70 @@ class ControlClient(AbstractHttpClient):
             retries=retries,
             retry_multiple_aps=retry_multiple_aps)
 
-        ble_discover_response = self.post_with_tiedie_response(
-            f'/{device.device_id}/action/connection', tiedie_request, BleDiscoverResponse)
+        ble_discover_response = self.post_with_nipc_response(
+            f'/devices/{device.device_id}/manage/connection', tiedie_request, BleDiscoverResponse)
 
-        tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
+        # Handle success case: extract parameter list from BLE discovery response
+        if ble_discover_response.is_success and isinstance(ble_discover_response.body, BleDiscoverResponse):
+            if ble_discover_response.body.protocol_map is not None and ble_discover_response.body.protocol_map != []:
+                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+                return NipcResponse[Optional[Sequence[DataParameter]]](
+                    http=ble_discover_response.http,
+                    body=parameter_list
+                )
+
+        # Handle error case or empty response
+        return NipcResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
-            status=ble_discover_response.status,
-            detail=ble_discover_response.detail,
-            nipc_status=ble_discover_response.nipc_status,
+            error=ble_discover_response.error,
+            body=None
         )
-        if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
-                ble_discover_response.body.protocol_map is not None and \
-                ble_discover_response.body.protocol_map != []:
-            parameter_list = ble_discover_response.body.to_parameter_list(
-                device.device_id)
-            tiedie_response.body = parameter_list
 
-        return tiedie_response
-
-    def disconnect(self, device: Device):
+    def disconnect(self, device: Device) -> NipcResponse[Optional[TiedieDeviceResponse]]:
         """ Disconnects from a connected IoT device. """
-        return self.delete_with_tiedie_response(f'/{device.device_id}/action/connection',
-                                                None, TiedieDeviceResponse)
+        return self.delete_with_nipc_response(f'/devices/{device.device_id}/manage/connection',
+                                             None, TiedieDeviceResponse)
 
-    def get_connection(self, device: Device) -> TiedieResponse[Optional[Sequence[DataParameter]]]:
+    def get_connection(self, device: Device) -> NipcResponse[Optional[Sequence[DataParameter]]]:
         """ Retrieves the connection status of an IoT device.
 
         Args:
             device (Device): The device to retrieve the connection status for.
 
         Returns:
-            TiedieResponse[Optional[Sequence[DataParameter]]]: The `TieDieResponse` object contains
+            NipcResponse[Optional[Sequence[DataParameter]]]: The NIPC response object contains
             the state of the request. 
             A list of DataParameter objects is present if the service discovery was successful.
         """
         if device.device_id is None:
             raise ValueError("Device ID is required for connection")
 
-        ble_discover_response = self.get_with_tiedie_response(
-            f'/{device.device_id}/action/connection',
+        ble_discover_response = self.get_with_nipc_response(
+            f'/devices/{device.device_id}/manage/connection',
             None, BleDiscoverResponse
         )
 
-        tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
+        # Handle success case: extract parameter list from BLE discovery response
+        if ble_discover_response.is_success and isinstance(ble_discover_response.body, BleDiscoverResponse):
+            if ble_discover_response.body.protocol_map is not None and ble_discover_response.body.protocol_map != []:
+                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+                return NipcResponse[Optional[Sequence[DataParameter]]](
+                    http=ble_discover_response.http,
+                    body=parameter_list
+                )
+        
+        # Handle error case or empty response
+        return NipcResponse[Optional[Sequence[DataParameter]]](
             http=ble_discover_response.http,
-            status=ble_discover_response.status,
-            detail=ble_discover_response.detail,
-            nipc_status=ble_discover_response.nipc_status,
+            error=ble_discover_response.error,
+            body=None
         )
-        if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
-                ble_discover_response.body.protocol_map is not None and \
-                ble_discover_response.body.protocol_map != []:
-            parameter_list = ble_discover_response.body.to_parameter_list(
-                device.device_id)
-            tiedie_response.body = parameter_list
-
-        return tiedie_response
 
     def discover(self, device: Device,
                  request=BleConnectRequest(),
                  retries=3,
                  retry_multiple_aps=True) \
-            -> TiedieResponse[Optional[Sequence[DataParameter]]]:
+            -> NipcResponse[Optional[Sequence[DataParameter]]]:
         """Discovers services and characteristics of an IoT device. 
 
         Raises:
@@ -166,7 +169,7 @@ class ControlClient(AbstractHttpClient):
                 access points.
 
         Returns:
-            TiedieResponse[Optional[Sequence[DataParameter]]]: The `TieDieResponse` object contains
+            NipcResponse[Optional[Sequence[DataParameter]]]: The NIPC response object contains
             the state of the request. 
             A list of DataParameter objects is present if the service discovery was successful.
         """
@@ -179,25 +182,29 @@ class ControlClient(AbstractHttpClient):
             retry_multiple_aps=retry_multiple_aps
         )
 
-        ble_discover_response = self.put_with_tiedie_response(
-        f'/{device.device_id}/action/connection', tiedie_request, BleDiscoverResponse)
-        tiedie_response = TiedieResponse[Optional[Sequence[DataParameter]]](
-            http=ble_discover_response.http,
-            status=ble_discover_response.status,
-            detail=ble_discover_response.detail,
-            nipc_status=ble_discover_response.nipc_status,
-        )
-        if isinstance(ble_discover_response.body, BleDiscoverResponse) and \
-                ble_discover_response.body.protocol_map is not None and \
-                ble_discover_response.body.protocol_map != []:
-            parameter_list = ble_discover_response.body.to_parameter_list(
-                device.device_id)
-            tiedie_response.body = parameter_list
+        ble_discover_response = self.put_with_nipc_response(
+            f'/devices/{device.device_id}/manage/connection', tiedie_request, BleDiscoverResponse)
 
-        return tiedie_response
+        # Handle success case: extract parameter list from BLE discovery response
+        if ble_discover_response.is_success and \
+            isinstance(ble_discover_response.body, BleDiscoverResponse):
+            if ble_discover_response.body.protocol_map is not None and \
+                ble_discover_response.body.protocol_map != []:
+                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+                return NipcResponse[Optional[Sequence[DataParameter]]](
+                    http=ble_discover_response.http,
+                    body=parameter_list
+                )
+
+        # Handle error case or empty response
+        return NipcResponse[Optional[Sequence[DataParameter]]](
+            http=ble_discover_response.http,
+            error=ble_discover_response.error,
+            body=None
+        )
 
     def read(self, device: Device, service_id: str, characteristic_id: str) \
-            -> TiedieResponse[Optional[ValueResponse]]:
+            -> NipcResponse[Optional[ValueResponse]]:
         """ Reads a value from a GATT characteristic of an IoT device.
 
         Args:
@@ -207,20 +214,20 @@ class ControlClient(AbstractHttpClient):
                 characteristic.
 
         Returns:
-            ValueResponse: The response object containing the value.
+            NipcResponse[Optional[ValueResponse]]: The NIPC response object containing the value.
         """
         tiedie_request = \
             TiedieReadRequest(protocol_map=PropertyProtocolMap(
                 ble=BlePropertyProtocolMap(
                     service_id=service_id,
                     characteristic_id=characteristic_id)))
-        return self.post_with_tiedie_response(f"/{device.device_id}/action/property/read",
-                                              tiedie_request, ValueResponse)
+        return self.post_with_nipc_response(f"/extensions/{device.device_id}/properties/read",
+                                           tiedie_request, ValueResponse)
 
     def write(self, device: Device,
               service_id: str,
               characteristic_id: str,
-              value: str) -> TiedieResponse[Optional[ValueResponse]]:
+              value: str) -> NipcResponse[Optional[ValueResponse]]:
         """ Writes a value to a GATT characteristic of an IoT device.
 
         Args:
@@ -231,19 +238,19 @@ class ControlClient(AbstractHttpClient):
             value (str): The value to write.
 
         Returns:
-            ValueResponse: The response object containing the value.
+            NipcResponse[Optional[ValueResponse]]: The NIPC response object containing the value.
         """
         tiedie_request = TiedieWriteRequest(protocol_map=PropertyProtocolMap(
                 ble=BlePropertyProtocolMap(
                     service_id=service_id,
                     characteristic_id=characteristic_id)),
                                             value=value)
-        return self.post_with_tiedie_response(f"/{device.device_id}/action/property/write",
-                                              tiedie_request, ValueResponse)
+        return self.post_with_nipc_response(f"/extensions/{device.device_id}/properties/write",
+                                           tiedie_request, ValueResponse)
 
     def read_property(self,
                       device: str,
-                      sdf_name: str) -> TiedieResponse[Optional[PropertyResponse]]:
+                      sdf_name: str) -> NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]:
         """ Reads a property from a device.
 
         Args:
@@ -251,18 +258,20 @@ class ControlClient(AbstractHttpClient):
             sdf_name (str): The SDF reference of an SDF property to read.
 
         Returns:
-            TiedieResponse[PropertyResponse]: The response object containing
+            NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]: The NIPC response object containing
               the value of the property.
         """
-        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
-        return self.get_with_tiedie_response(f"/{device}/property/{encoded_sdf_name}",
-                                             None,
-                                             PropertyResponse)
+        encoded_sdf_name = url_parse.quote(sdf_name)
+        return self.get_with_nipc_response(
+            f"/devices/{device}/properties?propertyName={encoded_sdf_name}",
+            None,
+            RootModel[List[Union[PropertyResponse, ProblemDetails]]]
+        )
 
     def write_property(self,
                         device: str,
                         sdf_name: str,
-                        value: bytes) -> TiedieResponse[Optional[PropertyResponse]]:
+                        value: str) -> NipcResponse[Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]]:
         """ Writes a property to a device.
 
         Args:
@@ -271,13 +280,14 @@ class ControlClient(AbstractHttpClient):
             value (str): The value to write in bytes.
 
         Returns:
-            TiedieResponse[PropertyResponse]: The response object containing 
+            NipcResponse[Optional[List[Union[PropertyWriteResponse, ProblemDetails]]]]: The NIPC response object containing 
             the value of the property.
         """
-        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
-        return self.put_with_tiedie_response(f"/{device}/property/{encoded_sdf_name}",
-                                              PropertyWriteRequest(value=value),
-                                              PropertyResponse)
+        return self.put_with_nipc_response(
+            f"/devices/{device}/properties",
+            [PropertyWriteRequest(property=sdf_name, value=value)],
+            RootModel[List[Union[PropertyWriteResponse, ProblemDetails]]]
+        )
 
 
     def register_sdf_model(self, model: SdfModel):
@@ -291,8 +301,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.post_with_tiedie_response("/registration/model",
-                                              model, ModelRegistrationResponse)
+        return self.post_with_nipc_response("/registration/model",
+                                              model, RootModel[List[ModelRegistrationResponse]])
 
     def update_sdf_model(self, sdf_name: str, model: SdfModel):
         """ Updates a SDF model for an IoT device.
@@ -305,7 +315,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.put_with_tiedie_response(f"/registration/model/{sdf_name}",
+        encoded_sdf_name = url_parse.quote(sdf_name)
+        return self.put_with_nipc_response(f"/registration/model?sdfName={encoded_sdf_name}",
                                               model, ModelRegistrationResponse)
 
 
@@ -333,8 +344,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
-        return self.get(f"/registration/model/{encoded_sdf_name}", SdfModel)
+        encoded_sdf_name = url_parse.quote(sdf_name)
+        return self.get(f"/registration/model?sdfName={encoded_sdf_name}", SdfModel)
 
     def unregister_sdf_model(self, sdf_name: str):
         """ Unregisters a SDF model for an IoT device.
@@ -347,8 +358,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        encoded_sdf_name = url_parse.quote(sdf_name, safe='')
-        return self.delete_with_tiedie_response(f"/registration/model/{encoded_sdf_name}",
+        encoded_sdf_name = url_parse.quote(sdf_name)
+        return self.delete_with_nipc_response(f"/registration/model?sdfName={encoded_sdf_name}",
                                                 None, ModelRegistrationResponse)
 
     def get_data_app(self, data_app_id: str):
@@ -361,8 +372,8 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.get_with_tiedie_response(
-            f"/registration/data-app/{data_app_id}",
+        return self.get_with_nipc_response(
+            f"/registration/data-app?dataAppId={data_app_id}",
             None,
             DataAppRegistration
         )
@@ -377,7 +388,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.post_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+        return self.post_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
                                               data_app, DataAppRegistration)
 
     def update_data_app(self, data_app_id: str, data_app: DataAppRegistration):
@@ -390,7 +401,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.put_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+        return self.put_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
                                               data_app, DataAppRegistration)
 
     def delete_data_app(self, data_app_id: str):
@@ -403,12 +414,12 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing 
                 the status of the request.
         """
-        return self.delete_with_tiedie_response(f"/registration/data-app/{data_app_id}",
+        return self.delete_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
                                                 None, DataAppRegistration)
 
     def enable_event(self,
                      device_id: str,
-                     event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+                     event: str) -> NipcResponse[Optional[str]]:
         """Enable event reporting for a specific device and event.
 
         Args:
@@ -416,59 +427,59 @@ class ControlClient(AbstractHttpClient):
             event (str): The event name to enable.
 
         Returns:
-            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+            NipcResponse[Optional[str]]: NIPC response object.
         """
-        encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.post_with_tiedie_response(
-            f"/{device_id}/event/{encoded_sdf_name}",
+        encoded_sdf_name = url_parse.quote(event)
+        resp = self.post_with_nipc_response(
+            f"/devices/{device_id}/events?eventName={encoded_sdf_name}",
             None,
-            TiedieEventResponse
+            None
         )
+        resp.body = resp.http.headers.get('Location').split('?instanceId=')[1]
+        return resp
 
     def disable_event(self,
                       device_id: str,
-                      event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+                      instance_id: str) -> NipcResponse[None]:
         """Disable event reporting for a specific device and event.
 
         Args:
             device_id (str): The unique identifier of the device.
-            event (str): The event name to disable.
+            instance_id (str): The unique identifier of the event.
 
         Returns:
-            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+            NipcResponse[None]: NIPC response object.
         """
-        encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.delete_with_tiedie_response(
-            f"/{device_id}/event/{encoded_sdf_name}",
+        return self.delete_with_nipc_response(
+            f"/devices/{device_id}/events?instanceId={instance_id}",
             None,
-            TiedieEventResponse)
+            None)
 
     def get_event(self,
                   device_id: str,
-                  event: str) -> TiedieResponse[Optional[TiedieEventResponse]]:
+                  instance_id: str) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
         """Retrieve the status of a specific event for a device.
 
         Args:
             device_id (str): The unique identifier of the device.
-            event (str): The event name to check.
+            instance_id (str): The unique identifier of the event.
 
         Returns:
-            TiedieResponse[Optional[TiedieEventResponse]]: Response object.
+            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
         """
-        encoded_sdf_name = url_parse.quote(event, safe='')
-        return self.get_with_tiedie_response(
-            f"/{device_id}/event/{encoded_sdf_name}",
+        return self.get_with_nipc_response(
+            f"/devices/{device_id}/events?instanceId={instance_id}",
             None,
-            TiedieEventResponse
+            RootModel[List[TiedieEventResponse]]
         )
 
-    def get_all_events(self, device_id: str) -> TiedieResponse[Optional[TiedieEventsResponse]]:
+    def get_all_events(self, device_id: str) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
         """Retrieve the status of all events for a device.
 
         Args:
             device_id (str): The unique identifier of the device.
 
         Returns:
-            TiedieResponse[Optional[List[TiedieEventResponse]]]: Response object.
+            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
         """
-        return self.get_with_tiedie_response(f"/{device_id}/event", None, TiedieEventsResponse)
+        return self.get_with_nipc_response(f"/devices/{device_id}/events", None, RootModel[List[TiedieEventResponse]])

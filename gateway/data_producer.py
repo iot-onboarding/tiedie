@@ -131,12 +131,13 @@ class DataProducer:
             if device is None:
                 return
 
+
             ble_connection = {
                 "deviceID": str(device.device_id),
                 "bleConnectionStatus": {
                     "macAddress": address,
                     "connected": connected,
-                    "reason": evt.reason,
+                    "reason": getattr(evt, "reason", None),
                 }
             }
 

@@ -395,7 +395,7 @@ def get_device(device_id):
     events = []
     response = app.control_client.get_all_events(device_id)
     if response.http and response.http.status_code == 200 and response.body is not None:
-        events = [response.event for response in response.body.events]
+        events = [resp for resp in response.body.root]
 
     return render_template(
         "device.html",
@@ -540,8 +540,11 @@ def write_property(device_id):
         )
 
     property_name = request.json["sdfName"]
-    value = request.json["value"]
-    response = app.control_client.write_property(device_id, property_name, value)
+    value_b64 = request.json["value"]
+    print(value_b64)
+    value_in_bytes = base64.b64decode(value_b64)
+    print(value_in_bytes)
+    response = app.control_client.write_property(device_id, property_name, value_b64)
 
     return response.body.model_dump_json() if response.body else ""
 
@@ -616,6 +619,7 @@ def register_event(device_id: str):
 
     sdf_name = request.json["sdfName"]
     enable = request.json["enable"]
+    instance_id = request.json.get("instanceId", None)
 
     if enable:
         update_data_app(sdf_name, enable)
@@ -623,12 +627,12 @@ def register_event(device_id: str):
     if enable:
         response = app.control_client.enable_event(device_id, sdf_name)
     else:
-        response = app.control_client.disable_event(device_id, sdf_name)
+        response = app.control_client.disable_event(device_id, instance_id)
 
-    if response.http and response.http.status_code == 200 and not enable:
+    if response.http and response.http.status_code == 201 and not enable:
         update_data_app(sdf_name, enable)
 
-    return response.body.model_dump_json() if response.body else ""
+    return response
 
 
 if __name__ == '__main__':

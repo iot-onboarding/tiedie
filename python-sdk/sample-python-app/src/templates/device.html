@@ -172,8 +172,9 @@ SPDX-License-Identifier: Apache-2.0
                                 <p class="ble-sdf-property">{{path}}/sdfEvent/{{event_name}}</p>
                             </td>
                             <td class="text-end">
-                                {% if sdf_name in events %}
-                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ sdf_name }}')">Disable Event</button>
+                                {% if events is defined and events|selectattr('event', 'equalto', sdf_name)|list|length > 0 %}
+                                    {% set ev = events|selectattr('event', 'equalto', sdf_name)|list|first %}
+                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ ev.event }}', '{{ ev.instance_id }}')">Disable Event</button>
                                 {% else %}
                                     <button type="submit" class="btn btn-warning" onclick="enableEvent('{{ device.device_id }}', '{{ sdf_name }}')">Enable Event</button>
                                 {% endif %}
@@ -391,7 +392,7 @@ SPDX-License-Identifier: Apache-2.0
                     .then(response => response.json())
                     .then(data => {
                         console.log(data);
-                        const bytes = atob(data.value);
+                        const bytes = atob(data[0].value);
                         const hex = bytes.split('').map(function (c) {
                             return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
                         }).join('');
@@ -419,9 +420,8 @@ SPDX-License-Identifier: Apache-2.0
                     })
                 })
                     .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        const bytes = atob(data.value);
+                    .then(() => {
+                        const bytes = atob(value);
                         const hex = bytes.split('').map(function (c) {
                             return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
                         }).join('');
@@ -443,14 +443,13 @@ SPDX-License-Identifier: Apache-2.0
                         "enable": true
                     })
                 })
-                    .then(response => response.json())
                     .then(data => {
                         console.log(data);
                         window.location.reload();
                     });
             }
 
-            function disableEvent(id, sdfName) {
+            function disableEvent(id, sdfName, instanceId) {
                 console.log("disableEvent: " + sdfName + ", " + id);
 
                 fetch(`/devices/${id}/event`, {
@@ -460,10 +459,10 @@ SPDX-License-Identifier: Apache-2.0
                     },
                     body: JSON.stringify({
                         "sdfName": sdfName,
-                        "enable": false
+                        "enable": false,
+                        "instanceId": instanceId
                     })
                 })
-                    .then(response => response.json())
                     .then(data => {
                         console.log(data);
                         window.location.reload();

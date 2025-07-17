@@ -59,8 +59,8 @@ def ble_create_device(schemas,entry,request,device_id,update=False):
         separate_broadcast_address = ble_json.get("separateBroadcastAddress", []),
         irk = ble_json.get("irk", ""),
         pairing_methods = ble_json.get("pairingMethods", []),
-        pairing_null = ble_json.get(
-                "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device"),
+        pairing_null = "{}" if ble_json.get(
+                "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device") else None,
         pairing_just_works_keys=pairing_just_works_key,
         pairing_pass_key=pairing_pass_key,
         pairing_oob_key=pairing_oob_key,
@@ -83,8 +83,8 @@ def ble_update_device(parent,request):
     entry.device_mac_address = ble_json.get("deviceMacAddress")
     entry.is_random = ble_json.get("isRandom")
     entry.pairing_methods = ble_json.get("pairingMethods")
-    entry.pairing_null = ble_json.get(
-        "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device")
+    entry.pairing_null = "{}" if ble_json.get(
+        "urn:ietf:params:scim:schemas:extension:pairingNull:2.0:Device") else None
     entry.pairing_just_works_key = ble_json.get(
         "urn:ietf:params:scim:schemas:extension:pairingJustWorks:2.0:Device").get("key")
     entry.pairing_pass_key = ble_json.get(

@@ -154,4 +154,5 @@ class PropertyWriteRequest(BaseModel):
     """ Object with property write request """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
+    property: str = Field(alias=str("property"))
     value: Base64Bytes
