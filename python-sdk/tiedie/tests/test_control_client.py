@@ -68,7 +68,7 @@ def test_connect(mock_server: responses.RequestsMock,
 
     body = json.dumps({
         "id": device_id,
-        "protocolMap": {
+        "sdfProtocolMap": {
             "ble": {
                 "services": [
                     {
@@ -134,14 +134,14 @@ def test_connect(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "protocolMap": {
+                "sdfProtocolMap": {
                     "ble": {}
                 },
                 "retries": 3,
                 "retryMultipleAPs": True,
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -197,7 +197,7 @@ def test_disconnect(mock_server: responses.RequestsMock,
         f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
         body=body,
         status=200,
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -226,7 +226,7 @@ def test_discovery(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "protocolMap": {
+        "sdfProtocolMap": {
             "ble": {
                 "services": [
                     {
@@ -292,14 +292,14 @@ def test_discovery(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "protocolMap": {
+                "sdfProtocolMap": {
                     "ble": {}
                 },
                 "retries": 3,
                 "retryMultipleAPs": True
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -356,7 +356,7 @@ def test_read(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "protocolMap": {
+                "sdfProtocolMap": {
                     "ble": {
                         "serviceID": "1800",
                         "characteristicID": "2a00"
@@ -364,7 +364,7 @@ def test_read(mock_server: responses.RequestsMock,
                 }
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -408,7 +408,7 @@ def test_write(mock_server: responses.RequestsMock,
         match=[
             matchers.json_params_matcher({
                 "value": "00001111",
-                "protocolMap": {
+                "sdfProtocolMap": {
                     "ble": {
                         "serviceID": "1800",
                         "characteristicID": "2a00"
@@ -416,7 +416,7 @@ def test_write(mock_server: responses.RequestsMock,
                 }
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -455,7 +455,7 @@ def test_register_sdf_model(mock_server: responses.RequestsMock, control_client:
                         "observable": True,
                         "readable": True,
                         "writable": True,
-                        "protocolMap": {
+                        "sdfProtocolMap": {
                             "ble": {
                                 "serviceID": "1809",
                                 "characteristicID": "2A1C"
@@ -470,11 +470,11 @@ def test_register_sdf_model(mock_server: responses.RequestsMock, control_client:
         "sdfName": "https://example.com/thermometer#/sdfObject/healthsensor"
     }], separators=(',', ':'))
     mock_server.post(
-        "https://control.example.com/nipc/registration/model",
+        "https://control.example.com/nipc/registrations/models",
         body=body,
         status=200,
         match=[matchers.json_params_matcher(sdf_model_data)],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
     sdf_model = SdfModel(**sdf_model_data)
     response = control_client.register_sdf_model(sdf_model)
@@ -501,7 +501,7 @@ def test_property_read_api(mock_server: responses.RequestsMock, control_client: 
         f"?propertyName={encoded_property_ref}",
         body=body,
         status=200,
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
     response = control_client.read_property(device_id, property_ref)
 
@@ -532,7 +532,7 @@ def test_property_write_api(mock_server: responses.RequestsMock, control_client:
         body=resp_body,
         status=200,
         match=[matchers.json_params_matcher(req_body)],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
     response = control_client.write_property(device_id, property_ref, value)
 
@@ -549,19 +549,19 @@ def test_register_data_app(mock_server: responses.RequestsMock, control_client: 
     event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
     req_body = {
         "events": [{"event": event_ref}],
-        "mqttClient": {}
+        "mqttClient": True
     }
     resp_body = json.dumps(req_body, separators=(',', ':'))
     mock_server.post(
-        f"https://control.example.com/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"https://control.example.com/nipc/registrations/data-apps?dataAppId={data_app_id}",
         body=resp_body,
         status=200,
         match=[matchers.json_params_matcher(req_body)],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
     data_app = DataAppRegistration(
         events=[Event(event=event_ref)],
-        mqtt_client={},
+        mqtt_client=True,
     )
     response = control_client.create_data_app(data_app_id, data_app)
 
@@ -592,7 +592,7 @@ def test_enable_event(mock_server: responses.RequestsMock, control_client: Contr
         body="",
         status=200,
         headers={"Location": location_header},
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
     response = control_client.enable_event(device_id, event_ref)
 

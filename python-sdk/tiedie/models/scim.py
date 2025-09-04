@@ -126,6 +126,8 @@ class EndpointApp(BaseModel):
     """ Stores information about an endpoint application. """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
+    schemas: list[str] = ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"]
+
     application_id: Optional[str] = Field(alias=str("id"), default=None)
     application_type: EndpointAppType
     application_name: str
