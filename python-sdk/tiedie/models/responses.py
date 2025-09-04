@@ -29,45 +29,45 @@ class NipcProblemTypes(str, Enum):
     Section 6 and IANA registry Section 10.4.
     """
     # Base URI for IANA HTTP Problem Types registry
-    _IANA_BASE = "https://www.iana.org/assignments/http-problem-types#"
+    _IANA_BASE = "https://www.iana.org/assignments/nipc-problem-types#"
 
     # Generic errors
-    INVALID_ID = _IANA_BASE + "nipc-invalid-id"
-    INVALID_SDF_URL = _IANA_BASE + "nipc-invalid-sdf-url"
-    EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "nipc-extension-operation-not-executed"
-    SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "nipc-sdf-model-already-registered"
-    SDF_MODEL_IN_USE = _IANA_BASE + "nipc-sdf-model-in-use"
+    INVALID_ID = _IANA_BASE + "invalid-id"
+    INVALID_SDF_URL = _IANA_BASE + "invalid-sdf-url"
+    EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "extension-operation-not-executed"
+    SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "sdf-model-already-registered"
+    SDF_MODEL_IN_USE = _IANA_BASE + "sdf-model-in-use"
 
     # Property API errors
-    PROPERTY_NOT_READABLE = _IANA_BASE + "nipc-property-not-readable"
-    PROPERTY_NOT_WRITABLE = _IANA_BASE + "nipc-property-not-writable"
+    PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
+    PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
 
     # Event API errors
-    EVENT_ALREADY_ENABLED = _IANA_BASE + "nipc-event-already-enabled"
-    EVENT_NOT_ENABLED = _IANA_BASE + "nipc-event-not-enabled"
-    EVENT_NOT_REGISTERED = _IANA_BASE + "nipc-event-not-registered"
+    EVENT_ALREADY_ENABLED = _IANA_BASE + "event-already-enabled"
+    EVENT_NOT_ENABLED = _IANA_BASE + "event-not-enabled"
+    EVENT_NOT_REGISTERED = _IANA_BASE + "event-not-registered"
 
     # Protocol specific errors - BLE
-    PROTOCOLMAP_BLE_ALREADY_CONNECTED = _IANA_BASE + "nipc-protocolmap-ble-already-connected"
-    PROTOCOLMAP_BLE_NO_CONNECTION = _IANA_BASE + "nipc-protocolmap-ble-no-connection"
-    PROTOCOLMAP_BLE_CONNECTION_TIMEOUT = _IANA_BASE + "nipc-protocolmap-ble-connection-timeout"
-    PROTOCOLMAP_BLE_BONDING_FAILED = _IANA_BASE + "nipc-protocolmap-ble-bonding-failed"
-    PROTOCOLMAP_BLE_CONNECTION_FAILED = _IANA_BASE + "nipc-protocolmap-ble-connection-failed"
+    PROTOCOLMAP_BLE_ALREADY_CONNECTED = _IANA_BASE + "protocolmap-ble-already-connected"
+    PROTOCOLMAP_BLE_NO_CONNECTION = _IANA_BASE + "protocolmap-ble-no-connection"
+    PROTOCOLMAP_BLE_CONNECTION_TIMEOUT = _IANA_BASE + "protocolmap-ble-connection-timeout"
+    PROTOCOLMAP_BLE_BONDING_FAILED = _IANA_BASE + "protocolmap-ble-bonding-failed"
+    PROTOCOLMAP_BLE_CONNECTION_FAILED = _IANA_BASE + "protocolmap-ble-connection-failed"
     PROTOCOLMAP_BLE_SERVICE_DISCOVERY_FAILED = _IANA_BASE + \
-        "nipc-protocolmap-ble-service-discovery-failed"
+        "protocolmap-ble-service-discovery-failed"
     PROTOCOLMAP_BLE_INVALID_SERVICE_OR_CHARACTERISTIC = _IANA_BASE + \
-        "nipc-protocolmap-ble-invalid-service-or-characteristic"
+        "protocolmap-ble-invalid-service-or-characteristic"
 
     # Protocol specific errors - Zigbee
     PROTOCOLMAP_ZIGBEE_CONNECTION_TIMEOUT = \
-        _IANA_BASE + "nipc-protocolmap-zigbee-connection-timeout"
+        _IANA_BASE + "protocolmap-zigbee-connection-timeout"
     PROTOCOLMAP_ZIGBEE_INVALID_ENDPOINT_OR_CLUSTER = \
-        _IANA_BASE + "nipc-protocolmap-zigbee-invalid-endpoint-or-cluster"
+        _IANA_BASE + "protocolmap-zigbee-invalid-endpoint-or-cluster"
 
     # Extension API errors
-    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "nipc-extension-broadcast-invalid-data"
-    EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "nipc-extension-firmware-rollback"
-    EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "nipc-extension-firmware-update-failed"
+    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "extension-broadcast-invalid-data"
+    EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "extension-firmware-rollback"
+    EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "extension-firmware-update-failed"
 
     # RFC 9457 generic error for internal server errors
     ABOUT_BLANK = "about:blank"
@@ -156,13 +156,13 @@ class BleDiscoverResponse(SuccessResponse):
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    protocol_map: BleServiceProtocolMap
+    sdf_protocol_map: BleServiceProtocolMap
 
     def to_parameter_list(self, device_id: str) -> List[BleDataParameter]:
         """ Create a generic parameter list from the services and characteristics. """
         parameter_list: List[BleDataParameter] = []
 
-        for service in self.protocol_map.ble:
+        for service in self.sdf_protocol_map.ble:
             if service.characteristics is None:
                 continue
             for characteristic in service.characteristics:
@@ -228,7 +228,7 @@ class DataAppRegistration(SuccessResponse):
 
     events: List[Event]
 
-    mqtt_client: Optional[dict] = None
+    mqtt_client: Optional[bool] = False
     mqtt_broker: Optional[MqttBrokerConfig] = None
 
 class TiedieEventResponse(SuccessResponse):

@@ -52,6 +52,7 @@ class AbstractHttpClient:
                 None
             )
 
+        logger.debug("Response HTTP status %d", response.status_code)
         logger.debug("Response headers: %s", response.headers)
         logger.debug("Response: %s", response.text)
 
@@ -272,11 +273,14 @@ class AbstractHttpClient:
     def post_with_nipc_response(self,
                            path: str,
                            body: Optional[Union[BaseModel, List[BaseModel]]],
-                           return_class: Optional[Type[NipcReturnClass]]) -> \
+                           return_class: Optional[Type[NipcReturnClass]],
+                           content_type: Optional[str] = "application/nipc+json") -> \
         NipcResponse[Optional[NipcReturnClass]]:
         """ API POST with NIPC response format """
 
         data = self._serialize_body(body)
+
+        self.headers['Content-Type'] = content_type
 
         logger.debug("POST %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
@@ -295,11 +299,14 @@ class AbstractHttpClient:
     def put_with_nipc_response(self,
                               path: str,
                               body: Union[BaseModel, List[BaseModel]],
-                              return_class: Optional[Type[NipcReturnClass]]) -> \
+                              return_class: Optional[Type[NipcReturnClass]],
+                              content_type: Optional[str] = "application/nipc+json") -> \
             NipcResponse[Optional[NipcReturnClass]]:
         """ API PUT with NIPC response format """
 
         data = self._serialize_body(body)
+
+        self.headers['Content-Type'] = content_type
 
         logger.debug("PUT %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)

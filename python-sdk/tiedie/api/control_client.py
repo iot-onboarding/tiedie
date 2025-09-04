@@ -53,7 +53,7 @@ class ControlClient(AbstractHttpClient):
     """ Performs IoT device control and data management operations. """
 
     def __init__(self, base_url: str, authenticator: Authenticator):
-        super().__init__(base_url, "application/json", authenticator)
+        super().__init__(base_url, "application/nipc+json", authenticator)
         self.base_url = base_url
         self.authenticator = authenticator
 
@@ -87,18 +87,18 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            protocol_map=BleConnectProtocolMap(ble=request),
+            sdf_protocol_map=BleConnectProtocolMap(ble=request),
             retries=retries,
             retry_multiple_aps=retry_multiple_aps)
 
         ble_discover_response = self.post_with_nipc_response(
-            f'/devices/{device.device_id}/manage/connection', tiedie_request, BleDiscoverResponse)
+            f'/devices/{device.device_id}/connections', tiedie_request, BleDiscoverResponse)
 
         # Handle success case: extract parameter list from BLE discovery response
         if (ble_discover_response.is_success and
                 isinstance(ble_discover_response.body, BleDiscoverResponse)):
-            protocol_map = ble_discover_response.body.protocol_map
-            if protocol_map is not None and protocol_map != []:
+            sdf_protocol_map = ble_discover_response.body.sdf_protocol_map
+            if sdf_protocol_map is not None and sdf_protocol_map != []:
                 parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
@@ -114,7 +114,7 @@ class ControlClient(AbstractHttpClient):
 
     def disconnect(self, device: Device) -> NipcResponse[Optional[TiedieDeviceResponse]]:
         """ Disconnects from a connected IoT device. """
-        return self.delete_with_nipc_response(f'/devices/{device.device_id}/manage/connection',
+        return self.delete_with_nipc_response(f'/devices/{device.device_id}/connections',
                                              None, TiedieDeviceResponse)
 
     def get_connection(self, device: Device) -> NipcResponse[Optional[Sequence[DataParameter]]]:
@@ -132,15 +132,15 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         ble_discover_response = self.get_with_nipc_response(
-            f'/devices/{device.device_id}/manage/connection',
+            f'/devices/{device.device_id}/connections',
             None, BleDiscoverResponse
         )
 
         # Handle success case: extract parameter list from BLE discovery response
         if (ble_discover_response.is_success and
                 isinstance(ble_discover_response.body, BleDiscoverResponse)):
-            protocol_map = ble_discover_response.body.protocol_map
-            if protocol_map is not None and protocol_map != []:
+            sdf_protocol_map = ble_discover_response.body.sdf_protocol_map
+            if sdf_protocol_map is not None and sdf_protocol_map != []:
                 parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
@@ -181,19 +181,19 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            protocol_map=BleConnectProtocolMap(ble=request),
+            sdf_protocol_map=BleConnectProtocolMap(ble=request),
             retries=retries,
             retry_multiple_aps=retry_multiple_aps
         )
 
         ble_discover_response = self.put_with_nipc_response(
-            f'/devices/{device.device_id}/manage/connection', tiedie_request, BleDiscoverResponse)
+            f'/devices/{device.device_id}/connections', tiedie_request, BleDiscoverResponse)
 
         # Handle success case: extract parameter list from BLE discovery response
         if ble_discover_response.is_success and \
             isinstance(ble_discover_response.body, BleDiscoverResponse):
-            if ble_discover_response.body.protocol_map is not None and \
-                ble_discover_response.body.protocol_map != []:
+            if ble_discover_response.body.sdf_protocol_map is not None and \
+                ble_discover_response.body.sdf_protocol_map != []:
                 parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
@@ -221,7 +221,7 @@ class ControlClient(AbstractHttpClient):
             NipcResponse[Optional[ValueResponse]]: The NIPC response object containing the value.
         """
         tiedie_request = \
-            TiedieReadRequest(protocol_map=PropertyProtocolMap(
+            TiedieReadRequest(sdf_protocol_map=PropertyProtocolMap(
                 ble=BlePropertyProtocolMap(
                     service_id=service_id,
                     characteristic_id=characteristic_id)))
@@ -244,7 +244,7 @@ class ControlClient(AbstractHttpClient):
         Returns:
             NipcResponse[Optional[ValueResponse]]: The NIPC response object containing the value.
         """
-        tiedie_request = TiedieWriteRequest(protocol_map=PropertyProtocolMap(
+        tiedie_request = TiedieWriteRequest(sdf_protocol_map=PropertyProtocolMap(
                 ble=BlePropertyProtocolMap(
                     service_id=service_id,
                     characteristic_id=characteristic_id)),
@@ -307,8 +307,9 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
-        return self.post_with_nipc_response("/registration/model",
-                                              model, RootModel[List[ModelRegistrationResponse]])
+        return self.post_with_nipc_response("/registrations/models",
+                                              model, RootModel[List[ModelRegistrationResponse]],
+                                              "application/sdf+json")
 
     def update_sdf_model(self, sdf_name: str, model: SdfModel):
         """ Updates a SDF model for an IoT device.
@@ -322,8 +323,9 @@ class ControlClient(AbstractHttpClient):
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
-        return self.put_with_nipc_response(f"/registration/model?sdfName={encoded_sdf_name}",
-                                              model, ModelRegistrationResponse)
+        return self.put_with_nipc_response(f"/registrations/models?sdfName={encoded_sdf_name}",
+                                              model, ModelRegistrationResponse,
+                                              "application/sdf+json")
 
 
     def get_sdf_models(self):
@@ -336,7 +338,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
-        return self.get("/registration/model",
+        return self.get("/registrations/models",
                             RootModel[List[ModelRegistrationResponse]])
 
     def get_sdf_model(self, sdf_name: str):
@@ -351,7 +353,7 @@ class ControlClient(AbstractHttpClient):
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
-        return self.get(f"/registration/model?sdfName={encoded_sdf_name}", SdfModel)
+        return self.get(f"/registrations/models?sdfName={encoded_sdf_name}", SdfModel)
 
     def unregister_sdf_model(self, sdf_name: str):
         """ Unregisters a SDF model for an IoT device.
@@ -365,7 +367,7 @@ class ControlClient(AbstractHttpClient):
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
-        return self.delete_with_nipc_response(f"/registration/model?sdfName={encoded_sdf_name}",
+        return self.delete_with_nipc_response(f"/registrations/models?sdfName={encoded_sdf_name}",
                                                 None, ModelRegistrationResponse)
 
     def get_data_app(self, data_app_id: str):
@@ -379,7 +381,7 @@ class ControlClient(AbstractHttpClient):
                 the status of the request.
         """
         return self.get_with_nipc_response(
-            f"/registration/data-app?dataAppId={data_app_id}",
+            f"/registrations/data-apps?dataAppId={data_app_id}",
             None,
             DataAppRegistration
         )
@@ -394,7 +396,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
-        return self.post_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
+        return self.post_with_nipc_response(f"/registrations/data-apps?dataAppId={data_app_id}",
                                               data_app, DataAppRegistration)
 
     def update_data_app(self, data_app_id: str, data_app: DataAppRegistration):
@@ -407,7 +409,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
-        return self.put_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
+        return self.put_with_nipc_response(f"/registrations/data-apps?dataAppId={data_app_id}",
                                               data_app, DataAppRegistration)
 
     def delete_data_app(self, data_app_id: str):
@@ -420,7 +422,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
-        return self.delete_with_nipc_response(f"/registration/data-app?dataAppId={data_app_id}",
+        return self.delete_with_nipc_response(f"/registrations/data-apps?dataAppId={data_app_id}",
                                                 None, DataAppRegistration)
 
     def enable_event(self,

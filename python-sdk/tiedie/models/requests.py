@@ -39,7 +39,7 @@ class TiedieReadRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    protocol_map: PropertyProtocolMap
+    sdf_protocol_map: PropertyProtocolMap
 
 
 class TiedieWriteRequest(TiedieReadRequest):
@@ -63,7 +63,7 @@ class TiedieConnectRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    protocol_map: BleConnectProtocolMap
+    sdf_protocol_map: BleConnectProtocolMap
     retries: Optional[int] = 3
     retry_multiple_aps: Optional[bool] = Field(alias=str("retryMultipleAPs"), default=True)
 
@@ -75,7 +75,7 @@ class SdfProperty(BaseModel):
     observable: Optional[bool] = True
     readable: Optional[bool] = True
     writable: Optional[bool] = True
-    protocol_map: PropertyProtocolMap
+    sdf_protocol_map: PropertyProtocolMap
 
 class GattEventProtocolMap(BaseModel):
     """ Object with GATT event protocol map """
@@ -109,7 +109,7 @@ class SdfOutputData(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     type: Optional[str] = None
-    protocol_map: EventProtocolMap
+    sdf_protocol_map: EventProtocolMap
 
 class SdfEvent(BaseModel):
     """ Object with SDF event """
@@ -123,7 +123,7 @@ class SdfAction(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     description: Optional[str] = None
-    protocol_map: PropertyProtocolMap
+    sdf_protocol_map: PropertyProtocolMap
 
 class SdfObject(BaseModel):
     """ Object with SDF object """
