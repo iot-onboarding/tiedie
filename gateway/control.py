@@ -1200,7 +1200,9 @@ def enable_event(device_id: str):
         gatt_char_id = None
         if event_type == "gatt":
             gatt_service_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["serviceID"]
-            gatt_char_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["characteristicID"]
+            gatt_char_id = (
+                protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["characteristicID"]
+            )
 
         instance_id = uuid.uuid4()
         # create event
