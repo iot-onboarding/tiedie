@@ -121,7 +121,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 125,
                                 "unit": "Cel",
                                 "writable": False,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a38"
@@ -134,7 +134,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 125,
                                 "unit": "Cel",
                                 "writable": True,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a39"
@@ -147,7 +147,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 100,
                                 "unit": "%",
                                 "writable": False,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a38"
@@ -159,7 +159,7 @@ def fixture_sdf_model(app: Flask):
                             "isPresent": {
                                 "description": "BLE advertisements",
                                 "sdfOutputData": {
-                                    "protocolMap": {
+                                    "sdfProtocolMap": {
                                         "ble": {
                                             "type": "advertisements"
                                         }
@@ -169,7 +169,7 @@ def fixture_sdf_model(app: Flask):
                             "isConnected": {
                                 "description": "BLE connection event",
                                 "sdfOutputData": {
-                                    "protocolMap": {
+                                    "sdfProtocolMap": {
                                         "ble": {
                                             "type": "connection_events"
                                         }
@@ -268,11 +268,11 @@ def fixture_registered_data_app(client: FlaskClient, data_app: dict, sdf_model: 
                 "event": event_name
             }
         ],
-        "mqttClient": {}
+        "mqttClient": True
     }
 
     response = client.post(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         json=data_app_registration,
         headers={
             "x-api-key": data_app_token

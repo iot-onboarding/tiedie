@@ -40,49 +40,49 @@ from tiedie_exceptions import SchemaError
 class NipcProblemTypes(str, Enum):
     """
     NIPC Problem Details error types as defined in the NIPC draft
-    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-09) 
+    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-12) 
     Section 6 and IANA registry Section 10.4.
     """
     # Base URI for IANA HTTP Problem Types registry
-    _IANA_BASE = "https://www.iana.org/assignments/http-problem-types#"
+    _IANA_BASE = "https://www.iana.org/assignments/nipc-problem-types#"
 
     # Generic errors
-    INVALID_ID = _IANA_BASE + "nipc-invalid-id"
-    INVALID_SDF_URL = _IANA_BASE + "nipc-invalid-sdf-url"
-    EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "nipc-extension-operation-not-executed"
-    SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "nipc-sdf-model-already-registered"
-    SDF_MODEL_IN_USE = _IANA_BASE + "nipc-sdf-model-in-use"
+    INVALID_ID = _IANA_BASE + "invalid-id"
+    INVALID_SDF_URL = _IANA_BASE + "invalid-sdf-url"
+    EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "extension-operation-not-executed"
+    SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "sdf-model-already-registered"
+    SDF_MODEL_IN_USE = _IANA_BASE + "sdf-model-in-use"
 
     # Property API errors
-    PROPERTY_NOT_READABLE = _IANA_BASE + "nipc-property-not-readable"
-    PROPERTY_NOT_WRITABLE = _IANA_BASE + "nipc-property-not-writable"
+    PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
+    PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
 
     # Event API errors
-    EVENT_ALREADY_ENABLED = _IANA_BASE + "nipc-event-already-enabled"
-    EVENT_NOT_ENABLED = _IANA_BASE + "nipc-event-not-enabled"
-    EVENT_NOT_REGISTERED = _IANA_BASE + "nipc-event-not-registered"
+    EVENT_ALREADY_ENABLED = _IANA_BASE + "event-already-enabled"
+    EVENT_NOT_ENABLED = _IANA_BASE + "event-not-enabled"
+    EVENT_NOT_REGISTERED = _IANA_BASE + "event-not-registered"
 
     # Protocol specific errors - BLE
-    PROTOCOLMAP_BLE_ALREADY_CONNECTED = _IANA_BASE + "nipc-protocolmap-ble-already-connected"
-    PROTOCOLMAP_BLE_NO_CONNECTION = _IANA_BASE + "nipc-protocolmap-ble-no-connection"
-    PROTOCOLMAP_BLE_CONNECTION_TIMEOUT = _IANA_BASE + "nipc-protocolmap-ble-connection-timeout"
-    PROTOCOLMAP_BLE_BONDING_FAILED = _IANA_BASE + "nipc-protocolmap-ble-bonding-failed"
-    PROTOCOLMAP_BLE_CONNECTION_FAILED = _IANA_BASE + "nipc-protocolmap-ble-connection-failed"
+    PROTOCOLMAP_BLE_ALREADY_CONNECTED = _IANA_BASE + "protocolmap-ble-already-connected"
+    PROTOCOLMAP_BLE_NO_CONNECTION = _IANA_BASE + "protocolmap-ble-no-connection"
+    PROTOCOLMAP_BLE_CONNECTION_TIMEOUT = _IANA_BASE + "protocolmap-ble-connection-timeout"
+    PROTOCOLMAP_BLE_BONDING_FAILED = _IANA_BASE + "protocolmap-ble-bonding-failed"
+    PROTOCOLMAP_BLE_CONNECTION_FAILED = _IANA_BASE + "protocolmap-ble-connection-failed"
     PROTOCOLMAP_BLE_SERVICE_DISCOVERY_FAILED = _IANA_BASE + \
-        "nipc-protocolmap-ble-service-discovery-failed"
+        "protocolmap-ble-service-discovery-failed"
     PROTOCOLMAP_BLE_INVALID_SERVICE_OR_CHARACTERISTIC = _IANA_BASE + \
-        "nipc-protocolmap-ble-invalid-service-or-characteristic"
+        "protocolmap-ble-invalid-service-or-characteristic"
 
     # Protocol specific errors - Zigbee
     PROTOCOLMAP_ZIGBEE_CONNECTION_TIMEOUT = \
-        _IANA_BASE + "nipc-protocolmap-zigbee-connection-timeout"
+        _IANA_BASE + "protocolmap-zigbee-connection-timeout"
     PROTOCOLMAP_ZIGBEE_INVALID_ENDPOINT_OR_CLUSTER = \
-        _IANA_BASE + "nipc-protocolmap-zigbee-invalid-endpoint-or-cluster"
+        _IANA_BASE + "protocolmap-zigbee-invalid-endpoint-or-cluster"
 
     # Extension API errors
-    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "nipc-extension-broadcast-invalid-data"
-    EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "nipc-extension-firmware-rollback"
-    EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "nipc-extension-firmware-update-failed"
+    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "extension-broadcast-invalid-data"
+    EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "extension-firmware-rollback"
+    EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "extension-firmware-update-failed"
 
     # RFC 9457 generic error for internal server errors
     ABOUT_BLANK = "about:blank"
@@ -162,7 +162,7 @@ def authenticate_user(func):
     return check_apikey
 
 
-@control_app.route('/devices/<device_id>/manage/connection', methods=['POST'])
+@control_app.route('/devices/<device_id>/connections', methods=['POST'])
 @authenticate_user
 def connect(device_id: str):
     """Connect to a device (NIPC Section 4.4.1)."""
@@ -189,7 +189,7 @@ def connect(device_id: str):
         retries = request.get_json().get("retries", retries)
         retry_multiple_aps = request.get_json().get("retryMultipleAPs", retry_multiple_aps)
 
-        protocol_map = request.get_json().get("protocolMap", {})
+        protocol_map = request.get_json().get("sdfProtocolMap", {})
         ble_config = protocol_map.get("ble", {})
         if ble_config:
             services = ble_config.get("services", [])
@@ -214,7 +214,7 @@ def connect(device_id: str):
 
         response_data = {
             "id": device_id,
-            "protocolMap": {
+            "sdfProtocolMap": {
                 "ble": [
                     {
                         "serviceID": svc.service_id,
@@ -248,7 +248,7 @@ def connect(device_id: str):
         )
 
 
-@control_app.route('/devices/<device_id>/manage/connection', methods=['PUT'])
+@control_app.route('/devices/<device_id>/connections', methods=['PUT'])
 @authenticate_user
 def update_connection(device_id: str):
     """Update cached ServiceMap for a device (NIPC Section 4.4.2)."""
@@ -279,7 +279,7 @@ def update_connection(device_id: str):
 
     # Parse request body if provided
     if request.is_json and request.json:
-        protocol_map = request.json.get("protocolMap", {})
+        protocol_map = request.json.get("sdfProtocolMap", {})
         ble_config = protocol_map.get("ble", {})
         if ble_config:
             services = [
@@ -300,7 +300,7 @@ def update_connection(device_id: str):
 
         response_data = {
             "id": device_id,
-            "protocolMap": {
+            "sdfProtocolMap": {
                 "ble": [
                     {
                         "serviceID": svc.service_id,
@@ -334,7 +334,7 @@ def update_connection(device_id: str):
         )
 
 
-@control_app.route('/devices/<device_id>/manage/connection', methods=['DELETE'])
+@control_app.route('/devices/<device_id>/connections', methods=['DELETE'])
 @authenticate_user
 def disconnect_from_device(device_id: str):
     """Disconnect from a device (NIPC Section 4.4.3)."""
@@ -366,7 +366,7 @@ def disconnect_from_device(device_id: str):
         )
 
 
-@control_app.route('/devices/<device_id>/manage/connection', methods=['GET'])
+@control_app.route('/devices/<device_id>/connections', methods=['GET'])
 @authenticate_user
 def get_connection_status(device_id: str):
     """Get connection status for a device (NIPC Section 4.4.4)."""
@@ -385,7 +385,7 @@ def get_connection_status(device_id: str):
         if conn:
             response_data = {
                 "id": device_id,
-                "protocolMap": {
+                "sdfProtocolMap": {
                     "ble": [
                         {
                             "serviceID": svc.service_id,
@@ -517,10 +517,10 @@ def extract_protocol_map(property_def: dict, protocol: str = 'ble') -> dict:
     Raises:
         ValueError: If protocol mapping not found
     """
-    if 'protocolMap' not in property_def:
+    if 'sdfProtocolMap' not in property_def:
         raise ValueError("Property does not have protocol mapping")
 
-    protocol_map = property_def['protocolMap']
+    protocol_map = property_def['sdfProtocolMap']
     if protocol not in protocol_map:
         raise ValueError(f"Protocol '{protocol}' not found in protocol mapping")
 
@@ -767,7 +767,7 @@ def write_properties(device_id: str):
             f"Unexpected error: {str(e)}"
         )
 
-@control_app.route('/registration/model', methods=['POST'])
+@control_app.route('/registrations/models', methods=['POST'])
 @authenticate_user
 def register_sdf_model():
     """Register an SDF model (NIPC draft-06 section 3.1.1)."""
@@ -823,7 +823,7 @@ def register_sdf_model():
         )
 
 
-@control_app.route('/registration/model', methods=['GET'])
+@control_app.route('/registrations/models', methods=['GET'])
 @authenticate_user
 def get_sdf_model():
     """Fetch a registered SDF model by sdfName (query parameter) or list all models."""
@@ -846,7 +846,7 @@ def get_sdf_model():
     return jsonify([m.serialize() for m in models]), HTTPStatus.OK
 
 
-@control_app.route('/registration/model', methods=['PUT'])
+@control_app.route('/registrations/models', methods=['PUT'])
 @authenticate_user
 def update_sdf_model():
     """
@@ -904,7 +904,7 @@ def update_sdf_model():
         )
 
 
-@control_app.route('/registration/model', methods=['DELETE'])
+@control_app.route('/registrations/models', methods=['DELETE'])
 @authenticate_user
 def delete_sdf_model():
     """Delete a registered SDF model by sdfName (query parameter)."""
@@ -930,7 +930,7 @@ def delete_sdf_model():
     session.commit()
     return jsonify({"sdfName": sdf_name}), HTTPStatus.OK
 
-@control_app.route('/registration/data-app', methods=['POST'])
+@control_app.route('/registrations/data-apps', methods=['POST'])
 @authenticate_user
 def register_data_app():
     """Register a data application (NIPC)."""
@@ -970,12 +970,12 @@ def register_data_app():
             navigate_sdf_model(model, path_components)
 
         mqtt_client = body.get('mqttClient')
-        if mqtt_client != {}:
+        if mqtt_client is not True:
             return create_nipc_problem_response(
                 NipcProblemTypes.ABOUT_BLANK,
                 HTTPStatus.BAD_REQUEST,
                 "Bad Request",
-                "Request body must contain an empty mqttClient"
+                "mqttClient must be true"
             )
 
         data_app = DataApp(data_app_id, [ev["event"] for ev in events])
@@ -992,7 +992,7 @@ def register_data_app():
         )
 
 
-@control_app.route('/registration/data-app', methods=['GET'])
+@control_app.route('/registrations/data-apps', methods=['GET'])
 @authenticate_user
 def get_data_app():
     """Get a data application (NIPC) by ID."""
@@ -1017,7 +1017,7 @@ def get_data_app():
 
         response_body = {
             "events": [{"event": event} for event in data_app.events],
-            "mqttClient": {}
+            "mqttClient": True
         }
         return jsonify(response_body), HTTPStatus.OK
     except Exception as e: # pylint: disable=broad-except
@@ -1030,7 +1030,7 @@ def get_data_app():
         )
 
 
-@control_app.route('/registration/data-app', methods=['PUT'])
+@control_app.route('/registrations/data-apps', methods=['PUT'])
 @authenticate_user
 def update_data_app():
     """Update a data application (NIPC)."""
@@ -1078,12 +1078,12 @@ def update_data_app():
             navigate_sdf_model(model, path_components)
 
         mqtt_client = body.get('mqttClient')
-        if mqtt_client != {}:
+        if mqtt_client is not True:
             return create_nipc_problem_response(
                 NipcProblemTypes.ABOUT_BLANK,
                 HTTPStatus.BAD_REQUEST,
                 "Bad Request",
-                "Request body must contain an empty mqttClient"
+                "mqttClient must be true"
             )
 
         # Update the data app events
@@ -1100,7 +1100,7 @@ def update_data_app():
         )
 
 
-@control_app.route('/registration/data-app', methods=['DELETE'])
+@control_app.route('/registrations/data-apps', methods=['DELETE'])
 @authenticate_user
 def delete_data_app():
     """Delete a data application (NIPC) by ID."""
@@ -1126,7 +1126,7 @@ def delete_data_app():
         # Build response body before deletion
         response_body = {
             "events": [{"event": event} for event in data_app.events],
-            "mqttClient": {}
+            "mqttClient": True
         }
 
         session.delete(data_app)
@@ -1194,13 +1194,13 @@ def enable_event(device_id: str):
                 "Event already exists"
             )
 
-        # protocol_map["sdfOutputData"]["protocolMap"]["ble"]["type"] is the event_type
-        event_type = protocol_map["sdfOutputData"]["protocolMap"]["ble"]["type"]
+        # protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"] is the event_type
+        event_type = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"]
         gatt_service_id = None
         gatt_char_id = None
         if event_type == "gatt":
-            gatt_service_id = protocol_map["sdfOutputData"]["protocolMap"]["ble"]["serviceID"]
-            gatt_char_id = protocol_map["sdfOutputData"]["protocolMap"]["ble"]["characteristicID"]
+            gatt_service_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["serviceID"]
+            gatt_char_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["characteristicID"]
 
         instance_id = uuid.uuid4()
         # create event
