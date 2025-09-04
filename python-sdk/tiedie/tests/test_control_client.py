@@ -129,7 +129,7 @@ def test_connect(mock_server: responses.RequestsMock,
 
     # Only mock the default connect request (no services/bonding)
     mock_server.post(
-        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
         match=[
@@ -194,7 +194,7 @@ def test_disconnect(mock_server: responses.RequestsMock,
     }, separators=(',', ':'))
 
     mock_server.delete(
-        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
         content_type="application/nipc+json",
@@ -285,9 +285,9 @@ def test_discovery(mock_server: responses.RequestsMock,
         }
     }, separators=(',', ':'))
 
-    # Discovery uses PUT and /manage/connection endpoint
+    # Discovery uses PUT and /connections endpoint
     mock_server.put(
-        f"https://control.example.com/nipc/devices/{device_id}/manage/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
         match=[
@@ -569,7 +569,7 @@ def test_register_data_app(mock_server: responses.RequestsMock, control_client: 
     if response.is_success:
         assert response.body is not None
         assert response.body.events[0].event == event_ref
-        assert response.body.mqtt_client == {}
+        assert response.body.mqtt_client == True
 
 
 def test_enable_event(mock_server: responses.RequestsMock, control_client: ControlClient):
