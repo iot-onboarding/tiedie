@@ -3,7 +3,7 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 """
-Unit tests for SDF model registration and management (NIPC draft-09)
+Unit tests for SDF model registration and management (NIPC draft-12)
 """
 import uuid
 import pytest
@@ -79,7 +79,7 @@ def sample_sdf_model():
             "healthsensor": {
                 "sdfProperty": {
                     "temperature": {
-                        "protocolMap": {
+                        "sdfProtocolMap": {
                             "ble": {
                                 "serviceID": "1809",
                                 "characteristicID": "2A1C"
@@ -100,7 +100,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
         "Content-Type": "application/json"
     }
     # Register
-    resp = client.post("/nipc/registration/model",
+    resp = client.post("/nipc/registrations/models",
                        json=sample_sdf_model(), headers=sdf_headers)
     assert resp.status_code == 200
     assert resp.json is not None
@@ -110,17 +110,17 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     sdf_name = resp.json[0]["sdfName"]
 
     # Duplicate registration should fail
-    resp2 = client.post("/nipc/registration/model",
+    resp2 = client.post("/nipc/registrations/models",
                         json=sample_sdf_model(), headers=sdf_headers)
     assert resp2.status_code == 409
     assert resp2.json is not None
     print("Duplicate registration error response:", resp2.json)
     assert resp2.json["type"] == ("https://www.iana.org/assignments/"
-                                 "http-problem-types#nipc-sdf-model-already-registered")
+                                 "nipc-problem-types#sdf-model-already-registered")
     assert resp2.json["status"] == 409
 
     # List models
-    resp3 = client.get("/nipc/registration/model", headers=sdf_headers)
+    resp3 = client.get("/nipc/registrations/models", headers=sdf_headers)
     assert resp3.status_code == 200
     assert resp3.json is not None
     assert isinstance(resp3.json, list)
@@ -128,7 +128,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
 
     # Get model by name (URL-encoded as query parameter)
     resp4 = client.get(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         headers=sdf_headers)
     assert resp4.status_code == 200
@@ -138,7 +138,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     # Update model (valid update: add a property, not change namespace)
     updated = sample_sdf_model()
     updated["sdfObject"]["healthsensor"]["sdfProperty"]["humidity"] = {
-        "protocolMap": {
+        "sdfProtocolMap": {
             "ble": {
                 "serviceID": "1809",
                 "characteristicID": "2A1D"
@@ -146,7 +146,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
         }
     }
     resp5 = client.put(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         json=updated,
         headers=sdf_headers
@@ -154,7 +154,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     assert resp5.status_code == 200
     # Confirm update
     resp6 = client.get(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         headers=sdf_headers)
     assert resp6.status_code == 200
@@ -167,7 +167,7 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     forbidden_update["namespace"] = {
         "thermometer": "https://malicious.com/other"}
     resp_forbidden = client.put(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         json=forbidden_update,
         headers=sdf_headers)
@@ -175,36 +175,36 @@ def test_register_and_manage_sdf_model(client: FlaskClient, control_api_key: str
     assert resp_forbidden.json is not None
     print("Namespace update error response:", resp_forbidden.json)
     assert resp_forbidden.json["type"] == ("https://www.iana.org/assignments/"
-                                         "http-problem-types#nipc-invalid-sdf-url")
+                                         "nipc-problem-types#invalid-sdf-url")
     assert resp_forbidden.json["status"] == 400
 
     # Attempt to update defaultNamespace (should fail)
     forbidden_update2 = sample_sdf_model()
     forbidden_update2["defaultNamespace"] = "other"
     resp_forbidden2 = client.put(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         json=forbidden_update2,
         headers=sdf_headers)
     assert resp_forbidden2.status_code == 400
     assert resp_forbidden2.json is not None
     assert resp_forbidden2.json["type"] == \
-        "https://www.iana.org/assignments/http-problem-types#nipc-invalid-sdf-url"
+        "https://www.iana.org/assignments/nipc-problem-types#invalid-sdf-url"
     assert resp_forbidden2.json["status"] == 400
 
     # Delete model
     resp7 = client.delete(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         headers=sdf_headers)
     assert resp7.status_code == 200
     # Confirm deletion
     resp8 = client.get(
-        "/nipc/registration/model",
+        "/nipc/registrations/models",
         query_string={"sdfName": sdf_name},
         headers=sdf_headers)
     assert resp8.status_code == 404
     assert resp8.json is not None
     assert resp8.json["type"] == \
-        "https://www.iana.org/assignments/http-problem-types#nipc-invalid-sdf-url"
+        "https://www.iana.org/assignments/nipc-problem-types#invalid-sdf-url"
     assert resp8.json["status"] == 404

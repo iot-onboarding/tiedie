@@ -161,7 +161,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 125,
                                 "unit": "Cel",
                                 "writable": False,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a38"
@@ -174,7 +174,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 125,
                                 "unit": "Cel",
                                 "writable": True,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a39"
@@ -187,7 +187,7 @@ def fixture_sdf_model(app: Flask):
                                 "maximum": 100,
                                 "unit": "%",
                                 "writable": False,
-                                "protocolMap": {
+                                "sdfProtocolMap": {
                                     "ble": {
                                         "serviceID": "180d",
                                         "characteristicID": "2a38"
@@ -199,7 +199,7 @@ def fixture_sdf_model(app: Flask):
                             "isPresent": {
                                 "description": "BLE advertisements",
                                 "sdfOutputData": {
-                                    "protocolMap": {
+                                    "sdfProtocolMap": {
                                         "ble": {
                                             "type": "advertisements"
                                         }
@@ -209,7 +209,7 @@ def fixture_sdf_model(app: Flask):
                             "isConnected": {
                                 "description": "BLE connection event",
                                 "sdfOutputData": {
-                                    "protocolMap": {
+                                    "sdfProtocolMap": {
                                         "ble": {
                                             "type": "connection_events"
                                         }
@@ -256,7 +256,7 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
     device = create_device(client, api_key)
 
     response = client.post(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         },
@@ -269,11 +269,11 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
     assert response.status_code == 200
     assert response.json is not None
     assert response.json.get("id") == device["id"]
-    if "protocolMap" in response.json:
-        assert isinstance(response.json["protocolMap"], dict)
+    if "sdfProtocolMap" in response.json:
+        assert isinstance(response.json["sdfProtocolMap"], dict)
 
     response = client.get(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         }
@@ -285,7 +285,7 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
 
     # disconnect the device after testing
     response = client.delete(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         }
@@ -302,7 +302,7 @@ def test_update_connection(client: FlaskClient, api_key: str, control_api_key: s
 
     # First connect the device
     response = client.post(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         },
@@ -314,14 +314,14 @@ def test_update_connection(client: FlaskClient, api_key: str, control_api_key: s
 
     assert response.status_code == 200
 
-    # Test PUT /nipc/devices/{id}/manage/connection - Update service map
+    # Test PUT /nipc/devices/{id}/connections - Update service map
     response = client.put(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         },
         json={
-            "protocolMap": {
+            "sdfProtocolMap": {
                 "ble": {
                     "services": [
                         {
@@ -344,9 +344,9 @@ def test_update_connection(client: FlaskClient, api_key: str, control_api_key: s
     assert response.json is not None
     assert response.json.get("id") == device["id"]
 
-    # Test DELETE /nipc/devices/{id}/manage/connection - Disconnect
+    # Test DELETE /nipc/devices/{id}/connections - Disconnect
     response = client.delete(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={
             "x-api-key": control_api_key
         }
@@ -363,7 +363,7 @@ def test_connection_errors(client: FlaskClient, control_api_key: str):
     non_existent_device_id = str(uuid.uuid4())
 
     response = client.post(
-        f"/nipc/devices/{non_existent_device_id}/manage/connection",
+        f"/nipc/devices/{non_existent_device_id}/connections",
         headers={
             "x-api-key": control_api_key
         },
@@ -376,7 +376,7 @@ def test_connection_errors(client: FlaskClient, control_api_key: str):
     assert response.status_code == 404
     assert response.json is not None
     assert response.json.get("type") == \
-        "https://www.iana.org/assignments/http-problem-types#nipc-invalid-id"
+        "https://www.iana.org/assignments/nipc-problem-types#invalid-id"
     assert response.json.get("title") == "Not Found"
     assert response.json.get("status") == 404
 
@@ -388,7 +388,7 @@ def test_property_read_with_explicit_connection(client: FlaskClient, api_key: st
 
     # Explicitly connect the device
     response = client.post(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={"x-api-key": control_api_key},
         json={"retries": 3, "retryMultipleAPs": True}
     )
@@ -414,7 +414,7 @@ def test_property_read_with_explicit_connection(client: FlaskClient, api_key: st
 
     # Optionally, verify connection status is still connected
     response = client.get(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={"x-api-key": control_api_key}
     )
     assert response.status_code == 200
@@ -422,7 +422,7 @@ def test_property_read_with_explicit_connection(client: FlaskClient, api_key: st
 
     # Disconnect the device after testing
     response = client.delete(
-        f"/nipc/devices/{device['id']}/manage/connection",
+        f"/nipc/devices/{device['id']}/connections",
         headers={"x-api-key": control_api_key}
     )
     assert response.status_code == 200
@@ -550,7 +550,7 @@ def test_property_write_readonly_property(client: FlaskClient, api_key: str,
 
     result = response.json[0]
     assert result.get("type") == ("https://www.iana.org/assignments/"
-                                  "http-problem-types#nipc-property-not-writable")
+                                  "nipc-problem-types#property-not-writable")
     assert result.get("status") == 400
     assert "not writable" in result.get("detail", "").lower()
 
@@ -579,7 +579,7 @@ def test_property_invalid_sdf_reference(client: FlaskClient, api_key: str,
 
     result = response.json[0]
     assert result.get("type") == ("https://www.iana.org/assignments/"
-                                  "http-problem-types#nipc-invalid-sdf-url")
+                                  "nipc-problem-types#invalid-sdf-url")
     assert result.get("status") == 400
 
 
@@ -601,7 +601,7 @@ def test_property_nonexistent_device(client: FlaskClient, control_api_key: str):
     assert response.status_code == 404
     assert response.json is not None
     assert response.json.get("type") == ("https://www.iana.org/assignments/"
-                                         "http-problem-types#nipc-invalid-id")
+                                         "nipc-problem-types#invalid-id")
     assert response.json.get("status") == 404
 
     # Test write
@@ -619,7 +619,7 @@ def test_property_nonexistent_device(client: FlaskClient, control_api_key: str):
     assert response.status_code == 404
     assert response.json is not None
     assert response.json.get("type") == ("https://www.iana.org/assignments/"
-                                         "http-problem-types#nipc-invalid-id")
+                                         "nipc-problem-types#invalid-id")
     assert response.json.get("status") == 404
 
 
@@ -639,7 +639,7 @@ def test_property_missing_parameters(client: FlaskClient, api_key: str,
     assert response.status_code == 400
     assert response.json is not None
     assert response.json.get("type") == ("https://www.iana.org/assignments/"
-                                         "http-problem-types#nipc-invalid-sdf-url")
+                                         "nipc-problem-types#invalid-sdf-url")
     assert response.json.get("status") == 400
 
     # Test write without request body
@@ -653,7 +653,7 @@ def test_property_missing_parameters(client: FlaskClient, api_key: str,
     assert response.status_code == 400
     assert response.json is not None
     assert response.json.get("type") == ("https://www.iana.org/assignments/"
-                                         "http-problem-types#nipc-invalid-sdf-url")
+                                         "nipc-problem-types#invalid-sdf-url")
 
 
 def test_register_data_app(
@@ -670,12 +670,12 @@ def test_register_data_app(
                          "#/sdfThing/thermometer/sdfEvent/isPresent"
             }
         ],
-        "mqttClient": {}
+        "mqttClient": True
     }
 
     # Test 1: Register data app (POST)
     response = client.post(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         json=initial_request_body,
         headers={
             "x-api-key": control_api_key
@@ -687,7 +687,7 @@ def test_register_data_app(
 
     # Test 2: Get data app (GET)
     response = client.get(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         headers={
             "x-api-key": control_api_key
         }
@@ -704,23 +704,25 @@ def test_register_data_app(
                          "#/sdfThing/thermometer/sdfEvent/isConnected"
             }
         ],
-        "mqttClient": {}
+        "mqttClient": True
     }
 
     response = client.put(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         json=updated_request_body,
         headers={
             "x-api-key": control_api_key
         }
     )
 
+    print(response.json)
+
     assert response.status_code == 200
     assert response.json == updated_request_body
 
     # Test 4: Verify update by getting data app again
     response = client.get(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         headers={
             "x-api-key": control_api_key
         }
@@ -731,7 +733,7 @@ def test_register_data_app(
 
     # Test 5: Delete data app (DELETE)
     response = client.delete(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         headers={
             "x-api-key": control_api_key
         }
@@ -742,7 +744,7 @@ def test_register_data_app(
 
     # Test 6: Verify deletion by trying to get non-existent data app
     response = client.get(
-        f"/nipc/registration/data-app?dataAppId={data_app_id}",
+        f"/nipc/registrations/data-apps?dataAppId={data_app_id}",
         headers={
             "x-api-key": control_api_key
         }

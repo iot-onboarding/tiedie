@@ -569,7 +569,7 @@ def test_register_data_app(mock_server: responses.RequestsMock, control_client: 
     if response.is_success:
         assert response.body is not None
         assert response.body.events[0].event == event_ref
-        assert response.body.mqtt_client == True
+        assert response.body.mqtt_client is True
 
 
 def test_enable_event(mock_server: responses.RequestsMock, control_client: ControlClient):
