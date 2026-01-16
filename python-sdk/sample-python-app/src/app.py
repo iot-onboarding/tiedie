@@ -142,7 +142,7 @@ def update_data_app(event: str, enable: bool):
                 app.data_endpoint_app.application_id,
                 DataAppRegistration(
                     events=[Event(event=event)],
-                    mqtt_client=None,
+                    mqtt_client=False,
                     mqtt_broker=mqtt_broker,
                 )
             )
@@ -151,7 +151,7 @@ def update_data_app(event: str, enable: bool):
                 app.data_endpoint_app.application_id,
                 DataAppRegistration(
                     events=[Event(event=event)],
-                    mqtt_client={},
+                    mqtt_client=True,
                     mqtt_broker=None,
                 )
             )
