@@ -8,13 +8,12 @@ package com.cisco.tiedie.clients;
 import com.cisco.tiedie.auth.Authenticator;
 import com.cisco.tiedie.dto.HttpResponse;
 import com.cisco.tiedie.dto.scim.Device;
-import com.cisco.tiedie.dto.scim.EndpointApp;
 import com.cisco.tiedie.dto.scim.DeviceListResponse;
+import com.cisco.tiedie.dto.scim.EndpointApp;
 import com.cisco.tiedie.dto.scim.EndpointAppListResponse;
 import okhttp3.MediaType;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * This class is used to communicate with the TieDie onboarding SCIM APIs.
@@ -56,6 +55,17 @@ public class OnboardingClient extends AbstractHttpClient {
     }
 
     /**
+     * Update an existing device on the controller.
+     *
+     * @param device {@link Device} object. Must have a valid ID.
+     * @return Updated device object.
+     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
+     */
+    public HttpResponse<Device> updateDevice(Device device) throws IOException {
+        return put("/Devices/" + device.getId(), device, Device.class);
+    }
+
+    /**
      * Get the Device object using its unique ID.
      *
      * @param id Unique ID of the device
@@ -69,18 +79,11 @@ public class OnboardingClient extends AbstractHttpClient {
     /**
      * Get a list of Device objects.
      *
-     * @return Device objects from the backend.
+     * @return SCIM list response from the backend, including pagination metadata and resources.
      * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
      */
-    public HttpResponse<List<Device>> getDevices() throws IOException {
-        HttpResponse<DeviceListResponse> httpResponse = get("/Devices", DeviceListResponse.class);
-
-        HttpResponse<List<Device>> newResponse = new HttpResponse<>();
-        newResponse.setStatusCode(httpResponse.getStatusCode());
-        newResponse.setMessage(httpResponse.getMessage());
-        newResponse.setBody(httpResponse.getBody().getResources());
-
-        return newResponse;
+    public HttpResponse<DeviceListResponse> getDevices() throws IOException {
+        return get("/Devices", DeviceListResponse.class);
     }
 
     /**
@@ -94,15 +97,8 @@ public class OnboardingClient extends AbstractHttpClient {
         return delete("/Devices/" + id, Void.class);
     }
 
-    public HttpResponse<List<EndpointApp>> getEndpointApps() throws IOException {
-        HttpResponse<EndpointAppListResponse> httpResponse = get("/EndpointApps", EndpointAppListResponse.class);
-
-        HttpResponse<List<EndpointApp>> newResponse = new HttpResponse<>();
-        newResponse.setStatusCode(httpResponse.getStatusCode());
-        newResponse.setMessage(httpResponse.getMessage());
-        newResponse.setBody(httpResponse.getBody().getResources());
-
-        return newResponse;
+    public HttpResponse<EndpointAppListResponse> getEndpointApps() throws IOException {
+        return get("/EndpointApps", EndpointAppListResponse.class);
     }
 
     public HttpResponse<EndpointApp> getEndpointApp(String id) throws IOException {

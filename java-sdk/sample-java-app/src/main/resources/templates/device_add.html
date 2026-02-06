@@ -13,54 +13,83 @@ SPDX-License-Identifier: Apache-2.0
 </head>
 
 <body th:insert="~{layout :: body}">
-    <div id="main">
-        <h1>Add device</h1>
+<div id="main">
+    <h1>Add Device</h1>
 
-        <form class="col-4" action="#" method="post" th:action="@{/devices/add}" th:object="${device}">
-            <div class="mb-3">
-                <label for="displayName" class="form-label">Device Display name</label>
-                <input type="text" required class="form-control" id="displayName" th:field="*{displayName}"
-                    placeholder="Device Display name" />
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="active">
-                <label class="form-check-label" for="active" th:field="*{active}">Admin State</label>
-            </div>
+    <form class="col-5" method="post" action="/devices/add">
+        <div class="mb-3">
+            <label for="displayName" class="form-label">Device Display Name</label>
+            <input type="text" required class="form-control" id="displayName" name="displayName"
+                   placeholder="Device display name"/>
+        </div>
 
-            <div class="mb-3">
-                <label for="deviceMacAddress" class="form-label">Device MAC address</label>
-                <input type="text" required class="form-control" id="deviceMacAddress"
-                    th:field="*{bleExtension.deviceMacAddress}" placeholder="Device MAC address" />
-            </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="active" name="active">
+            <label class="form-check-label" for="active">Active</label>
+        </div>
 
+        <div class="mb-3">
+            <label for="deviceMacAddress" class="form-label">Device MAC Address</label>
+            <input type="text" required class="form-control" id="deviceMacAddress" name="deviceMacAddress"
+                   placeholder="AA:BB:CC:11:22:33"/>
+        </div>
 
-            <div class="mb-3">
-                <label for="versionSupport" class="form-label">Version Support</label>
-                <select class="form-select" multiple th:field="*{bleExtension.versionSupport}">
-                    <option value="4.0">4.0</option>
-                    <option value="4.1">4.1</option>
-                    <option value="4.2">4.2</option>
-                    <option value="5.0">5.0</option>
-                    <option value="5.1">5.1</option>
-                    <option value="5.2">5.2</option>
-                    <option value="5.3">5.3</option>
-                </select>
-            </div>
+        <div class="mb-3">
+            <label for="versionSupport" class="form-label">Version Support</label>
+            <select class="form-select" multiple id="versionSupport" name="versionSupport">
+                <option value="4.0">4.0</option>
+                <option value="4.1">4.1</option>
+                <option value="4.2">4.2</option>
+                <option value="5.0">5.0</option>
+                <option value="5.1">5.1</option>
+                <option value="5.2">5.2</option>
+                <option value="5.3">5.3</option>
+            </select>
+        </div>
 
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="isRandom">
-                <label class="form-check-label" for="isRandom" th:field="*{bleExtension.isRandom}">Random Address</label>
-            </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="isRandom" name="isRandom">
+            <label class="form-check-label" for="isRandom">Random Address</label>
+        </div>
 
-            <div class="mb-3">
-                <label for="passKey" class="form-label">Device Pass Key</label>
-                <input type="text" required class="form-control" id="passKey"
-                    th:field="*{bleExtension.pairingPassKey.key}" placeholder="Device Pass Key" />
-            </div>
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="mobility" name="mobility">
+            <label class="form-check-label" for="mobility">Mobility</label>
+        </div>
 
-            <button type="submit" class="btn btn-primary">Submit</button>
-        </form>
-    </div>
+        <div class="mb-3">
+            <label for="pairingMethod" class="form-label">Pairing Method</label>
+            <select class="form-select" id="pairingMethod" name="pairingMethod">
+                <option value="null">None</option>
+                <option value="justWorks">Just Works</option>
+                <option value="passKey">Pass Key</option>
+            </select>
+        </div>
+
+        <div class="mb-3" id="passKeyGroup" style="display:none;">
+            <label for="passKey" class="form-label">Pass Key (6 digits)</label>
+            <input type="text" class="form-control" id="passKey" name="passKey" pattern="[0-9]{6}"
+                   placeholder="123456">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <script>
+        const pairingMethod = document.getElementById("pairingMethod");
+        const passKeyGroup = document.getElementById("passKeyGroup");
+        const passKeyInput = document.getElementById("passKey");
+
+        function updatePassKeyVisibility() {
+            const isPassKey = pairingMethod.value === "passKey";
+            passKeyGroup.style.display = isPassKey ? "block" : "none";
+            passKeyInput.required = isPassKey;
+        }
+
+        pairingMethod.addEventListener("change", updatePassKeyVisibility);
+        updatePassKeyVisibility();
+    </script>
+</div>
 </body>
 
 </html>

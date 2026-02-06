@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DeviceTest {
     final ObjectMapper mapper = ObjectMapperSingleton.getInstance();
@@ -344,5 +345,26 @@ class DeviceTest {
                 "}";
 
         assertEquals(expected, json);
+    }
+
+    @Test
+    @DisplayName("BLE mobility extension support")
+    void testBleMobilitySupport() throws JsonProcessingException {
+        var device = Device.builder()
+                .displayName("BLE Monitor")
+                .active(false)
+                .bleExtension(BleExtension.builder()
+                        .deviceMacAddress("AA:BB:CC:11:22:33")
+                        .isRandom(false)
+                        .mobility(true)
+                        .versionSupport(Arrays.asList("5.0", "5.1"))
+                        .build())
+                .build();
+
+        String json = mapper.writeValueAsString(device);
+        assertTrue(json.contains("\"mobility\" : true"));
+
+        var parsed = mapper.readValue(json, Device.class);
+        assertTrue(Boolean.TRUE.equals(parsed.getBleExtension().getMobility()));
     }
 }

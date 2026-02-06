@@ -1,0 +1,99 @@
+<!--
+Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
+All rights reserved.
+See LICENSE file in this distribution.
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">Update Device</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+<div id="main">
+    <h1>Update Device</h1>
+
+    <form class="col-5" method="post" th:action="@{/devices/{id}/update(id=${device.id})}">
+        <div class="mb-3">
+            <label for="displayName" class="form-label">Device Display Name</label>
+            <input type="text" required class="form-control" id="displayName" name="displayName"
+                   th:value="${device.displayName}" placeholder="Device display name"/>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="active" name="active"
+                   th:checked="${device.active}">
+            <label class="form-check-label" for="active">Active</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="deviceMacAddress" class="form-label">Device MAC Address</label>
+            <input type="text" required class="form-control" id="deviceMacAddress" name="deviceMacAddress"
+                   th:value="${device.bleExtension.deviceMacAddress}" placeholder="AA:BB:CC:11:22:33"/>
+        </div>
+
+        <div class="mb-3">
+            <label for="versionSupport" class="form-label">Version Support</label>
+            <select class="form-select" multiple id="versionSupport" name="versionSupport">
+                <option value="4.0" th:selected="${#lists.contains(device.bleExtension.versionSupport, '4.0')}">4.0</option>
+                <option value="4.1" th:selected="${#lists.contains(device.bleExtension.versionSupport, '4.1')}">4.1</option>
+                <option value="4.2" th:selected="${#lists.contains(device.bleExtension.versionSupport, '4.2')}">4.2</option>
+                <option value="5.0" th:selected="${#lists.contains(device.bleExtension.versionSupport, '5.0')}">5.0</option>
+                <option value="5.1" th:selected="${#lists.contains(device.bleExtension.versionSupport, '5.1')}">5.1</option>
+                <option value="5.2" th:selected="${#lists.contains(device.bleExtension.versionSupport, '5.2')}">5.2</option>
+                <option value="5.3" th:selected="${#lists.contains(device.bleExtension.versionSupport, '5.3')}">5.3</option>
+            </select>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="isRandom" name="isRandom"
+                   th:checked="${device.bleExtension.isRandom}">
+            <label class="form-check-label" for="isRandom">Random Address</label>
+        </div>
+
+        <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="mobility" name="mobility"
+                   th:checked="${device.bleExtension.mobility}">
+            <label class="form-check-label" for="mobility">Mobility</label>
+        </div>
+
+        <div class="mb-3">
+            <label for="pairingMethod" class="form-label">Pairing Method</label>
+            <select class="form-select" id="pairingMethod" name="pairingMethod">
+                <option value="null" th:selected="${device.bleExtension.nullPairing != null}">None</option>
+                <option value="justWorks" th:selected="${device.bleExtension.pairingJustWorks != null}">Just Works</option>
+                <option value="passKey" th:selected="${device.bleExtension.pairingPassKey != null}">Pass Key</option>
+            </select>
+        </div>
+
+        <div class="mb-3" id="passKeyGroup" style="display:none;">
+            <label for="passKey" class="form-label">Pass Key (6 digits)</label>
+            <input type="text" class="form-control" id="passKey" name="passKey" pattern="[0-9]{6}"
+                   th:value="${device.bleExtension.pairingPassKey != null ? device.bleExtension.pairingPassKey.key : ''}"
+                   placeholder="123456">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update</button>
+    </form>
+
+    <script>
+        const pairingMethod = document.getElementById("pairingMethod");
+        const passKeyGroup = document.getElementById("passKeyGroup");
+        const passKeyInput = document.getElementById("passKey");
+
+        function updatePassKeyVisibility() {
+            const isPassKey = pairingMethod.value === "passKey";
+            passKeyGroup.style.display = isPassKey ? "block" : "none";
+            passKeyInput.required = isPassKey;
+        }
+
+        pairingMethod.addEventListener("change", updatePassKeyVisibility);
+        updatePassKeyVisibility();
+    </script>
+</div>
+</body>
+
+</html>

@@ -6,36 +6,28 @@
 package com.cisco.tiedie.clients;
 
 import com.cisco.tiedie.auth.Authenticator;
-import com.cisco.tiedie.dto.control.*;
+import com.cisco.tiedie.dto.control.DataParameter;
+import com.cisco.tiedie.dto.control.DataResponse;
 import com.cisco.tiedie.dto.control.ble.BleConnectRequest;
-import com.cisco.tiedie.dto.control.ble.BleDataParameter;
 import com.cisco.tiedie.dto.control.ble.BleDiscoverResponse;
-import com.cisco.tiedie.dto.control.internal.*;
-import com.cisco.tiedie.dto.control.zigbee.ZigbeeDataParameter;
-import com.cisco.tiedie.dto.control.zigbee.ZigbeeDiscoverResponse;
+import com.cisco.tiedie.dto.nipc.*;
 import com.cisco.tiedie.dto.scim.Device;
+import com.fasterxml.jackson.core.type.TypeReference;
 import okhttp3.MediaType;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 /**
- * This class is used to communicate with the TieDie control APIs.
- * Create a Control API client as follows:
- * <pre>
- * {@code
- * InputStream caInputStream = new FileInputStream("ca.pem");
- * Authenticator authenticator = ApiKeyAuthenticator.create(caInputStream, "app_id", "api_key");
- *
- * ControlClient controlClient = new ControlClient("https://<host>/control", authenticator);
- * }
- * </pre>
- * <p>
- * The above example uses an {@link com.cisco.tiedie.auth.ApiKeyAuthenticator}.
- *
- * @see Authenticator
+ * This class is used to communicate with the TieDie NIPC APIs.
  */
 public class ControlClient extends AbstractHttpClient {
+
+    private static final MediaType NIPC_MEDIA_TYPE = MediaType.parse("application/nipc+json");
+    private static final MediaType SDF_MEDIA_TYPE = MediaType.parse("application/sdf+json");
 
     /**
      * Create a {@link ControlClient} object.
@@ -44,242 +36,332 @@ public class ControlClient extends AbstractHttpClient {
      * @param authenticator {@link Authenticator} object that describes the authentication mechanism used.
      */
     public ControlClient(String baseUrl, Authenticator authenticator) {
-        super(baseUrl, MediaType.parse("application/json"), authenticator);
+        super(baseUrl, NIPC_MEDIA_TYPE, authenticator);
     }
 
-    /**
-     * TieDie Introduce API - used to introduce a device into the enterprise network.
-     * <p>
-     * For a BLE device, this is equivalent to pairing the device with a central.
-     * <p>
-     * For a Zigbee device, this will join the zigbee network.
-     *
-     * @param device The {@link Device} object.
-     * @return A {@link TiedieResponse} object.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<Void> introduce(Device device) throws IOException {
-        var tiedieRequest = TiedieBasicRequest.createRequest(device);
-
-        return postWithTiedieResponse("/connectivity/binding", tiedieRequest, Void.class);
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    /**
-     * TieDie Connect API - used to connect to a particular device.
-     * <em>This operation is currently only supported in BLE.</em>
-     *
-     * @param device The {@link Device} object. Must be a BLE device.
-     * @return The parameters that are discovered after the connect procedure.
-     * For BLE, this is the GATT database that is discovered.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     * @see ControlClient#connect(Device, BleConnectRequest)
-     */
-    public TiedieResponse<List<DataParameter>> connect(Device device) throws IOException {
-        return connect(device, new BleConnectRequest(null, 3, true));
+    private static void validateDevice(Device device) {
+        if (device == null || device.getId() == null || device.getId().isBlank()) {
+            throw new IllegalArgumentException("Device ID is required");
+        }
     }
 
+    private NipcResponse<List<DataParameter>> mapDiscoveryResponse(
+            String deviceId,
+            NipcResponse<BleDiscoverResponse> response
+    ) {
+        NipcResponse<List<DataParameter>> mapped = new NipcResponse<>();
+        mapped.setHttp(response.getHttp());
+        mapped.setError(response.getError());
 
-    /**
-     * TieDie Connect API - used to connect to a particular device.
-     * <em>This operation is currently only supported in BLE.</em>
-     *
-     * @param device  The {@link Device} object. Must be a BLE device.
-     * @param request Additional BLE connection options.
-     * @return The parameters that are discovered after the connect procedure.
-     * * For BLE, this is the GATT database that is discovered.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<List<DataParameter>> connect(Device device, BleConnectRequest request) throws IOException {
-        var tiedieRequest = TiedieConnectRequest.createRequest(device, request);
-
-        var bleDiscoverResponse = postWithTiedieResponse("/connectivity/connection", tiedieRequest, BleDiscoverResponse.class);
-
-        TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
-        response.setHttpStatusCode(bleDiscoverResponse.getHttpStatusCode());
-        response.setHttpMessage(bleDiscoverResponse.getHttpMessage());
-        response.setStatus(bleDiscoverResponse.getStatus());
-        response.setReason(bleDiscoverResponse.getReason());
-        response.setErrorCode(bleDiscoverResponse.getErrorCode());
-
-        if (bleDiscoverResponse.getBody() != null && bleDiscoverResponse.getBody().getServices() != null) {
-            response.setBody(bleDiscoverResponse.getBody().toParameterList(device.getId()));
+        if (response.isSuccess() && response.getBody() != null) {
+            mapped.setBody(response.getBody().toParameterList(deviceId));
         }
 
-        return response;
+        return mapped;
     }
 
-    /**
-     * TieDie Disconnect API - used to disconnect a device.
-     * <em>This operation is currently only supported in BLE.</em>
-     *
-     * @param device The {@link Device} object. Must be a BLE device.
-     * @return A {@link TiedieResponse} object.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<Void> disconnect(Device device) throws IOException {
-        return deleteWithTiedieResponse("/connectivity/connection?id=" + device.getId(), Void.class);
-    }
+    @SuppressWarnings("SameParameterValue")
+    private static String findHeader(Map<String, String> headers, String key) {
+        if (headers == null) {
+            return null;
+        }
 
-    /**
-     * TieDie Discover API - used to discover the parameters of a {@link Device}.
-     * <p>
-     * If the device is a BLE device, this is the GATT table of the device. The response includes the primary services
-     * and characteristics supported by the BLE device.
-     * <p>
-     * If the device is a Zigbee device, this is the supported list of endpoints, clusters and attributes.
-     *
-     * @param device The {@link Device} object.
-     * @return If the device is BLE, the response is a list of {@link BleDataParameter}.
-     * If the device is Zigbee, the response is a list of {@link ZigbeeDataParameter}.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<List<DataParameter>> discover(Device device) throws IOException {
-        return discover(device, null);
-    }
-
-    /**
-     * TieDie Discover API - used to discover the parameters of a {@link Device}.
-     * <p>
-     * If the device is a BLE device, this is the GATT table of the device. The response includes the primary services
-     * and characteristics supported by the BLE device.
-     * <p>
-     * If the device is a Zigbee device, this is the supported list of endpoints, clusters and attributes.
-     *
-     * @param device The {@link Device} object.
-     * @param parameters List of data parameters to be discovered
-     * @return If the device is BLE, the response is a list of {@link BleDataParameter}.
-     * If the device is Zigbee, the response is a list of {@link ZigbeeDataParameter}.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<List<DataParameter>> discover(Device device, List<DataParameter> parameters) throws IOException {
-        var tiedieRequest = TiedieDiscoverRequest.createRequest(device, parameters);
-
-        if (tiedieRequest.getTechnology() == Technology.BLE) {
-            var bleDiscoverResponse = getWithTiedieResponse("/connectivity/services", tiedieRequest, BleDiscoverResponse.class);
-            TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
-            response.setHttpStatusCode(bleDiscoverResponse.getHttpStatusCode());
-            response.setHttpMessage(bleDiscoverResponse.getHttpMessage());
-            response.setStatus(bleDiscoverResponse.getStatus());
-            response.setReason(bleDiscoverResponse.getReason());
-            response.setErrorCode(bleDiscoverResponse.getErrorCode());
-
-            if (bleDiscoverResponse.getBody() != null && bleDiscoverResponse.getBody().getServices() != null) {
-                response.setBody(bleDiscoverResponse.getBody().toParameterList(device.getId()));
+        for (Map.Entry<String, String> header : headers.entrySet()) {
+            if (header.getKey().equalsIgnoreCase(key)) {
+                return header.getValue();
             }
-            return response;
         }
 
-        var zigbeeDiscoverResponse = getWithTiedieResponse("/connectivity/services", tiedieRequest, ZigbeeDiscoverResponse.class);
+        return null;
+    }
 
-        TiedieResponse<List<DataParameter>> response = new TiedieResponse<>();
-        response.setHttpStatusCode(zigbeeDiscoverResponse.getHttpStatusCode());
-        response.setHttpMessage(zigbeeDiscoverResponse.getHttpMessage());
-        response.setStatus(zigbeeDiscoverResponse.getStatus());
-        response.setReason(zigbeeDiscoverResponse.getReason());
-        response.setErrorCode(zigbeeDiscoverResponse.getErrorCode());
+    private static Map<String, Object> connectRequestBody(
+            BleConnectRequest request,
+            int retries,
+            boolean retryMultipleAps
+    ) {
+        BleConnectRequest safeRequest = request == null ? new BleConnectRequest() : request;
 
-        if (zigbeeDiscoverResponse.getBody() != null && zigbeeDiscoverResponse.getBody().getEndpoints() != null) {
-            response.setBody(zigbeeDiscoverResponse.getBody().toParameterList(device.getId()));
+        return Map.of(
+                "sdfProtocolMap", Map.of("ble", safeRequest),
+                "retries", retries,
+                "retryMultipleAPs", retryMultipleAps
+        );
+    }
+
+    private static Map<String, Object> propertyProtocolMap(String serviceId, String characteristicId) {
+        return Map.of(
+                "sdfProtocolMap",
+                Map.of(
+                        "ble",
+                        Map.of(
+                                "serviceID", serviceId,
+                                "characteristicID", characteristicId
+                        )
+                )
+        );
+    }
+
+    public NipcResponse<List<DataParameter>> connect(Device device) throws IOException {
+        return connect(device, new BleConnectRequest(), 3, true);
+    }
+
+    public NipcResponse<List<DataParameter>> connect(Device device, BleConnectRequest request) throws IOException {
+        return connect(device, request, 3, true);
+    }
+
+    public NipcResponse<List<DataParameter>> connect(
+            Device device,
+            BleConnectRequest request,
+            int retries,
+            boolean retryMultipleAps
+    ) throws IOException {
+        validateDevice(device);
+
+        Map<String, Object> tiedieRequest = connectRequestBody(request, retries, retryMultipleAps);
+
+        NipcResponse<BleDiscoverResponse> response = postWithNipcResponse(
+                "/devices/" + device.getId() + "/connections",
+                tiedieRequest,
+                BleDiscoverResponse.class
+        );
+
+        return mapDiscoveryResponse(device.getId(), response);
+    }
+
+    public NipcResponse<TiedieDeviceResponse> disconnect(Device device) throws IOException {
+        validateDevice(device);
+
+        return deleteWithNipcResponse(
+                "/devices/" + device.getId() + "/connections",
+                TiedieDeviceResponse.class
+        );
+    }
+
+    public NipcResponse<List<DataParameter>> getConnection(Device device) throws IOException {
+        validateDevice(device);
+
+        NipcResponse<BleDiscoverResponse> response = getWithNipcResponse(
+                "/devices/" + device.getId() + "/connections",
+                BleDiscoverResponse.class
+        );
+
+        return mapDiscoveryResponse(device.getId(), response);
+    }
+
+    public NipcResponse<List<DataParameter>> discover(Device device) throws IOException {
+        return discover(device, new BleConnectRequest(), 3, true);
+    }
+
+    public NipcResponse<List<DataParameter>> discover(Device device, BleConnectRequest request) throws IOException {
+        return discover(device, request, 3, true);
+    }
+
+    public NipcResponse<List<DataParameter>> discover(
+            Device device,
+            BleConnectRequest request,
+            int retries,
+            boolean retryMultipleAps
+    ) throws IOException {
+        validateDevice(device);
+
+        Map<String, Object> tiedieRequest = connectRequestBody(request, retries, retryMultipleAps);
+
+        NipcResponse<BleDiscoverResponse> response = putWithNipcResponse(
+                "/devices/" + device.getId() + "/connections",
+                tiedieRequest,
+                BleDiscoverResponse.class
+        );
+
+        return mapDiscoveryResponse(device.getId(), response);
+    }
+
+    public NipcResponse<DataResponse> read(Device device, String serviceId, String characteristicId) throws IOException {
+        validateDevice(device);
+
+        Map<String, Object> request = propertyProtocolMap(serviceId, characteristicId);
+        String endpoint = "/extensions/" + device.getId() + "/properties/read";
+
+        return postWithNipcResponse(endpoint, request, DataResponse.class);
+    }
+
+    public NipcResponse<DataResponse> write(
+            Device device,
+            String serviceId,
+            String characteristicId,
+            String value
+    ) throws IOException {
+        validateDevice(device);
+
+        Map<String, Object> request = Map.of(
+                "value", value,
+                "sdfProtocolMap",
+                Map.of(
+                        "ble",
+                        Map.of(
+                                "serviceID", serviceId,
+                                "characteristicID", characteristicId
+                        )
+                )
+        );
+        String endpoint = "/extensions/" + device.getId() + "/properties/write";
+
+        return postWithNipcResponse(endpoint, request, DataResponse.class);
+    }
+
+    public NipcResponse<List<PropertyReadResult>> readProperty(String deviceId, String sdfName) throws IOException {
+        String endpoint = "/devices/" + deviceId + "/properties?propertyName=" + encode(sdfName);
+
+        return getWithNipcResponse(endpoint, new TypeReference<>() {});
+    }
+
+    public NipcResponse<List<PropertyWriteResult>> writeProperty(
+            String deviceId,
+            String sdfName,
+            String value
+    ) throws IOException {
+        String endpoint = "/devices/" + deviceId + "/properties";
+
+        return putWithNipcResponse(
+                endpoint,
+                List.of(Map.of("property", sdfName, "value", value)),
+                new TypeReference<>() {}
+        );
+    }
+
+    public NipcResponse<List<ModelRegistrationResponse>> registerSdfModel(SdfModel model) throws IOException {
+        return postWithNipcResponse(
+                "/registrations/models",
+                model,
+                new TypeReference<>() {},
+                SDF_MEDIA_TYPE
+        );
+    }
+
+    public NipcResponse<ModelRegistrationResponse> updateSdfModel(String sdfName, SdfModel model) throws IOException {
+        return putWithNipcResponse(
+                "/registrations/models?sdfName=" + encode(sdfName),
+                model,
+                ModelRegistrationResponse.class,
+                SDF_MEDIA_TYPE
+        );
+    }
+
+    public NipcResponse<List<ModelRegistrationResponse>> getSdfModels() throws IOException {
+        return getWithNipcResponse(
+                "/registrations/models",
+                new TypeReference<>() {}
+        );
+    }
+
+    public NipcResponse<SdfModel> getSdfModel(String sdfName) throws IOException {
+        return getWithNipcResponse(
+                "/registrations/models?sdfName=" + encode(sdfName),
+                SdfModel.class
+        );
+    }
+
+    public NipcResponse<ModelRegistrationResponse> unregisterSdfModel(String sdfName) throws IOException {
+        return deleteWithNipcResponse(
+                "/registrations/models?sdfName=" + encode(sdfName),
+                ModelRegistrationResponse.class
+        );
+    }
+
+    public NipcResponse<DataAppRegistration> getDataApp(String dataAppId) throws IOException {
+        return getWithNipcResponse(
+                "/registrations/data-apps?dataAppId=" + encode(dataAppId),
+                DataAppRegistration.class
+        );
+    }
+
+    public NipcResponse<DataAppRegistration> createDataApp(
+            String dataAppId,
+            DataAppRegistration dataApp
+    ) throws IOException {
+        return postWithNipcResponse(
+                "/registrations/data-apps?dataAppId=" + encode(dataAppId),
+                dataApp,
+                DataAppRegistration.class
+        );
+    }
+
+    public NipcResponse<DataAppRegistration> updateDataApp(
+            String dataAppId,
+            DataAppRegistration dataApp
+    ) throws IOException {
+        return putWithNipcResponse(
+                "/registrations/data-apps?dataAppId=" + encode(dataAppId),
+                dataApp,
+                DataAppRegistration.class
+        );
+    }
+
+    public NipcResponse<DataAppRegistration> deleteDataApp(String dataAppId) throws IOException {
+        return deleteWithNipcResponse(
+                "/registrations/data-apps?dataAppId=" + encode(dataAppId),
+                DataAppRegistration.class
+        );
+    }
+
+    public NipcResponse<String> enableEvent(String deviceId, String eventName) throws IOException {
+        NipcResponse<Void> response = postWithNipcResponse(
+                "/devices/" + deviceId + "/events?eventName=" + encode(eventName),
+                null,
+                Void.class
+        );
+
+        NipcResponse<String> mapped = new NipcResponse<>();
+        mapped.setHttp(response.getHttp());
+        mapped.setError(response.getError());
+
+        if (!response.isSuccess() || response.getHttp() == null) {
+            return mapped;
         }
-        return response;
+
+        String location = findHeader(response.getHttp().getHeaders(), "Location");
+        if (location == null) {
+            return mapped;
+        }
+
+        int index = location.indexOf("instanceId=");
+        if (index < 0) {
+            return mapped;
+        }
+
+        String instanceId = location.substring(index + "instanceId=".length());
+        int ampersand = instanceId.indexOf('&');
+        if (ampersand >= 0) {
+            instanceId = instanceId.substring(0, ampersand);
+        }
+
+        mapped.setBody(instanceId);
+
+        return mapped;
     }
 
-
-    /**
-     * TieDie Read API - This API is used to read a particular value from the {@link Device}.
-     * <p>
-     * If the device is a BLE device, this API can be used to read GATT characteristic values.
-     * <p>
-     * If the device is a Zigbee device, this API can be used to read a cluster attribute value.
-     *
-     * @param dataParameter A {@link DataParameter} object that was discovered previously.
-     * @return If the request was successful, the response has the value that was read from the device.
-     * The value is the raw byte value in hex format.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<DataResponse> read(DataParameter dataParameter) throws IOException {
-        var tiedieRequest = TiedieReadRequest.createRequest(dataParameter);
-
-        return getWithTiedieResponse("/data/attribute", tiedieRequest, DataResponse.class);
+    public NipcResponse<Void> disableEvent(String deviceId, String instanceId) throws IOException {
+        return deleteWithNipcResponse(
+                "/devices/" + deviceId + "/events?instanceId=" + encode(instanceId),
+                Void.class
+        );
     }
 
-    /**
-     * TieDie Write API - This API is used to write a particular value from the {@link Device}.
-     * <p>
-     * If the device is a BLE device, this API can be used to write GATT characteristic values.
-     * <p>
-     * If the device is a Zigbee device, this API can be used to write a cluster attribute value.
-     *
-     * @param dataParameter A {@link DataParameter} object that was discovered previously.
-     * @param value         The value that needs to be written to the device.
-     *                      This value needs to be the raw byte value encoded in hex.
-     * @return If the request was successful, the response has the value that was written to the device.
-     * The value is the raw byte value in hex format.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<DataResponse> write(DataParameter dataParameter, String value) throws IOException {
-        var tiedieRequest = TiedieWriteRequest.createRequest(dataParameter, value);
-
-        return postWithTiedieResponse("/data/attribute", tiedieRequest, DataResponse.class);
+    public NipcResponse<List<TiedieEventResponse>> getEvent(String deviceId, String instanceId) throws IOException {
+        return getWithNipcResponse(
+                "/devices/" + deviceId + "/events?instanceId=" + encode(instanceId),
+                new TypeReference<>() {}
+        );
     }
 
-    /**
-     * TieDie Subscribe API - This API is used to subscribe to data from the {@link Device}.
-     * If the device is a BLE device, this API can be used to subscribe to GATT notifications/indications.
-     * If the device is a Zigbee device, this API can be used to subscribe to Zigbee attribute reports.
-     *
-     * @param dataParameter A {@link DataParameter} object that was discovered previously.
-     * @return A {@link TiedieResponse} object.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     * @see ControlClient#subscribe(DataParameter, SubscriptionOptions)
-     */
-    public TiedieResponse<Void> subscribe(DataParameter dataParameter) throws IOException {
-        return subscribe(dataParameter, null);
-    }
-
-    /**
-     * TieDie Subscribe API - This API is used to subscribe to data from the {@link Device}.
-     * <p>
-     * If the device is a BLE device, this API can be used to subscribe to GATT notifications/indications.
-     * <p>
-     * If the device is a Zigbee device, this API can be used to subscribe to Zigbee attribute reports.
-     *
-     * @param dataParameter A {@link DataParameter} object that was discovered previously.
-     * @param options       A {@link SubscriptionOptions} object. This has additional parameters such as the topic,
-     *                      data format and additional parameters for Zigbee.
-     * @return A {@link TiedieResponse} object.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<Void> subscribe(DataParameter dataParameter, SubscriptionOptions options) throws IOException {
-        var tiedieRequest = TiedieSubscribeRequest.createRequest(dataParameter, options);
-
-        return postWithTiedieResponse("/data/subscription", tiedieRequest, Void.class);
-    }
-
-    /**
-     * TieDie Unsubscribe API - This API is used to unsubscribe to data from the {@link Device}.
-     * <p>
-     * If the device is a BLE device, this API can be used to unsubscribe from GATT notifications/indications.
-     * <p>
-     * If the device is a Zigbee device, this API can be used to unsubscribe from Zigbee attribute reports.
-     *
-     * @param dataParameter A {@link DataParameter} object that was discovered previously.
-     * @return A {@link TiedieResponse} object.
-     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
-     */
-    public TiedieResponse<Void> unsubscribe(DataParameter dataParameter) throws IOException {
-        var tiedieRequest = TiedieUnsubscribeRequest.createRequest(dataParameter);
-
-        return deleteWithTiedieResponse("/data/subscription", tiedieRequest, Void.class);
-    }
-
-    public TiedieResponse<Void> registerTopic(String topic, RegistrationOptions options) throws IOException {
-        var tiedieRequest = TiedieRegisterTopicRequest.createRequest(topic, options);
-
-        return postWithTiedieResponse("/registration/topic", tiedieRequest, Void.class);
-    }
-
-    public TiedieResponse<Void> unregisterTopic(String topic) throws IOException {
-        return deleteWithTiedieResponse("/registration/topic?topic=" + topic, Void.class);
+    public NipcResponse<List<TiedieEventResponse>> getAllEvents(String deviceId) throws IOException {
+        return getWithNipcResponse(
+                "/devices/" + deviceId + "/events",
+                new TypeReference<>() {}
+        );
     }
 }

@@ -61,6 +61,9 @@ public class BleExtension {
     @JsonProperty("separateBroadcastAddress")
     private List<String> separateBroadcastAddress;
 
+    @JsonProperty("mobility")
+    private Boolean mobility;
+
     private List<String> pairingMethods;
 
     /**
@@ -158,7 +161,7 @@ public class BleExtension {
         private String key;
 
         /**
-         * It represents a nonce added to the key.  It is and
+         * It represents a nonce added to the key.  It is an
          * integer value that is required attribute.  It is mutable and returned
          * by default.
          */

@@ -22,7 +22,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(gattHandler, "/subscription/**").setAllowedOrigins("*")
+        registry.addHandler(gattHandler, "/ws/subscription").setAllowedOrigins("*")
                 .addInterceptors(gattHandler);
 
         registry.addHandler(connectionStatusHandler, "/connection-status").setAllowedOrigins("*");
