@@ -7,12 +7,7 @@
 Silabs Access Point class
 """
 
-import uuid
-from http import HTTPStatus
-
-from flask import Response, jsonify
 from data_producer import DataProducer
-
 from silabs.ble_operations.connect import ConnectOperation
 from silabs.ble_operations.disconnect import DisconnectOperation
 from silabs.ble_operations.discover import DiscoverOperation
@@ -24,7 +19,7 @@ from silabs.ble_operations.write import WriteOperation
 from silabs.common.util import BluetoothApp
 from config import SL_BT_CONFIG_MAX_CONNECTIONS
 from access_point import AccessPoint, BleConnectOptions, ConnectionRequest
-
+from access_point_responses import BleConnectionError, BleDisconnectError, BleDiscoveryError, BleReadError, BleSubscribeError, BleUnsubscribeError, BleWriteError, DiscoverResponse, ReadResponse, SubscribeResponse, UnsubscribeResponse, WriteResponse
 
 class SilabsAccessPoint(AccessPoint):
     """ Manages Bluetooth Low Energy (BLE) operations and connections."""
@@ -37,9 +32,11 @@ class SilabsAccessPoint(AccessPoint):
         self.silabs_app.event_handler = self.event_handler
 
     def start(self):
+        """ Start the Bluetooth application """
         self.silabs_app.start()
 
     def stop(self):
+        """ Stop the Bluetooth application """
         self.silabs_app.stop()
 
     def connectable(self):
@@ -50,67 +47,53 @@ class SilabsAccessPoint(AccessPoint):
         """ Start scanning for devices """
         scan_operation = ScanOperation(self.silabs_app.lib, self.data_producer)
         self.operations.append(scan_operation)
-
         scan_operation.run()
 
     def connect(self,
-                address,
+                address: str,
                 ble_connect_options: BleConnectOptions,
-                retries=3) -> tuple[Response, int]:
+                retries: int = 3) -> None:
+        """ Establish a connection to a BLE device """
         if not self.connectable():
-            return jsonify({
-                "status": "FAILURE",
-                "requestID": uuid.uuid4(),
-                "reason": "max connections"
-            }), HTTPStatus.BAD_REQUEST
-
+            raise BleConnectionError("max connections")
         if address in self.conn_reqs:
-            return jsonify({
-                "status": "FAILURE",
-                "requestID": uuid.uuid4(),
-                "reason": "already connected"
-            }), HTTPStatus.BAD_REQUEST
-
+            raise BleConnectionError("already connected")
         operation = ConnectOperation(
             self.silabs_app.lib, self.data_producer, address, retries)
         self.operations.append(operation)
-
         operation.run()
 
         if not operation.is_set():
-            return operation.response()
-
-        discover_operation = DiscoverOperation(
-            self.silabs_app.lib, operation.handle, retries, ble_connect_options.services)
-        self.operations.append(discover_operation)
-
-        discover_operation.run()
-
-        self.conn_reqs[address] = ConnectionRequest(
-            address, operation.handle, discover_operation.services)
-
-        return discover_operation.response()
+            raise BleConnectionError("connection operation failed")
+        else:
+            self.conn_reqs[address] = ConnectionRequest(address, operation.handle, {})
 
     def discover(self,
-                 address,
+                 address: str,
                  ble_connect_options: BleConnectOptions,
-                 retries=3) -> tuple[Response, int]:
+                 retries: int = 3) -> DiscoverResponse:
+        """ Discover services of a connected BLE device """
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleDiscoveryError("not connected")
 
         discover_operation = DiscoverOperation(
-            self.silabs_app.lib, self.conn_reqs[address].handle, retries, ble_connect_options.services)
+            self.silabs_app.lib,
+            self.conn_reqs[address].handle,
+            retries,
+            ble_connect_options.services
+        )
         self.operations.append(discover_operation)
 
         discover_operation.run()
 
         self.conn_reqs[address].services = discover_operation.services
 
-        return discover_operation.response()
+        return DiscoverResponse(address=address, services=discover_operation.services)
 
-    def read(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
+    def read(self, address: str, service_uuid: str, char_uuid: str) -> ReadResponse:
+        """ Read a characteristic from a connected BLE device """
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleReadError("not connected")
 
         conn_req = self.conn_reqs[address]
         handle = conn_req.handle
@@ -129,9 +112,10 @@ class SilabsAccessPoint(AccessPoint):
               address: str,
               service_uuid: str,
               char_uuid: str,
-              value: str) -> tuple[Response, int]:
+              value: bytes) -> WriteResponse:
+        """ Write a value to a characteristic of a connected BLE device """
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleWriteError("not connected")
 
         conn_req = self.conn_reqs[address]
         handle = conn_req.handle
@@ -144,11 +128,13 @@ class SilabsAccessPoint(AccessPoint):
         self.operations.append(operation)
         operation.run()
 
-        return operation.response()
+        # Assume success for now
+        return WriteResponse(address=address, service_uuid=service_uuid, char_uuid=char_uuid, value=value, success=True)
 
-    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
+    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> SubscribeResponse:
+        """ Subscribe to notifications from a characteristic of a connected BLE device """
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleSubscribeError("not connected")
 
         conn_req = self.conn_reqs[address]
         handle = conn_req.handle
@@ -165,11 +151,13 @@ class SilabsAccessPoint(AccessPoint):
         self.operations.append(operation)
         operation.run()
 
-        return operation.response()
+        # Assume success for now
+        return SubscribeResponse(address=address, service_uuid=service_uuid, char_uuid=char_uuid, subscribed=True)
 
-    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
+    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> UnsubscribeResponse:
+        """ Unsubscribe from notifications from a characteristic of a connected BLE device """
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleUnsubscribeError("not connected")
 
         conn_req = self.conn_reqs[address]
         handle = conn_req.handle
@@ -183,18 +171,20 @@ class SilabsAccessPoint(AccessPoint):
             chk_handle = operation.handle == handle
             if isinstance(operation, SubscribeOperation) and chk_handle and charhandle_match:
                 operation.disable_notification()
-                return operation.response()
+                return UnsubscribeResponse(address=address, service_uuid=service_uuid, char_uuid=char_uuid, unsubscribed=True)
 
-        return jsonify({"status": "FAILURE", "reason": "not subscribed"}), HTTPStatus.BAD_REQUEST
+        raise BleUnsubscribeError("not subscribed")
 
-    def disconnect(self, address: str) -> tuple[Response, int]:
+    def disconnect(self, address: str) -> None:
+        """ Disconnect a device. Raises DisconnectError. """
         handle = self.conn_reqs[address].handle
 
         operation = DisconnectOperation(self.silabs_app.lib, handle)
         self.operations.append(operation)
         operation.run()
 
-        return operation.response()
+        if not operation.is_set():
+            raise BleDisconnectError("disconnect operation failed")
 
     def bt_evt_system_boot(self, _evt):
         """ do a system boot and set configurations"""

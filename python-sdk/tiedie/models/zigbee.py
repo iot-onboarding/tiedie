@@ -16,7 +16,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from tiedie.models.common import DataParameter
-from tiedie.models.responses import TiedieRawResponse
+from tiedie.models.responses import SuccessResponse
 
 
 class Attribute(BaseModel):
@@ -72,7 +72,7 @@ class ZigbeeDataParameter(DataParameter):
     attribute_type: int
 
 
-class ZigbeeDiscoverResponse(TiedieRawResponse):
+class ZigbeeDiscoverResponse(SuccessResponse):
     """ Response containing discovered Zigbee endpoint data. """
     model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
 

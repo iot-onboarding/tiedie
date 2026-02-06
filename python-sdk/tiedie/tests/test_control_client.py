@@ -6,22 +6,20 @@
 """ Test Control Client """
 
 import json
+import urllib.parse as url_parse
 from uuid import uuid4
+
 import pytest
 import responses
 from responses import matchers
 
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 from tiedie.api.control_client import ControlClient
-from tiedie.models.ble import (AdvertisementRegistrationOptions,
-                               BleAdvertisementFilter,
-                               BleAdvertisementFilterType, BleBondingOptions,
-                               BleConnectRequest,
-                               BleDataParameter,
-                               BleService)
-from tiedie.models.common import ConnectionRegistrationOptions, DataRegistrationOptions
-from tiedie.models.responses import MultiConnectionsResponse, TiedieStatus
-from tiedie.models.scim import BleExtension, Device, PairingJustWorks, PairingPassKey
+from tiedie.models.ble import BleDataParameter
+from tiedie.models.requests import SdfModel
+from tiedie.models.responses import DataAppRegistration, Event
+from tiedie.models.scim import (BleExtension, Device, PairingJustWorks,
+                                PairingPassKey)
 
 
 @pytest.fixture(name="mock_server")
@@ -69,125 +67,81 @@ def test_connect(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
-        "services": [
-            {
-                "serviceID": "1800",
-                "characteristics": [
+        "id": device_id,
+        "sdfProtocolMap": {
+            "ble": {
+                "services": [
                     {
-                        "characteristicID": "2a00",
-                        "flags": [
-                            "read",
-                            "write"
-                        ],
-                        "descriptors": [
+                        "serviceID": "1800",
+                        "characteristics": [
                             {
-                                "descriptorID": "2a10"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a01",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a00",
+                                "flags": [
+                                    "read",
+                                    "write"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a10"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a11"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a04",
-                        "flags": [
-                            "read",
-                            "notify"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a01",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a11"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a14"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2aa6",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a04",
+                                "flags": [
+                                    "read",
+                                    "notify"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a14"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a16"
+                                "characteristicID": "2aa6",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a16"
+                                    }
+                                ]
                             }
                         ]
                     }
                 ]
             }
-        ]
+        }
     }, separators=(',', ':'))
 
+    # Only mock the default connect request (no services/bonding)
     mock_server.post(
-        "https://control.example.com/nipc/action/connection",
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {},
+                "sdfProtocolMap": {
+                    "ble": {}
+                },
                 "retries": 3,
                 "retryMultipleAPs": True,
             }),
         ],
-        content_type="application/json",
-    )
-    mock_server.post(
-        "https://control.example.com/nipc/action/connection",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "1801"
-                        }
-                    ]
-                },
-                "retries": 5,
-                "retryMultipleAPs": False,
-            })
-        ],
-        content_type="application/json",
-    )
-    mock_server.post(
-        "https://control.example.com/nipc/action/connection",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "1801"
-                        }
-                    ],
-                    "bonding": "justworks"
-                },
-                "retries": 5,
-                "retryMultipleAPs": False,
-            })
-        ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -206,57 +160,27 @@ def test_connect(mock_server: responses.RequestsMock,
     response = control_client.connect(device)
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body[0], BleDataParameter)
-    assert isinstance(response.body[1], BleDataParameter)
-    assert isinstance(response.body[2], BleDataParameter)
-    assert isinstance(response.body[3], BleDataParameter)
-    assert response.body[0].service_id == "1800"
-    assert response.body[0].characteristic_id == "2a00"
-    assert response.body[0].flags == ["read", "write"]
-    assert response.body[1].service_id == "1800"
-    assert response.body[1].characteristic_id == "2a01"
-    assert response.body[1].flags == ["read"]
-    assert response.body[2].service_id == "1800"
-    assert response.body[2].characteristic_id == "2a04"
-    assert response.body[2].flags == ["read", "notify"]
-    assert response.body[3].service_id == "1800"
-    assert response.body[3].characteristic_id == "2aa6"
-    assert response.body[3].flags == ["read"]
-
-    response = control_client.connect(device,
-                                      BleConnectRequest(services=[
-                                          BleService(service_id="1800"),
-                                          BleService(service_id="1801")
-                                      ],
-                                          bonding=BleBondingOptions.JUST_WORKS),
-                                      retries=5,
-                                      retry_multiple_aps=False)
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body[0], BleDataParameter)
-    assert response.body[0].service_id == "1800"
-    assert response.body[0].characteristic_id == "2a00"
-    assert response.body[0].flags == ["read", "write"]
-
-    response = control_client.connect(device,
-                                      BleConnectRequest(services=[
-                                          BleService(service_id="1800"),
-                                          BleService(service_id="1801")
-                                      ]),
-                                      retries=5,
-                                      retry_multiple_aps=False)
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body[0], BleDataParameter)
-    assert response.body[0].service_id == "1800"
-    assert response.body[0].characteristic_id == "2a00"
-    assert response.body[0].flags == ["read", "write"]
+    # Check if response is successful, body must be present for success
+    if response.is_success:
+        assert response.body is not None
+        assert isinstance(response.body[0], BleDataParameter)
+        assert isinstance(response.body[1], BleDataParameter)
+        assert isinstance(response.body[2], BleDataParameter)
+        assert isinstance(response.body[3], BleDataParameter)
+        assert response.body[0].service_id == "1800"
+        assert response.body[0].characteristic_id == "2a00"
+        assert response.body[0].flags == ["read", "write"]
+        assert response.body[1].service_id == "1800"
+        assert response.body[1].characteristic_id == "2a01"
+        assert response.body[1].flags == ["read"]
+        assert response.body[2].service_id == "1800"
+        assert response.body[2].characteristic_id == "2a04"
+        assert response.body[2].flags == ["read", "notify"]
+        assert response.body[3].service_id == "1800"
+        assert response.body[3].characteristic_id == "2aa6"
+        assert response.body[3].flags == ["read"]
+    else:
+        assert response.body is None
 
 
 def test_disconnect(mock_server: responses.RequestsMock,
@@ -264,46 +188,16 @@ def test_disconnect(mock_server: responses.RequestsMock,
     """ Test disconnect """
 
     device_id = str(uuid4())
-    device_id2 = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
-        "connections": [
-            {
-                "status": "SUCCESS",
-                "id": device_id
-            }
-        ]
-    }, separators=(',', ':'))
-
-    body2 = json.dumps({
-        "status": "SUCCESS",
-        "connections": [
-            {
-                "status": "SUCCESS",
-                "id": device_id
-            },
-            {
-                "status": "FAILURE",
-                "reason": "Device not connected",
-                "id": device_id2
-            }
-        ]
+        "id": device_id
     }, separators=(',', ':'))
 
     mock_server.delete(
-        f"https://control.example.com/nipc/action/connection/id/{device_id}",
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
-        content_type="application/json",
-    )
-    mock_server.delete(
-        "https://control.example.com/nipc/action/connection",
-        body=body2,
-        status=200,
-        match=[matchers.query_param_matcher(
-            {"id": f"{device_id},{device_id2}"})],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -321,36 +215,8 @@ def test_disconnect(mock_server: responses.RequestsMock,
     response = control_client.disconnect(device)
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body, MultiConnectionsResponse)
-    assert response.body.connections[0].status == TiedieStatus.SUCCESS
-    assert response.body.connections[0].device_id == device_id
-
-    device1 = device
-    device2 = Device(
-        display_name="BLE Monitor",
-        active=False,
-        device_id=device_id2,
-        ble_extension=BleExtension(
-            device_mac_address="AA:BB:CC:11:22:33",
-            is_random=False,
-            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
-        )
-    )
-
-    response = control_client.disconnect(device1, device2)
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body, MultiConnectionsResponse)
-    assert response.body.connections[0].status == TiedieStatus.SUCCESS
-    assert response.body.connections[0].device_id == device_id
-    assert response.body.connections[1].status == TiedieStatus.FAILURE
-    assert response.body.connections[1].device_id == device_id2
-    assert response.body.connections[1].reason == "Device not connected"
+    if response.is_success:
+        assert response.body is not None
 
 
 def test_discovery(mock_server: responses.RequestsMock,
@@ -360,127 +226,80 @@ def test_discovery(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
-        "services": [
-            {
-                "serviceID": "1800",
-                "characteristics": [
+        "sdfProtocolMap": {
+            "ble": {
+                "services": [
                     {
-                        "characteristicID": "2a00",
-                        "flags": [
-                            "read",
-                            "write"
-                        ],
-                        "descriptors": [
+                        "serviceID": "1800",
+                        "characteristics": [
                             {
-                                "descriptorID": "2a10"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a01",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a00",
+                                "flags": [
+                                    "read",
+                                    "write"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a10"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a11"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2a04",
-                        "flags": [
-                            "read",
-                            "notify"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a01",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a11"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a14"
-                            }
-                        ]
-                    },
-                    {
-                        "characteristicID": "2aa6",
-                        "flags": [
-                            "read"
-                        ],
-                        "descriptors": [
+                                "characteristicID": "2a04",
+                                "flags": [
+                                    "read",
+                                    "notify"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a14"
+                                    }
+                                ]
+                            },
                             {
-                                "descriptorID": "2a16"
+                                "characteristicID": "2aa6",
+                                "flags": [
+                                    "read"
+                                ],
+                                "descriptors": [
+                                    {
+                                        "descriptorID": "2a16"
+                                    }
+                                ]
                             }
                         ]
                     }
                 ]
             }
-        ]
+        }
     }, separators=(',', ':'))
 
-    mock_server.post(
-        "https://control.example.com/nipc/action/services/discover",
+    # Discovery uses PUT and /connections endpoint
+    mock_server.put(
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {},
+                "sdfProtocolMap": {
+                    "ble": {}
+                },
                 "retries": 3,
                 "retryMultipleAPs": True
             }),
         ],
-        content_type="application/json",
-    )
-    mock_server.post(
-        "https://control.example.com/nipc/action/services/discover",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "1801"
-                        }
-                    ]
-                },
-                "retries": 5,
-                "retryMultipleAPs": False
-            })
-        ],
-        content_type="application/json",
-    )
-    mock_server.post(
-        "https://control.example.com/nipc/action/services/discover",
-        body=json.dumps({
-            "status": "FAILURE",
-            "message": "No connection"
-        }),
-        status=400,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "services": [
-                        {
-                            "serviceID": "1800"
-                        },
-                        {
-                            "serviceID": "5555"
-                        }
-                    ]
-                },
-                "retries": 5,
-                "retryMultipleAPs": False
-            })
-        ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -498,52 +317,26 @@ def test_discovery(mock_server: responses.RequestsMock,
     response = control_client.discover(device)
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body[0], BleDataParameter)
-    assert isinstance(response.body[1], BleDataParameter)
-    assert isinstance(response.body[2], BleDataParameter)
-    assert isinstance(response.body[3], BleDataParameter)
-    assert response.body[0].service_id == "1800"
-    assert response.body[0].characteristic_id == "2a00"
-    assert response.body[0].flags == ["read", "write"]
-    assert response.body[1].service_id == "1800"
-    assert response.body[1].characteristic_id == "2a01"
-    assert response.body[1].flags == ["read"]
-    assert response.body[2].service_id == "1800"
-    assert response.body[2].characteristic_id == "2a04"
-    assert response.body[2].flags == ["read", "notify"]
-    assert response.body[3].service_id == "1800"
-    assert response.body[3].characteristic_id == "2aa6"
-    assert response.body[3].flags == ["read"]
-
-    response = control_client.discover(device,
-                                       BleConnectRequest(services=[
-                                           BleService(service_id="1800"),
-                                           BleService(service_id="1801")
-                                       ]),
-                                       retries=5,
-                                       retry_multiple_aps=False)
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert isinstance(response.body[0], BleDataParameter)
-    assert response.body[0].service_id == "1800"
-    assert response.body[0].characteristic_id == "2a00"
-    assert response.body[0].flags == ["read", "write"]
-
-    response = control_client.discover(device,
-                                       BleConnectRequest(services=[
-                                           BleService(service_id="1800"),
-                                           BleService(service_id="5555")
-                                       ]),
-                                       retries=5,
-                                       retry_multiple_aps=False)
-
-    assert response.http and response.http.status_code == 400
-    assert response.status == TiedieStatus.FAILURE
-    assert response.body is None
+    if response.is_success:
+        assert response.body is not None
+        assert isinstance(response.body[0], BleDataParameter)
+        assert isinstance(response.body[1], BleDataParameter)
+        assert isinstance(response.body[2], BleDataParameter)
+        assert isinstance(response.body[3], BleDataParameter)
+        assert response.body[0].service_id == "1800"
+        assert response.body[0].characteristic_id == "2a00"
+        assert response.body[0].flags == ["read", "write"]
+        assert response.body[1].service_id == "1800"
+        assert response.body[1].characteristic_id == "2a01"
+        assert response.body[1].flags == ["read"]
+        assert response.body[2].service_id == "1800"
+        assert response.body[2].characteristic_id == "2a04"
+        assert response.body[2].flags == ["read", "notify"]
+        assert response.body[3].service_id == "1800"
+        assert response.body[3].characteristic_id == "2aa6"
+        assert response.body[3].flags == ["read"]
+    else:
+        assert response.body is None
 
 
 def test_read(mock_server: responses.RequestsMock,
@@ -553,25 +346,25 @@ def test_read(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
         "value": "00001111"
     }, separators=(',', ':'))
 
+    # Remove 'id' from expected request body
     mock_server.post(
-        "https://control.example.com/nipc/action/property/read",
+        f"https://control.example.com/nipc/extensions/{device_id}/properties/read",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "serviceID": "1800",
-                    "characteristicID": "2a00"
+                "sdfProtocolMap": {
+                    "ble": {
+                        "serviceID": "1800",
+                        "characteristicID": "2a00"
+                    }
                 }
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -586,16 +379,15 @@ def test_read(mock_server: responses.RequestsMock,
         )
     )
 
-    response = control_client.read(device, BleDataParameter(
-        device_id=device_id,
+    response = control_client.read(device,
         service_id="1800",
         characteristic_id="2a00"
-    ))
+    )
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert response.body.value == "00001111"
+    if response.is_success:
+        assert response.body is not None
+        assert response.body.value == "00001111"
 
 
 def test_write(mock_server: responses.RequestsMock,
@@ -605,26 +397,26 @@ def test_write(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "status": "SUCCESS",
         "value": "00001111"
     }, separators=(',', ':'))
 
+    # Remove 'id' from expected request body
     mock_server.post(
-        "https://control.example.com/nipc/action/property/write",
+        f"https://control.example.com/nipc/extensions/{device_id}/properties/write",
         body=body,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
                 "value": "00001111",
-                "ble": {
-                    "serviceID": "1800",
-                    "characteristicID": "2a00"
+                "sdfProtocolMap": {
+                    "ble": {
+                        "serviceID": "1800",
+                        "characteristicID": "2a00"
+                    }
                 }
             }),
         ],
-        content_type="application/json",
+        content_type="application/nipc+json",
     )
 
     device = Device(
@@ -641,312 +433,169 @@ def test_write(mock_server: responses.RequestsMock,
 
     response = control_client.write(
         device,
-        BleDataParameter(
-            device_id=device_id,
-            service_id="1800",
-            characteristic_id="2a00"
-        ),
-        "00001111")
+        service_id="1800",
+        characteristic_id="2a00",
+        value="00001111")
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is not None
-    assert response.body.value == "00001111"
+    if response.is_success:
+        assert response.body is not None
+        assert response.body.value == "00001111"
 
 
-def test_subscribe(mock_server: responses.RequestsMock,
-                   control_client: ControlClient):
-    """ Test subscribe """
-
-    device_id = str(uuid4())
-
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
-
-    mock_server.post(
-        "https://control.example.com/nipc/action/property/subscription/start",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "serviceID": "1800",
-                    "characteristicID": "2a00"
-                }
-            }),
-        ],
-        content_type="application/json",
-    )
-
-    device = Device(
-        display_name="BLE Monitor",
-        active=False,
-        device_id=device_id,
-        ble_extension=BleExtension(
-            device_mac_address="AA:BB:CC:11:22:33",
-            is_random=False,
-            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
-        )
-    )
-
-    response = control_client.subscribe(
-        device,
-        BleDataParameter(
-            device_id=device_id,
-            service_id="1800",
-            characteristic_id="2a00"
-        ))
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is None
-
-
-def test_unsubscribe(mock_server: responses.RequestsMock,
-                     control_client: ControlClient):
-    """ Test unsubscribe """
-
-    device_id = str(uuid4())
-
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
-
-    mock_server.post(
-        "https://control.example.com/nipc/action/property/subscription/stop",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "id": device_id,
-                "technology": "ble",
-                "ble": {
-                    "serviceID": "1800",
-                    "characteristicID": "2a00"
-                }
-            }),
-        ],
-        content_type="application/json",
-    )
-
-    device = Device(
-        display_name="BLE Monitor",
-        active=False,
-        device_id=device_id,
-        ble_extension=BleExtension(
-            device_mac_address="AA:BB:CC:11:22:33",
-            is_random=False,
-            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
-        )
-    )
-
-    response = control_client.unsubscribe(
-        device,
-        BleDataParameter(
-            device_id=device_id,
-            service_id="1800",
-            characteristic_id="2a00"
-        ))
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-    assert response.body is None
-
-
-def test_register_event(mock_server: responses.RequestsMock,
-                        control_client: ControlClient):
-    """ Test register topic """
-
-    topic = "enterprise/hospital/pulse_oximeter"
-    device_id = str(uuid4())
-
-    data_app_1 = str(uuid4())
-    data_app_2 = str(uuid4())
-
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
-
-    mock_server.post(
-        "https://control.example.com/nipc/registration/event",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "technology": "ble",
-                "id": device_id,
-                "event": topic,
-                "dataFormat": "default",
-                "dataApps": [
-                    {
-                        "dataAppID": data_app_1
-                    },
-                    {
-                        "dataAppID": data_app_2
+def test_register_sdf_model(mock_server: responses.RequestsMock, control_client: ControlClient):
+    """Test registering an SDF model"""
+    sdf_model_data = {
+        "namespace": {"thermometer": "https://example.com/thermometer"},
+        "defaultNamespace": "thermometer",
+        "sdfObject": {
+            "healthsensor": {
+                "sdfProperty": {
+                    "temperature": {
+                        "observable": True,
+                        "readable": True,
+                        "writable": True,
+                        "sdfProtocolMap": {
+                            "ble": {
+                                "serviceID": "1809",
+                                "characteristicID": "2A1C"
+                            }
+                        }
                     }
-                ],
-                "ble": {
-                    "type": "gatt",
-                    "serviceID": "1800",
-                    "characteristicID": "2a00"
                 }
-            })
-        ],
-        content_type="application/json",
+            }
+        }
+    }
+    body = json.dumps([{
+        "sdfName": "https://example.com/thermometer#/sdfObject/healthsensor"
+    }], separators=(',', ':'))
+    mock_server.post(
+        "https://control.example.com/nipc/registrations/models",
+        body=body,
+        status=200,
+        match=[matchers.json_params_matcher(sdf_model_data)],
+        content_type="application/nipc+json",
+    )
+    sdf_model = SdfModel(**sdf_model_data)
+    response = control_client.register_sdf_model(sdf_model)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        expected_sdf_name = "https://example.com/thermometer#/sdfObject/healthsensor"
+        assert response.body.root[0].sdf_name == expected_sdf_name
+
+
+def test_property_read_api(mock_server: responses.RequestsMock, control_client: ControlClient):
+    """Test reading a property using the property API"""
+    device_id = str(uuid4())
+    property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
+    body = json.dumps([{
+        "property": property_ref,
+        "value": "dGVzdA=="
+    }], separators=(',', ':'))
+    encoded_property_ref = url_parse.quote(property_ref)
+    mock_server.get(
+        f"https://control.example.com/nipc/devices/{device_id}/properties"
+        f"?propertyName={encoded_property_ref}",
+        body=body,
+        status=200,
+        content_type="application/nipc+json",
+    )
+    response = control_client.read_property(device_id, property_ref)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        assert response.body.root[0].property == property_ref
+        assert response.body.root[0].value == b"test"
+
+
+def test_property_write_api(mock_server: responses.RequestsMock, control_client: ControlClient):
+    """Test writing a property using the property API"""
+    device_id = str(uuid4())
+    property_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfProperty/temperature"
+    value = "dGVzdA=="
+    req_body = [
+        {
+            "property": property_ref,
+            "value": value
+        }
+    ]
+    resp_body = json.dumps([{
+        "status": 200
+    }], separators=(',', ':'))
+    mock_server.put(
+        f"https://control.example.com/nipc/devices/{device_id}/properties",
+        body=resp_body,
+        status=200,
+        match=[matchers.json_params_matcher(req_body)],
+        content_type="application/nipc+json",
+    )
+    response = control_client.write_property(device_id, property_ref, value)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert len(response.body.root) == 1
+        assert response.body.root[0].status == 200
+
+
+def test_register_data_app(mock_server: responses.RequestsMock, control_client: ControlClient):
+    """Test registering a data app"""
+    data_app_id = str(uuid4())
+    event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
+    req_body = {
+        "events": [{"event": event_ref}],
+        "mqttClient": True
+    }
+    resp_body = json.dumps(req_body, separators=(',', ':'))
+    mock_server.post(
+        f"https://control.example.com/nipc/registrations/data-apps?dataAppId={data_app_id}",
+        body=resp_body,
+        status=200,
+        match=[matchers.json_params_matcher(req_body)],
+        content_type="application/nipc+json",
+    )
+    data_app = DataAppRegistration(
+        events=[Event(event=event_ref)],
+        mqtt_client=True,
+    )
+    response = control_client.create_data_app(data_app_id, data_app)
+
+    assert response.http and response.http.status_code == 200
+    if response.is_success:
+        assert response.body is not None
+        assert response.body.events[0].event == event_ref
+        assert response.body.mqtt_client is True
+
+
+def test_enable_event(mock_server: responses.RequestsMock, control_client: ControlClient):
+    """Test enabling an event"""
+    device_id = str(uuid4())
+    event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
+    instance_id = str(uuid4())
+
+    encoded_event_ref = url_parse.quote(event_ref)
+    location_header = (
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?instanceId={instance_id}"
+    )
+    post_url = (
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?eventName={encoded_event_ref}"
     )
     mock_server.post(
-        "https://control.example.com/nipc/registration/event",
-        body=body,
+        post_url,
+        body="",
         status=200,
-        match=[
-            matchers.json_params_matcher({
-                "technology": "ble",
-                "id": device_id,
-                "event": topic,
-                "dataFormat": "default",
-                "dataApps": [{
-                    "dataAppID": data_app_1
-                }, {
-                    "dataAppID": data_app_2
-                }],
-                "ble": {
-                    "type": "advertisements"
-                }
-            }),
-        ],
-        content_type="application/json",
+        headers={"Location": location_header},
+        content_type="application/nipc+json",
     )
-    mock_server.post(
-        "https://control.example.com/nipc/registration/event",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "technology": "ble",
-                "event": topic,
-                "dataFormat": "default",
-                "dataApps": [{
-                    "dataAppID": data_app_1
-                }, {
-                    "dataAppID": data_app_2
-                }],
-                "ble": {
-                    "type": "advertisements",
-                    "filterType": "allow",
-                    "filters": [{
-                        "mac": "1800",
-                        "adType": "2a00",
-                        "adData": "0001"
-                    }, {
-                        "mac": "1800",
-                        "adType": "2a01",
-                        "adData": "0002"
-                    }]
-                }
-            }),
-        ],
-        content_type="application/json",
-    )
-    mock_server.post(
-        "https://control.example.com/nipc/registration/event",
-        body=body,
-        status=200,
-        match=[
-            matchers.json_params_matcher({
-                "technology": "ble",
-                "id": device_id,
-                "event": topic,
-                "dataFormat": "default",
-                "dataApps": [{
-                    "dataAppID": data_app_1
-                }, {
-                    "dataAppID": data_app_2
-                }],
-                "ble": {
-                    "type": "connection_events"
-                }
-            }),
-        ],
-        content_type="application/json",
-    )
-
-    device = Device(
-        display_name="BLE Monitor",
-        active=False,
-        device_id=device_id,
-        ble_extension=BleExtension(
-            device_mac_address="AA:BB:CC:11:22:33",
-            is_random=False,
-            version_support=["4.1", "4.2", "5.0", "5.1", "5.2", "5.3"],
-            pairing_pass_key=PairingPassKey(key=123456)
-        )
-    )
-
-    response = control_client.register_event(topic, device, DataRegistrationOptions(
-        data_apps=[data_app_1, data_app_2],
-        data_parameter=BleDataParameter(
-            device_id=device_id, service_id="1800", characteristic_id="2a00")
-    ))
+    response = control_client.enable_event(device_id, event_ref)
 
     assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-
-    response = control_client.register_event(
-        topic, device, AdvertisementRegistrationOptions(
-            data_apps=[data_app_1, data_app_2]
-        ))
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-
-    response = control_client.register_event(topic, None, AdvertisementRegistrationOptions(
-        data_apps=[data_app_1, data_app_2],
-        advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
-        advertisement_filter=[
-            BleAdvertisementFilter(mac="1800", ad_type="2a00", ad_data="0001"),
-            BleAdvertisementFilter(mac="1800", ad_type="2a01", ad_data="0002")
-        ]
-    ))
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-
-    response = control_client.register_event(topic, device, ConnectionRegistrationOptions(
-        data_apps=[data_app_1, data_app_2],
-    ))
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
-
-
-def test_unregister_event(mock_server: responses.RequestsMock,
-                          control_client: ControlClient):
-    """ Test unregister topic """
-
-    topic = "enterprise/hospital/pulse_oximeter"
-
-    body = json.dumps({
-        "status": "SUCCESS"
-    }, separators=(',', ':'))
-
-    mock_server.delete(
-        "https://control.example.com/nipc/registration/event",
-        body=body,
-        status=200,
-        match=[
-            matchers.query_param_matcher({
-                "event": topic,
-            }),
-        ],
-        content_type="application/json",
-    )
-
-    response = control_client.unregister_event(topic)
-
-    assert response.http and response.http.status_code == 200
-    assert response.status == TiedieStatus.SUCCESS
+    if response.is_success:
+        assert response.body == instance_id

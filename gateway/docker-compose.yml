@@ -3,8 +3,6 @@
 # See LICENSE file in this distribution.
 # SPDX-License-Identifier: Apache-2.0
 
-version: '3.4'
-
 services:
   mosquitto:
     restart: always

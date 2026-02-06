@@ -1,0 +1,51 @@
+<!--
+Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
+All rights reserved.
+See LICENSE file in this distribution.
+SPDX-License-Identifier: Apache-2.0
+-->
+
+{% extends 'layout.html' %}
+<title>{% block title %}Data App{% endblock %}</title>
+{% block main %}
+<div id="main">
+    <h1>Data App</h1>
+    {% if data_app == None %}
+        <h2>Data App not found</h2>
+    {% else %}
+        {% if data_app.mqtt_broker != None %}
+            <h2>MQTT Broker</h2>
+            <p>URI: {{ data_app.mqtt_broker.uri }}</p>
+            <p>Username: {{ data_app.mqtt_broker.username }}</p>
+            <p>Password: {{ data_app.mqtt_broker.password }}</p>
+        {% endif %}
+        <table class="table">
+            <thead>
+                <th scope="col">Events</th>
+                <th scope="col"></th>
+            </thead>
+            <tbody>
+                {% for event in data_app.events %}
+                <tr>
+                    <td scope="row">{{ event.event }}</td>
+                    <td>
+                        <a class="btn btn-primary" href="{{ url_for('get_subscription', event=event.event) }}">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if data_app.mqtt_broker.custom_topic != None %}
+                <tr>
+                    <td scope="row">{{ data_app.mqtt_broker.custom_topic }}</td>
+                    <td>
+                        <a class="btn btn-primary" href="{{ url_for('get_subscription', event=data_app.mqtt_broker.custom_topic) }}">View</a>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+</body>
+
+</html>
+{% endblock %}

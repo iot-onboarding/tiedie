@@ -30,6 +30,17 @@ class OnboardingClient(AbstractHttpClient):
         """
         return self.post("/Devices", device, Device)
 
+    def update_device(self, device: Device) -> HttpResponse[Device | None]:
+        """Update an existing device.
+
+        Args:
+            device (Device): Device object to be updated.
+
+        Returns:
+            HttpResponse[Device | None]: Response object containing the Device object.
+        """
+        return self.put(f"/Devices/{device.device_id}", device, Device)
+
     def get_device(self, device_id: str) -> HttpResponse[Device | None]:
         """Get the Device object using its unique ID.
 

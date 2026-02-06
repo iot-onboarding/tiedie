@@ -6,7 +6,7 @@
 
 """
 
-This moddules defines a client for making HTTP requests, handling responses, 
+This moddules defines a client for making HTTP requests, handling responses,
 and mapping them to specific classes, particularly for IoT applications.
 
 """
@@ -14,21 +14,20 @@ and mapping them to specific classes, particularly for IoT applications.
 from enum import Enum
 import json
 import logging
-from typing import Optional, Type, TypeVar
+from typing import Optional, Type, TypeVar, Union, List
 from pydantic import BaseModel, ValidationError
 import requests
 from tiedie.api.auth import Authenticator
 from tiedie.models.responses import (
     HttpResponse,
     TiedieHTTP,
-    TiedieRawResponse,
-    TiedieResponse,
-    TiedieStatus
+    NipcResponse,
+    ProblemDetails
 )
 
 
 ReturnClass = TypeVar('ReturnClass', bound=BaseModel)
-TiedieReturnClass = TypeVar('TiedieReturnClass', bound=TiedieRawResponse)
+NipcReturnClass = TypeVar('NipcReturnClass', bound=BaseModel)
 
 logger = logging.getLogger('tiedie')
 
@@ -53,11 +52,15 @@ class AbstractHttpClient:
                 None
             )
 
+        logger.debug("Response HTTP status %d", response.status_code)
         logger.debug("Response headers: %s", response.headers)
         logger.debug("Response: %s", response.text)
 
-        body = return_class.model_validate_json(
-            response.text)
+        try:
+            body = return_class.model_validate_json(
+                response.text)
+        except (ValueError, ValidationError):
+            body = None
 
         return HttpResponse[ReturnClass | None](
             response.status_code,
@@ -77,6 +80,26 @@ class AbstractHttpClient:
         logger.debug("Body: %s", data)
 
         response = self.http_client.post(
+            self.base_url + path,
+            data=data,
+            headers=self.headers,
+            verify=False,
+        )
+
+        return self._map_response(response, return_class)
+
+    def put(self,
+             path: str,
+             body: BaseModel,
+             return_class: Type[ReturnClass]) -> HttpResponse[ReturnClass | None]:
+        """ API PUT """
+        data = body.model_dump_json(by_alias=True, exclude_none=True)
+
+        logger.debug("PUT %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
+        response = self.http_client.put(
             self.base_url + path,
             data=data,
             headers=self.headers,
@@ -118,39 +141,83 @@ class AbstractHttpClient:
 
         return self._map_response(response, return_class)
 
-    def _map_tiedie_response(self,
-                             response: requests.Response,
-                             return_class: Optional[Type[TiedieReturnClass]]) \
-            -> TiedieResponse[Optional[TiedieReturnClass]]:
-        """ Map response to object """
+    def _map_nipc_response(self,
+                          response: requests.Response,
+                          return_class: Optional[Type[NipcReturnClass]]) \
+            -> NipcResponse[Optional[NipcReturnClass]]:
+        """Map HTTP response to NIPC response format.
+
+        Handles both success responses (HTTP 200 with JSON) and error responses
+        (HTTP 4xx/5xx with Problem Details format).
+        """
         http = TiedieHTTP(
             status_code=response.status_code,
-            status_message=response.reason
+            status_message=response.reason,
+            headers=dict(response.headers)
         )
 
         logger.debug("Response headers: %s", response.headers)
         logger.debug("Response: %s", response.text)
 
-        if return_class is None:
-            tiedie_response = TiedieResponse[None].model_validate_json(
-                response.text)
-            tiedie_response.http = http
-            return tiedie_response
+        # Check for error status codes (4xx, 5xx)
+        if response.status_code >= 400:
+            return self._handle_error_response(response, http)
+
+        # Handle success response (2xx)
+        return self._handle_success_response(response, http, return_class)
+
+    def _handle_error_response(self,
+                              response: requests.Response,
+                              http: TiedieHTTP) -> NipcResponse[None]:
+        """Handle error responses with Problem Details format."""
+        content_type = response.headers.get('content-type', '').lower()
 
         try:
-            resp = return_class.model_validate_json(response.text)
-            tiedie_response = TiedieResponse[Optional[TiedieReturnClass]](
-                status=resp.status,
-                http=http,
-                body=resp
+            if 'application/problem+json' in content_type:
+                # Parse RFC 9457 Problem Details format
+                problem_details = ProblemDetails.model_validate_json(response.text)
+                return NipcResponse[None](http=http, error=problem_details)
+            # Fallback: try to parse as JSON and extract error info
+            error_data = json.loads(response.text) if response.text else {}
+            problem_details = ProblemDetails(
+                type="about:blank",  # RFC 9457 default for generic errors
+                status=response.status_code,
+                title=response.reason or "HTTP Error",
+                detail=error_data.get('detail') or error_data.get('message') or response.text
             )
-        except (ValueError, ValidationError):
-            tiedie_response = TiedieResponse[None](
-                status=TiedieStatus.FAILURE,
-                http=http
+            return NipcResponse[None](http=http, error=problem_details)
+        except (ValueError, ValidationError, json.JSONDecodeError) as e:
+            logger.debug("Error parsing error response: %s", e)
+            # Create generic problem details for unparseable errors
+            problem_details = ProblemDetails(
+                type="about:blank",
+                status=response.status_code,
+                title=response.reason or "HTTP Error",
+                detail=f"Failed to parse error response: {str(e)}"
             )
+            return NipcResponse[None](http=http, error=problem_details)
 
-        return tiedie_response
+    def _handle_success_response(self,
+                                response: requests.Response,
+                                http: TiedieHTTP,
+                                return_class: Optional[Type[NipcReturnClass]]) \
+        -> NipcResponse[Optional[NipcReturnClass]]:
+        """Handle successful responses."""
+        if return_class is None:
+            return NipcResponse[None](http=http, body=None)
+        try:
+            body = return_class.model_validate_json(response.text)
+            return NipcResponse[Optional[NipcReturnClass]](http=http, body=body)
+        except (ValueError, ValidationError) as e:
+            logger.debug("Error parsing success response: %s", e)
+            # If parsing fails, treat as error
+            problem_details = ProblemDetails(
+                type="about:blank",
+                status=500,  # Internal server error for parsing issues
+                title="Response Parsing Error",
+                detail=f"Failed to parse response as {return_class.__name__}: {str(e)}"
+            )
+            return NipcResponse[None](http=http, error=problem_details)
 
     def _get_query_parameters(self, body: Optional[BaseModel]):
         if body is None:
@@ -179,14 +246,41 @@ class AbstractHttpClient:
 
         return query_parameters
 
-    def post_with_tiedie_response(self,
-                                  path: str,
-                                  body: BaseModel,
-                                  return_class: Optional[Type[TiedieReturnClass]]) -> \
-            TiedieResponse[Optional[TiedieReturnClass]]:
-        """ API POST with tiedie response """
+    def _serialize_body(self, body: Optional[Union[BaseModel, List[BaseModel]]]) -> Optional[str]:
+        """Serialize body parameter to JSON string.
 
-        data = body.model_dump_json(by_alias=True, exclude_none=True)
+        Args:
+            body: Either a single BaseModel, a list of BaseModel instances, or None
+
+        Returns:
+            JSON string representation of the body, or None if body is None
+        """
+        if body is None:
+            return None
+
+        if isinstance(body, list):
+            # Handle list of BaseModel instances
+            return '[' + \
+                ','.join([
+                    item.model_dump_json(
+                        by_alias=True,
+                        exclude_none=True
+                    ) for item in body
+                ]) + \
+                ']'
+        return body.model_dump_json(by_alias=True, exclude_none=True)
+
+    def post_with_nipc_response(self,
+                           path: str,
+                           body: Optional[Union[BaseModel, List[BaseModel]]],
+                           return_class: Optional[Type[NipcReturnClass]],
+                           content_type: Optional[str] = "application/nipc+json") -> \
+        NipcResponse[Optional[NipcReturnClass]]:
+        """ API POST with NIPC response format """
+
+        data = self._serialize_body(body)
+
+        self.headers['Content-Type'] = content_type
 
         logger.debug("POST %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
@@ -199,21 +293,48 @@ class AbstractHttpClient:
             verify=False,
         )
 
-        return self._map_tiedie_response(response, return_class)
+        return self._map_nipc_response(response, return_class)
 
-    def get_with_tiedie_response(self,
-                                 path: str,
-                                 body: BaseModel,
-                                 return_class: Optional[Type[TiedieReturnClass]]) -> \
-            TiedieResponse[Optional[TiedieReturnClass]]:
-        """ API GET with tiedie response """
+
+    def put_with_nipc_response(self,
+                              path: str,
+                              body: Union[BaseModel, List[BaseModel]],
+                              return_class: Optional[Type[NipcReturnClass]],
+                              content_type: Optional[str] = "application/nipc+json") -> \
+            NipcResponse[Optional[NipcReturnClass]]:
+        """ API PUT with NIPC response format """
+
+        data = self._serialize_body(body)
+
+        self.headers['Content-Type'] = content_type
+
+        logger.debug("PUT %s", self.base_url + path)
+        logger.debug("Headers: %s", self.headers)
+        logger.debug("Body: %s", data)
+
+        response = self.http_client.put(
+            self.base_url + path,
+            data=data,
+            headers=self.headers,
+            verify=False,
+        )
+
+        return self._map_nipc_response(response, return_class)
+
+
+
+    def get_with_nipc_response(self,
+                              path: str,
+                              body: Optional[BaseModel],
+                              return_class: Optional[Type[NipcReturnClass]]) -> \
+            NipcResponse[Optional[NipcReturnClass]]:
+        """ API GET with NIPC response format """
 
         params = self._get_query_parameters(body)
 
         logger.debug("GET %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
         logger.debug("Params: %s", params)
-
 
         response = self.http_client.get(
             self.base_url + path,
@@ -222,14 +343,15 @@ class AbstractHttpClient:
             verify=False,
         )
 
-        return self._map_tiedie_response(response, return_class)
+        return self._map_nipc_response(response, return_class)
 
-    def delete_with_tiedie_response(self,
-                                    path: str,
-                                    body: Optional[BaseModel],
-                                    return_class: Optional[Type[TiedieReturnClass]]) -> \
-            TiedieResponse[Optional[TiedieReturnClass]]:
-        """ API DELETE with tiedie response """
+
+    def delete_with_nipc_response(self,
+                                 path: str,
+                                 body: Optional[BaseModel],
+                                 return_class: Optional[Type[NipcReturnClass]]) -> \
+            NipcResponse[Optional[NipcReturnClass]]:
+        """ API DELETE with NIPC response format """
 
         params = self._get_query_parameters(body)
 
@@ -244,4 +366,4 @@ class AbstractHttpClient:
             verify=False,
         )
 
-        return self._map_tiedie_response(response, return_class)
+        return self._map_nipc_response(response, return_class)

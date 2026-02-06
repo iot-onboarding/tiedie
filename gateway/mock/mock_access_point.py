@@ -8,15 +8,19 @@ Mock AccessPoint class
 """
 
 import dataclasses
-from http import HTTPStatus
 import random
 import threading
 import time
-import uuid
-from flask import Response, jsonify
-from mock.mock_data import mock_advertisements
 from access_point import AccessPoint, BleConnectOptions, ConnectionRequest
 from data_producer import DataProducer
+from mock.mock_data import mock_advertisements
+
+from access_point_responses import (
+    BleConnectionError, BleDiscoveryError, DiscoverResponse,
+    BleReadError, ReadResponse, BleSubscribeError, SubscribeResponse,
+    BleDisconnectError, BleWriteError, UnsubscribeResponse, WriteResponse
+)
+from ble_types import Service, Characteristic, Descriptor
 
 
 @dataclasses.dataclass
@@ -75,146 +79,112 @@ class MockAccessPoint(AccessPoint):
                 i += 1
 
     def connect(self,
-                address,
-                ble_connect_options: BleConnectOptions,
-                retries=3) -> tuple[Response, int]:
+                address: str,
+                _ble_connect_options: BleConnectOptions,
+                _retries: int = 3) -> None:
         if not self.connectable():
-            return jsonify({
-                "status": "FAILURE",
-                "requestID": uuid.uuid4(),
-                "reason": "max connections"
-            }), HTTPStatus.BAD_REQUEST
+            raise BleConnectionError("max connections")
 
         if address in self.conn_reqs:
-            return jsonify({
-                "status": "FAILURE",
-                "requestID": uuid.uuid4(),
-                "reason": "already connected"
-            }), HTTPStatus.BAD_REQUEST
+            raise BleConnectionError("already connected")
 
         self.conn_reqs[address] = ConnectionRequest(address, 0, {})
         self.data_producer.publish_connection_status(
             ConnectionEvent(0), address, True)
 
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": uuid.uuid4(),
-            "services": [
-                {
-                    "serviceID": "180d",
-                    "characteristics": [
-                        {
-                            "characteristicID": "2a37",
-                            "flags": ["notify"],
-                            "descriptors": [
-                                {
-                                    "descriptorID": "2902"
-                                }
-                            ]
-                        },
-                        {
-                            "characteristicID": "2a38",
-                            "flags": ["read"]
-                        },
-                        {
-                            "characteristicID": "2a39",
-                            "flags": ["write"]
-                        }
-                    ]
-                }
-            ]
-        }), HTTPStatus.OK
-
     def discover(self,
-                 address,
-                 ble_connect_options: BleConnectOptions,
-                 retries=3) -> tuple[Response, int]:
+                 address: str,
+                 _ble_connect_options: BleConnectOptions,
+                 _retries: int = 3) -> DiscoverResponse:
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleDiscoveryError("not connected")
 
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": uuid.uuid4(),
-            "services": [
-                {
-                    "serviceID": "180d",
-                    "characteristics": [
-                        {
-                            "characteristicID": "2a37",
-                            "flags": ["notify"],
-                            "descriptors": [
-                                {
-                                    "descriptorID": "2902"
-                                }
-                            ]
-                        },
-                        {
-                            "characteristicID": "2a38",
-                            "flags": ["read"]
-                        },
-                        {
-                            "characteristicID": "2a39",
-                            "flags": ["write"]
-                        }
-                    ]
-                }
-            ]
-        }), HTTPStatus.OK
+        # Create mock Service/Characteristic/Descriptor objects
+        char1 = Characteristic("2a37", 1, 0x10)  # notify
+        char1.descriptors["2902"] = Descriptor("2902", 1)
+        char2 = Characteristic("2a38", 2, 0x02)  # read
+        char3 = Characteristic("2a39", 3, 0x08)  # write
+        service = Service(
+            service_id="180d",
+            service_handle=1,
+            characteristics={
+                "2a37": char1,
+                "2a38": char2,
+                "2a39": char3
+            }
+        )
+        services = [service]
+        return DiscoverResponse(address=address, services=services)
 
-    def read(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
+    def read(self, address: str, service_uuid: str, char_uuid: str) -> ReadResponse:
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleReadError("not connected")
 
         if service_uuid != "180d" or char_uuid != "2a38":
-            return jsonify({
-                "status": "FAILURE",
-                "reason": "Invalid service or characteristic uuid"
-            }), HTTPStatus.BAD_REQUEST
+            raise BleReadError("Invalid service or characteristic uuid")
 
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": uuid.uuid4(),
-            "value": "000001"
-        }), HTTPStatus.OK
+        value = b"test"  # mock value
+        return ReadResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            value=value
+        )
 
     def write(self,
               address: str,
               service_uuid: str,
               char_uuid: str,
-              value: str) -> tuple[Response, int]:
+              value: bytes) -> WriteResponse:
+        # Accept any write in mock
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleWriteError("not connected")
 
-        if service_uuid != "180d" or char_uuid != "2a39":
-            return jsonify({
-                "status": "FAILURE",
-                "reason": "Invalid service or characteristic uuid"
-            }), HTTPStatus.BAD_REQUEST
+        return WriteResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            value=value,
+            success=True
+        )
 
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": uuid.uuid4(),
-            "value": value
-        }), HTTPStatus.OK
-
-    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
+    def subscribe(self, address: str, service_uuid: str, char_uuid: str) -> SubscribeResponse:
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleSubscribeError("not connected")
+
+        key = (address, service_uuid, char_uuid)
+        if key in self._subscription_threads:
+            raise BleSubscribeError("already subscribed")
 
         thread = threading.Thread(
-            target=self._send_subscribe_data, args=(address, service_uuid, char_uuid))
+            target=self._send_subscribe_data,
+            args=(address, service_uuid, char_uuid)
+        )
+        self._subscription_threads[key] = thread
         thread.start()
 
-        self._subscription_threads[(address, service_uuid, char_uuid)] = thread
+        return SubscribeResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            subscribed=True
+        )
 
-        return jsonify({"status": "SUCCESS", "requestID": uuid.uuid4()}), HTTPStatus.OK
+    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> UnsubscribeResponse:
+        key = (address, service_uuid, char_uuid)
+        if key not in self._subscription_threads:
+            raise BleSubscribeError("not subscribed")
 
-    def unsubscribe(self, address: str, service_uuid: str, char_uuid: str) -> tuple[Response, int]:
-        thread = self._subscription_threads[(address, service_uuid, char_uuid)]
-        self._subscription_threads.pop((address, service_uuid, char_uuid))
+        thread = self._subscription_threads[key]
+        self._subscription_threads.pop(key)
         thread.join()
 
-        return jsonify({"status": "SUCCESS", "requestID": uuid.uuid4()}), HTTPStatus.OK
+        return UnsubscribeResponse(
+            address=address,
+            service_uuid=service_uuid,
+            char_uuid=char_uuid,
+            unsubscribed=True
+        )
 
     def _send_subscribe_data(self, address, service_uuid, char_uuid):
         while (address, service_uuid, char_uuid) in self._subscription_threads:
@@ -226,15 +196,11 @@ class MockAccessPoint(AccessPoint):
             )
             time.sleep(1)
 
-    def disconnect(self, address: str) -> tuple[Response, int]:
+    def disconnect(self, address: str) -> None:
+        """Mock disconnect, always succeeds."""
         if address not in self.conn_reqs:
-            return jsonify({"status": "FAILURE", "reason": "not connected"}), HTTPStatus.BAD_REQUEST
+            raise BleDisconnectError("not connected")
 
         self.conn_reqs.pop(address)
         self.data_producer.publish_connection_status(
             ConnectionEvent(1), address, False)
-
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": uuid.uuid4()
-        }), HTTPStatus.OK

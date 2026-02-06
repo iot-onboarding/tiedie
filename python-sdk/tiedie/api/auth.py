@@ -6,10 +6,11 @@
 
 """ TieDie Client authenticators """
 
+from typing import Optional
 import OpenSSL.crypto
 import paho.mqtt.client as mqtt
 import requests
-
+from requests_oauth2client import OAuth2Client, OAuth2AuthorizationCodeAuth
 
 class Authenticator:
     """
@@ -69,6 +70,7 @@ class ApiKeyAuthenticator(Authenticator):
                               mqtt_client: mqtt.Client,
                               disable_tls: bool = False,
                               insecure_tls: bool = False) -> mqtt.Client:
+        print(self.ca_file_path)
         if not disable_tls:
             mqtt_client.tls_set(ca_certs=self.ca_file_path)
             mqtt_client.tls_insecure_set(insecure_tls)
@@ -109,4 +111,28 @@ class CertificateAuthenticator(Authenticator):
             mqtt_client.tls_set(ca_certs=self.ca_file_path,
                                 certfile=self.cert_path, keyfile=self.key_path)
             mqtt_client.tls_insecure_set(insecure_tls)
+        return mqtt_client
+
+class OAuth2Authenticator(Authenticator):
+    """
+    Authenticator implementation for OAuth2 based authentication.
+    """
+
+    def __init__(
+            self, oauth2client: OAuth2Client) -> None:
+        self.session_auth: Optional[OAuth2AuthorizationCodeAuth] = None
+        self.oauth2client = oauth2client
+
+    def get_client_id(self) -> str:
+        return self.oauth2client.client_id
+
+    def set_auth_options(self, session: requests.Session):
+
+        session.auth = self.session_auth
+        return session
+
+    def set_auth_options_mqtt(self,
+                              mqtt_client: mqtt.Client,
+                              disable_tls: bool = False,
+                              insecure_tls: bool = False) -> mqtt.Client:
         return mqtt_client

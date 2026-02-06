@@ -134,8 +134,8 @@ class BleAdvertisementFilter(BaseModel):
 
 class BleTopicType(Enum):
     """
-    An enumeration of BLE topic types, including GATT, ADVERTISEMENTS,
-    and CONNECTION_EVENTS.
+    An enumeration of BLE topic types as defined in the NIPC draft.
+    Used for protocol mapping in SDF models.
     """
     GATT = 'gatt'
     ADVERTISEMENTS = 'advertisements'

@@ -11,25 +11,21 @@ responses.
 
 """
 
-import uuid
-from http import HTTPStatus
-from flask import Response, jsonify
 import bgapi
 from silabs.ble_operations.operation import Operation
+from access_point_responses import WriteResponse
 
 
 class WriteOperation(Operation):
     """ Handles writing a value to a BLE characteristic. """
 
-    def __init__(self, lib: bgapi.BGLib, handle: int, char_handle: int, value: str):
+    def __init__(self, lib: bgapi.BGLib, handle: int, char_handle: int, value: bytes):
         super().__init__(lib)
         self.handle = handle
         self.char_handle = char_handle
-        self.value = value
-        self.value_bytes = bytes.fromhex(value)
+        self.value_bytes = value
 
     def run(self):
-        """ function run """
         self.log.info(
             "writing characteristic %d from %d", self.char_handle, self.handle)
         self.lib.bt.gatt.write_characteristic_value(  # type: ignore
@@ -38,21 +34,15 @@ class WriteOperation(Operation):
         self.wait()
 
     def bt_evt_gatt_procedure_completed(self, evt):
-        """ Handles procedure completion events and sets the operation's state. """
         if self.handle == evt.connection:
             self.log.info(evt)
             self.set()
             self.is_done = True
 
-    def response(self) -> tuple[Response, int]:
-        """ Generates a response based on the operation's state and outcome. """
-        ret_json = {"status": "SUCCESS", "requestID": uuid.uuid4(),
-                    "value": self.value}
+    def response(self):
         if self.is_set():
-            return jsonify(ret_json), HTTPStatus.OK
-
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+            return WriteResponse(address=str(self.handle), service_uuid="", char_uuid="", value=self.value_bytes, success=True)
+        return WriteResponse(address=str(self.handle), service_uuid="", char_uuid="", value=None, success=False)
 
     def __repr__(self):
-        """ function ReadOperation """
-        return f"ReadOperation({self.handle})"
+        return f"WriteOperation({self.handle})"

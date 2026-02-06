@@ -8,7 +8,17 @@ SPDX-License-Identifier: Apache-2.0
 
 {% block main %}
     <div id="main">
-        <h1>{% block title %}Device Information{% endblock %}</h1>
+        <div class="d-flex">
+            <h1 class="flex-grow-1">{% block title %}Device Information{% endblock %}</h1>
+            <form action="{{ url_for('update_device', device_id=device.device_id) }}" method="GET">
+                <button type="submit" class="btn btn-primary">
+                    Edit
+                </button>
+            </form>
+            <form class="ms-2" action="/devices/{{ device.device_id }}/delete" method="POST">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
 
         {% if parameters != None %}
             <span class="badge rounded-pill text-bg-success">Connected</span>
@@ -29,12 +39,28 @@ SPDX-License-Identifier: Apache-2.0
                     <td>{{ device.ble_extension.device_mac_address }}</td>
                 </tr>
                 <tr>
+                    <th>Active</th>
+                    <td>{{ "Yes" if device.active else "No" }}</td>
+                </tr>
+                <tr>
+                    <th>Address Type</th>
+                    <td>
+                        {% if device.ble_extension.is_random %}
+                            Random static
+                        {% else %}
+                            Public
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if device.ble_extension.pairing_pass_key %}
+                <tr>
                     <th>Device Pass Key</th>
                     <td>{{ device.ble_extension.pairing_pass_key.key }}</td>
                 </tr>
+                {% endif %}
                 <tr>
                     <th>Device Version Support</th>
-                    <td>{{ device.ble_extension.version_support }}</td>
+                    <td>{{ device.ble_extension.version_support | join(", ") }}</td>
                 </tr>
                 <tr>
                     <th>Mobility</th>
@@ -44,10 +70,197 @@ SPDX-License-Identifier: Apache-2.0
         </table>
     </div>
 
-    
-    <div class="row">
+    <div class="row border my-3 p-3">
+        <form class="col-5" action="/devices/{{ device.device_id }}/sdf" method="POST" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="file" class="form-label">Upload SDF model</label>
+                <input type="file" class="form-control" id="sdfFile" name="sdfFile">
+            </div>
+            <button type="submit" class="btn btn-primary">Upload SDF model</button>
+        </form>
+    </div>
+
+    {% macro render_sdf_properties(path, sdf_thing_or_object) %}
+        {% if sdf_thing_or_object.sdf_property != None and sdf_thing_or_object.sdf_property|length > 0 %}
+            <table class="table">
+                <thead>
+                    <th scope="col">Property Name</th>
+                    <th scope="col"></th>
+                    <th scope="col"></th>
+                </thead>
+                <tbody>
+                    {% for property_name, property in sdf_thing_or_object.sdf_property.items() %}
+                        {% set sdf_name = path + "/sdfProperty/" + property_name %}
+                        <tr>
+                            <td class="ble-ad-data text-black" scope="row">
+                                {% if property.description != None %}
+                                    {{property.description}}
+                                {% else %}
+                                    {{property_name}}
+                                {% endif %}
+                                <p class="ble-sdf-property">{{sdf_name}}</p>
+                            </td>
+                            <td class="ble-ad-data text-black" id="property-{{ sdf_name }}"></td>
+                            <td class="text-end">
+                                {% if property.readable %}
+                                <button class="btn btn-primary" onclick="readProperty('{{ device.device_id }}', '{{ sdf_name }}')">Read</button>
+                                {% endif %}
+                                {% if property.writable %}
+                                <form onsubmit="writeProperty('{{ device.device_id }}', '{{ sdf_name }}', this.querySelector('input').value); return false;" class="input-group mt-3">
+                                    <input type="text" class="form-control" placeholder="Enter value" id="writeProperty-{{ sdf_name }}">
+                                    <button type="submit" class="btn btn-primary">Write</button>
+                                </form>                      
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {%- endmacro %}
+
+    {% macro render_sdf_actions(path, sdf_thing_or_object) %}
+        {% if sdf_thing_or_object.sdf_action != None and sdf_thing_or_object.sdf_action|length > 0 %}
+            <table class="table">
+                <thead>
+                    <th scope="col">Action Name</th>
+                    <th scope="col"></th>
+                </thead>
+                <tbody>
+                    {% for action_name, action in sdf_thing_or_object.sdf_action.items() %}
+                        {% set sdf_name = path + "/sdfAction/" + action_name %}
+                        <tr>
+                            <td class="ble-ad-data text-black" scope="row">
+                                {% if action.description != None %}
+                                    {{action.description}}
+                                {% else %}
+                                    {{action_name}}
+                                {% endif %}
+                                <p class="ble-sdf-property">{{sdf_name}}</p>
+                            </td>
+                            <td class="ble-ad-data text-black" id="action-{{ sdf_name }}"></td>
+                            <td class="text-end">
+                                <form onsubmit="" class="input-group mt-3">
+                                    <input type="text" class="form-control" placeholder="Enter value" id="action-{{ loop.index0 }}">
+                                    <button type="submit" class="btn btn-success" disabled>Invoke</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {%- endmacro %}
+
+    {% macro render_sdf_events(path, sdf_thing_or_object) %}
+        {% if sdf_thing_or_object.sdf_event != None and sdf_thing_or_object.sdf_event|length > 0 %}
+            <table class="table">
+                <thead>
+                    <th scope="col">Event Name</th>
+                    <th scope="col"></th>
+                </thead>
+                <tbody>
+                    {% for event_name, event in sdf_thing_or_object.sdf_event.items() %}
+                        {% set sdf_name = path + "/sdfEvent/" + event_name %}
+                        <tr>
+                            <td class="ble-ad-data text-black" scope="row">
+                                {% if event.description != None %}
+                                    {{event.description}}
+                                {% else %}
+                                    {{event_name}}
+                                {% endif %}
+                                <p class="ble-sdf-property">{{path}}/sdfEvent/{{event_name}}</p>
+                            </td>
+                            <td class="text-end">
+                                {% if events is defined and events|selectattr('event', 'equalto', sdf_name)|list|length > 0 %}
+                                    {% set ev = events|selectattr('event', 'equalto', sdf_name)|list|first %}
+                                    <button type="submit" class="btn btn-danger" onclick="disableEvent('{{ device.device_id }}', '{{ ev.event }}', '{{ ev.instance_id }}')">Disable Event</button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-warning" onclick="enableEvent('{{ device.device_id }}', '{{ sdf_name }}')">Enable Event</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {%- endmacro %}
+
+    {% macro render_sdf_object(path, object_name, object) %}
+        <div class="accordion-item">
+            <h5 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{{ object_name }}" aria-expanded="true" aria-controls="{{ object_name }}">
+                    {% if object.description != None %}
+                        {{object.description}}</h5>
+                    {% else %}
+                        {{object_name}}
+                    {% endif %}
+                </button>
+            </h5>
+            <div id="{{object_name}}" class="accordion-collapse collapse collapsed" data-bs-parent="#accordion">
+                <div class="accordion-body">
+                {{ render_sdf_properties(path, object) }}
+                {{ render_sdf_actions(path, object) }}
+                {{ render_sdf_events(path, object) }}
+                </div>
+            </div>
+        </div>
+    {%- endmacro %}
+
+    <div class="row border my-3 p-3">
+        <select class="form-select" id="sdf_select">
+            <option value="" selected>Select SDF model</option>
+            {% for sdf_name, sdf_model in sdf_models.items() %}
+                <option value="{{ sdf_name }}">{{ sdf_name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% for sdf_name, sdf_model in sdf_models.items() %}
+        <div class="row border my-3 p-3" hidden id="div-{{ sdf_name }}">
+            <div class="d-flex">
+                <h3 class="flex-grow-1">SDF Model</h3>
+                {% if sdf_model != None and sdf_name != None %}
+                <form class="text-end col" action="{{ url_for('delete_sdf_model', device_id=device.device_id, sdf_name=sdf_name | quote) }}" method="POST">
+                    <button type="submit" class="btn btn-danger">Delete SDF model</button>
+                </form>
+                {% endif %}
+            </div>
+            {% set namespace = sdf_model.namespace.get(sdf_model.default_namespace) %}
+            <p>Namespace: <span class="ble-sdf-property">{{ namespace }}</span></p>
+            
+            {% if sdf_model.sdf_thing != None %}
+                {% for thing_name, thing in sdf_model.sdf_thing.items() %}
+                    <h4>Thing: {{thing_name}}</h4>
+                    <p>{{thing.description}}</p>
+
+                    {% set path = namespace + "#/sdfThing/" + thing_name %}
+
+                    {{ render_sdf_properties(path, thing) }}
+                    {{ render_sdf_actions(path, thing) }}
+                    {{ render_sdf_events(path, thing) }}
+
+                    {% if thing.sdf_object != None %}
+                        <div class="accordion" id="accordion">
+                            {% for object_name, object in thing.sdf_object.items() %}
+                                {{ render_sdf_object(path + "/sdfObject/" + object_name, object_name, object) }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% elif sdf_model.sdf_object != None %}
+                <div class="accordion" id="accordion">
+                    {% for object_name, object in sdf_model.sdf_object.items() %}
+                        {{ render_sdf_object(namespace + "#/sdfObject/" + object_name, object_name, object) }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+ 
+    <div class="row border my-3 p-3">
         {% if parameters == None %}
-        <form class="col-4 mt-3" action="/devices/{{ device.device_id }}/connect" method="POST">
+        <form class="col-4" action="/devices/{{ device.device_id }}/connect" method="POST">
             <div class="mb-3">
                 <label for="serviceUUIDs" class="form-label">Service UUIDs (comma-separated)</label>
                 <input type="text" class="form-control" id="serviceUUIDs" name="serviceUUIDs" placeholder="Enter Service UUIDs">
@@ -55,18 +268,6 @@ SPDX-License-Identifier: Apache-2.0
             <button type="submit" class="btn btn-primary">Connect</button>
         </form>
         {% endif %}
-      
-        <form class="col-4" action="/devices/{{ device.device_id }}/delete" method="POST">
-          <button type="submit" class="btn btn-danger">Delete</button>
-        </form>
-        
-        <form class="col-4" action="/devices/{{ device.device_id }}/advertisements" method="POST">
-            {% if parameters != None %}
-            <button type="submit" class="btn btn-success" disabled>Subscribe to advertisements</button>
-            {% else %}
-            <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
-            {% endif %}
-        </form>
       
         {% if parameters != None %}
         <form class="col-4" action="/devices/{{ device.device_id }}/disconnect" method="POST">
@@ -102,7 +303,7 @@ SPDX-License-Identifier: Apache-2.0
                         </form>                      
                         {% endif %}
                         {% if 'notify' in parameter.flags or 'indicate' in parameter.flags %}
-                        <button class="btn btn-warning" onclick="subscribe('{{ loop.index0 }}', '{{ device.device_id }}', '{{ parameter.service_id }}', '{{ parameter.characteristic_id }}')">Subscribe</button>
+                        <button class="btn btn-warning" disabled>Enable event to subscribe</button>
                         {% endif %}
                     </td>
                 </tr>
@@ -113,6 +314,24 @@ SPDX-License-Identifier: Apache-2.0
     {% endif %}
 
     <script type="text/javascript">
+            // show or hide sdf model div based on selected value
+            const selectElement = document.getElementById('sdf_select');
+
+            selectElement.addEventListener('change', (event) => {
+                const selectedValue = event.target.value;
+                const sdfModelDivs = document.querySelectorAll('[id^="div-"]');
+                sdfModelDivs.forEach(div => {
+                    div.hidden = true; // Hide all divs
+                });
+                if (selectedValue) {
+                    const selectedDiv = document.getElementById('div-' + selectedValue);
+                    if (selectedDiv) {
+                        selectedDiv.hidden = false; // Show the selected div
+                    }
+                }
+            });
+
+
             var is_connected = "{{ parameters }}" != "None";
             function writeValue(index, deviceId, serviceUUID, charUUID, value) {
                 // Prepare the data to be sent in the request
@@ -157,46 +376,98 @@ SPDX-License-Identifier: Apache-2.0
                     });
             }
 
-
-            function subscribe(index, id, svcUUID, charUUID, value) {
+            function readProperty(id, sdfName) {
                 // call API with svcUUID and charUUID
-                console.log("subscribe: " + svcUUID + ", " + charUUID);
+                console.log("readProperty: " + sdfName + ", " + id);
 
-                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/subscribe`, {
+                fetch(`/devices/${id}/read`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({
+                        "sdfName": sdfName
+                    })
                 })
                     .then(response => response.json())
                     .then(data => {
                         console.log(data);
-                        var topic = data.topic;
-                        window.location.href = `/subscription?topic=${topic}`;
+                        const bytes = atob(data[0].value);
+                        const hex = bytes.split('').map(function (c) {
+                            return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
+                        }).join('');
+                        document.getElementById("property-" + sdfName).innerHTML = hex;
                     });
             }
 
-            var path = window.location.pathname;
-            var id = path.split("/")[2];
+            function writeProperty(id, sdfName, value) {
+                // call API with svcUUID and charUUID
+                console.log("writeProperty: " + sdfName + ", " + id);
 
-            var topic = `data-app/${id}/connection`;
+                const bytes = value
+                                .match(/.{1,2}/g)
+                                .map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
+                value = btoa(bytes);
 
-            var ws = io("ws://:3000/connectionstatus");
+                fetch(`/devices/${id}/write`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "sdfName": sdfName,
+                        "value": value
+                    })
+                })
+                    .then(response => response.json())
+                    .then(() => {
+                        const bytes = atob(value);
+                        const hex = bytes.split('').map(function (c) {
+                            return ('0' + c.charCodeAt(0).toString(16)).slice(-2);
+                        }).join('');
+                        document.getElementById("property-" + sdfName).innerHTML = hex;
+                    });
+            }
 
-            ws.on("connect", () => {
-                    console.log("Connected to server");
-                    ws.emit("subscribe", topic); 
-            });
 
-            ws.on("data", event => {
-                var obj = JSON.parse(event.data);
+            function enableEvent(id, sdfName) {
+                console.log("enableEvent: " + sdfName + ", " + id);
 
-                console.log(obj);
+                fetch(`/devices/${id}/event`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "sdfName": sdfName,
+                        "enable": true
+                    })
+                })
+                    .then(data => {
+                        console.log(data);
+                        window.location.reload();
+                    });
+            }
 
-                if (is_connected && !obj.bleConnectionStatus.connected) {
-                    window.location.reload();
-                }
-            });
+            function disableEvent(id, sdfName, instanceId) {
+                console.log("disableEvent: " + sdfName + ", " + id);
+
+                fetch(`/devices/${id}/event`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "sdfName": sdfName,
+                        "enable": false,
+                        "instanceId": instanceId
+                    })
+                })
+                    .then(data => {
+                        console.log(data);
+                        window.location.reload();
+                    });
+            }
     </script>
   </div>
 </body>

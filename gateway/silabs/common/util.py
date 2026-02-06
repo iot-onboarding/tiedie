@@ -35,11 +35,25 @@ import traceback
 import bgapi
 from bgapi.connector import ConnectorException
 import serial.tools.list_ports
+from .status import Status
 
 LOG_FORMAT_SINGLE = "%(asctime)s: %(levelname)s - %(message)s"
 LOG_FORMAT = "%(asctime)s: %(name)s %(levelname)s - %(message)s"
 BT_XAPI = os.path.join(os.path.dirname(__file__), "../api/sl_bt.xapi")
 
+# Patch bgapi package to use a modified version of CommandFailedError
+class CommandFailedError(bgapi.bglib.CommandError):
+    """ Convert errorcode into Status object. """
+    def __init__(self, response, command=None):
+        self.errorcode = Status(response._errorcode)
+        self.response = response
+        self.command = command
+        msg = f"Command failed with result {self.errorcode:#06x}: '{self.errorcode}'"
+        if command:
+            msg += f"\n> {command}\n< {response}"
+        super().__init__(msg)
+
+bgapi.bglib.CommandFailedError = CommandFailedError
 
 class GenericApp(threading.Thread):
     """ Generic application class. """
@@ -54,7 +68,8 @@ class GenericApp(threading.Thread):
         super().__init__()
 
     def event_handler(self, evt):
-        """ Public event handler to perform user actions. Meant to be overridden by child classes. """
+        """ Public event handler to perform user actions.
+            Meant to be overridden by child classes. """
 
     def _event_handler(self, evt):
         """ Private event handler to perform internal actions. """
@@ -80,18 +95,31 @@ class GenericApp(threading.Thread):
                 # The timeout is needed to get the KeyboardInterrupt.
                 # On Windows hosts, timeout is needed in both threaded and non-threaded modes.
                 # On POSIX hosts, timeout is needed only in threaded mode.
-                # The timeout value is a tradeoff between CPU load and KeyboardInterrupt response time.
-                # timeout=None: minimal CPU usage, KeyboardInterrupt not recognized until the next event.
+                # The timeout value is a tradeoff between CPU load and
+                # KeyboardInterrupt response time.
+                # timeout=None: minimal CPU usage, KeyboardInterrupt not
+                # recognized until the next event.
                 # timeout=0: maximal CPU usage, KeyboardInterrupt recognized immediately.
                 # See the documentation of Queue.get method for details.
                 evt = self.lib.get_event(timeout=0.1)
-                if evt is not None:
-                    self._event_handler(evt)
-                    self.event_handler(evt)
-                    # Call dedicated event callback if available.
-                    event_callback = getattr(self, evt._str, None)
-                    if event_callback is not None:
-                        event_callback(evt)
+                if evt is None:
+                    continue
+                # Convert event parameters with errorcode datatype into Status objects
+                for param in evt._apinode.params:
+                    if param.datatype.name == "errorcode":
+                        value = getattr(evt, param.name)
+                        setattr(evt, param.name, Status(value))
+                self._event_handler(evt)
+                if not self.ready.is_set():
+                    # Unexpected events may happen if the previous host execution aborted and the
+                    # target device continues emitting events. Therefore, calling application event
+                    # handlers should be prevented before the device is ready.
+                    continue
+                self.event_handler(evt)
+                # Call dedicated event callback if available.
+                event_callback = getattr(self, evt._str, None)
+                if event_callback is not None:
+                    event_callback(evt)
             except bgapi.bglib.CommandFailedError as err:
                 # Get additional info from trace.
                 trace = traceback.extract_tb(sys.exc_info()[-1])[-3]
@@ -332,11 +360,7 @@ def get_connector(args=None):
 
 def get_device_list():
     """ Find Segger J-Link devices based on USB vendor ID. """
-    device_list = []
-    for com in serial.tools.list_ports.comports():
-        if com.vid == 0x1366:
-            device_list.append(com.device)
-    return device_list
+    return [com.device for com in serial.tools.list_ports.comports() if com.vid == 0x1366]
 
 
 def connector_from_str(param):

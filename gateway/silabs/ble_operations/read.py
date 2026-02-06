@@ -10,16 +10,14 @@ handling responses, and generating success or failure messages.
 
 """
 
-import uuid
-from http import HTTPStatus
-from flask import Response, jsonify
 import bgapi
 from silabs.ble_operations.operation import Operation
+from access_point_responses import ReadResponse
 
 
 class ReadOperation(Operation):
     """ ReadOperation class for reading a BLE characteristic with response generation. """
-    value: str
+    value: bytes
 
     def __init__(self, lib: bgapi.BGLib, handle: int, char_handle: int):
         super().__init__(lib)
@@ -41,7 +39,7 @@ class ReadOperation(Operation):
                 self.char_handle == evt.characteristic and \
                 evt.att_opcode == self.lib.bt.gatt.ATT_OPCODE_READ_RESPONSE:  # type: ignore
             self.log.info(evt)
-            self.value = evt.value.hex()
+            self.value = evt.value
             self.set()
 
     def bt_evt_gatt_procedure_completed(self, evt):
@@ -50,14 +48,10 @@ class ReadOperation(Operation):
             self.log.info(evt)
             self.is_done = True
 
-    def response(self) -> tuple[Response, int]:
-        """ response function """
+    def response(self):
         if self.is_set():
-            json_arg = jsonify(
-                {"status": "SUCCESS", "requestID": uuid.uuid4(), "value": self.value})
-            return json_arg, HTTPStatus.OK
-
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+            return ReadResponse(address=str(self.handle), service_uuid="", char_uuid="", value=self.value)
+        return ReadResponse(address=str(self.handle), service_uuid="", char_uuid="", value=None)
 
     def __repr__(self):
         return f"ReadOperation({self.handle})"

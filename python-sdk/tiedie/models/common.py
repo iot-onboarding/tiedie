@@ -1,4 +1,3 @@
-#!python
 # Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
 # All rights reserved.
 # See LICENSE file in this distribution.
@@ -6,39 +5,50 @@
 
 """
 
-Classes for IoT technology, data formats, parameters, list responses, 
-and subscription options used in IoT applications.
+Classes for IoT parameters, list responses, and subscription options used in IoT applications.
 
 """
 
-from enum import Enum
+from enum import IntEnum
 from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 
-class Technology(Enum):
+class NipcErrorCodes(IntEnum):
     """
-    An enumeration class representing IoT technologies, including
-    BLE and Zigbee.
+    Error codes as defined in the NIPC draft.
     """
-    BLE = "ble"
-    ZIGBEE = "zigbee"
-    DPP = "dpp"
-    FIDO_FDO = "fido_fdo"
-    LORAWAN = "lorawan"
+    # Base error codes
+    GENERIC_ERROR = 1000
+    APP_NOT_AUTHORIZED = 1001
+    INVALID_DEVICE_ID = 1002
+    INVALID_SDF_URL = 1003
+    PREVIOUS_OPERATION_FAILED = 1004
 
-    def __json__(self):
-        return self.value
+    # Property error codes
+    PROPERTY_NOT_READABLE = 1100
+    PROPERTY_NOT_WRITABLE = 1101
 
+    # Event error codes
+    EVENT_ALREADY_ENABLED = 1200
+    EVENT_NOT_ENABLED = 1201
+    EVENT_NOT_REGISTERED = 1202
 
-class DataFormat(Enum):
-    """
-    An enumeration class representing subscription data formats.
-    """
-    DEFAULT = "default"
-    PAYLOAD = "payload"
+    # Connection error codes
+    DEVICE_ALREADY_CONNECTED = 1300
+    NO_CONNECTION_FOUND = 1301
+    BLE_CONNECTION_TIMEOUT = 1302
+    BLE_BONDING_FAILED = 1303
+    BLE_CONNECTION_FAILED = 1304
+    BLE_SERVICE_DISCOVERY_FAILED = 1305
+    INVALID_BLE_SERVICE_OR_CHARACTERISTIC = 1306
+    ZIGBEE_CONNECTION_TIMEOUT = 1400
+    INVALID_ZIGBEE_ENDPOINT_OR_CLUSTER = 1401
+
+    # Broadcast error codes
+    INVALID_BROADCAST_DATA = 1500
 
 
 class DataParameter(BaseModel):
@@ -70,8 +80,6 @@ class RegistrationOptions(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    data_format: Optional[DataFormat] = Field(
-        alias=str("dataFormat"), default=DataFormat.DEFAULT)
     data_apps: Optional[List[str]] = Field(alias=str("dataApps"), default=None)
 
 

@@ -11,33 +11,113 @@ registrations with authentication.
 
 """
 
-from uuid import uuid4
+import base64
+import logging
+import urllib.parse
 from http import HTTPStatus
-from typing import Any
 from functools import wraps
-from flask import Blueprint, current_app, jsonify, make_response, request
-from sqlalchemy import select
-from werkzeug.test import EnvironBuilder
+from enum import Enum
+import uuid
 import werkzeug.serving
 import OpenSSL
-from access_point import BleConnectOptions
+from flask import Blueprint, jsonify, make_response, request
+from sqlalchemy import select
 from ap_factory import ble_ap
 from database import session
-from models import EndpointApp
-from ble_models import (
-    AdvTopic,
-    ConnectionTopic,
-    DataAppTopic,
-    GattTopic,
-    BleExtension,
-    AdvFilter
+from access_point_responses import (
+    BleConnectionError,
+    BleDisconnectError,
+    BleDiscoveryError,
+    BleReadError,
+    BleWriteError
 )
+from access_point import BleConnectOptions
+from models import Device, EndpointApp
+from nipc_models import BleExtension, DataApp, SdfModel, Event
+from tiedie_exceptions import SchemaError
+
+# NIPC Problem Details Error Types Constants
+class NipcProblemTypes(str, Enum):
+    """
+    NIPC Problem Details error types as defined in the NIPC draft
+    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-12) 
+    Section 6 and IANA registry Section 10.4.
+    """
+    # Base URI for IANA HTTP Problem Types registry
+    _IANA_BASE = "https://www.iana.org/assignments/nipc-problem-types#"
+
+    # Generic errors
+    INVALID_ID = _IANA_BASE + "invalid-id"
+    INVALID_SDF_URL = _IANA_BASE + "invalid-sdf-url"
+    EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "extension-operation-not-executed"
+    SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "sdf-model-already-registered"
+    SDF_MODEL_IN_USE = _IANA_BASE + "sdf-model-in-use"
+
+    # Property API errors
+    PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
+    PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
+
+    # Event API errors
+    EVENT_ALREADY_ENABLED = _IANA_BASE + "event-already-enabled"
+    EVENT_NOT_ENABLED = _IANA_BASE + "event-not-enabled"
+    EVENT_NOT_REGISTERED = _IANA_BASE + "event-not-registered"
+
+    # Protocol specific errors - BLE
+    PROTOCOLMAP_BLE_ALREADY_CONNECTED = _IANA_BASE + "protocolmap-ble-already-connected"
+    PROTOCOLMAP_BLE_NO_CONNECTION = _IANA_BASE + "protocolmap-ble-no-connection"
+    PROTOCOLMAP_BLE_CONNECTION_TIMEOUT = _IANA_BASE + "protocolmap-ble-connection-timeout"
+    PROTOCOLMAP_BLE_BONDING_FAILED = _IANA_BASE + "protocolmap-ble-bonding-failed"
+    PROTOCOLMAP_BLE_CONNECTION_FAILED = _IANA_BASE + "protocolmap-ble-connection-failed"
+    PROTOCOLMAP_BLE_SERVICE_DISCOVERY_FAILED = _IANA_BASE + \
+        "protocolmap-ble-service-discovery-failed"
+    PROTOCOLMAP_BLE_INVALID_SERVICE_OR_CHARACTERISTIC = _IANA_BASE + \
+        "protocolmap-ble-invalid-service-or-characteristic"
+
+    # Protocol specific errors - Zigbee
+    PROTOCOLMAP_ZIGBEE_CONNECTION_TIMEOUT = \
+        _IANA_BASE + "protocolmap-zigbee-connection-timeout"
+    PROTOCOLMAP_ZIGBEE_INVALID_ENDPOINT_OR_CLUSTER = \
+        _IANA_BASE + "protocolmap-zigbee-invalid-endpoint-or-cluster"
+
+    # Extension API errors
+    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "extension-broadcast-invalid-data"
+    EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "extension-firmware-rollback"
+    EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "extension-firmware-update-failed"
+
+    # RFC 9457 generic error for internal server errors
+    ABOUT_BLANK = "about:blank"
 
 control_app = Blueprint("control", __name__, url_prefix="/nipc")
 
 
+def create_nipc_problem_response(
+    error_type: NipcProblemTypes,
+    status: HTTPStatus,
+    title: str,
+    detail: str
+) -> tuple:
+    """Create a NIPC Problem Details response.
+    
+    Args:
+        error_type: NIPC Problem Details error type
+        status: HTTP status code
+        title: Brief error summary
+        detail: Detailed error description
+    
+    Returns:
+        tuple of (response_dict, status_code)
+    """
+    response = {
+        "type": error_type.value,
+        "status": status.value,
+        "title": title,
+        "detail": detail
+    }
+    return jsonify(response), status
+
+
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
-    """ Custom WSGI request handler to extract and provide peer certificates. """
+    """Custom WSGI request handler to extract and provide peer certificates."""
 
     def make_environ(self):
         environ = super().make_environ()
@@ -52,11 +132,12 @@ class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
 
 
 def authenticate_user(func):
-    """Verify x-api-key"""
+    """Verify x-api-key or client certificate."""
 
     @wraps(func)
     def check_apikey(*args, **kwargs):
-        client_cert: OpenSSL.crypto.X509 | None = request.environ.get('peercert')
+        client_cert: OpenSSL.crypto.X509 | None = request.environ.get(
+            'peercert')
         if client_cert:
             endpoint_app = session.scalar(
                 select(EndpointApp)
@@ -81,642 +162,1137 @@ def authenticate_user(func):
     return check_apikey
 
 
-@control_app.route('/connectivity/connection', methods=['GET'])
+@control_app.route('/devices/<device_id>/connections', methods=['POST'])
 @authenticate_user
-def get_connection():
-    """ Get connection state for a device """
-    ids = request.args.get("id", "")
-    device_ids = ids.split(",")
+def connect(device_id: str):
+    """Connect to a device (NIPC Section 4.4.1)."""
+    device = session.get(BleExtension, device_id)
+    if device is None:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            f"Device ID {device_id} does not exist or is not a device"
+        )
 
-    # get all device objects
-    devices = session.execute(
-        select(BleExtension).filter(BleExtension.device_id.in_(device_ids))).scalars().all()
+    # Default connection parameters
+    retries = 3
+    retry_multiple_aps = True
+    services = []
+    cached = False
+    cache_idle_purge = 3600
+    auto_update = True
+    bonding = "default"
 
-    connections = []
+    # Parse request body if provided
+    if request.is_json and request.get_json():
+        retries = request.get_json().get("retries", retries)
+        retry_multiple_aps = request.get_json().get("retryMultipleAPs", retry_multiple_aps)
 
-    for device_id in device_ids:
-        device = next((d for d in devices if str(
-            d.device_id) == device_id), None)
+        protocol_map = request.get_json().get("sdfProtocolMap", {})
+        ble_config = protocol_map.get("ble", {})
+        if ble_config:
+            services = ble_config.get("services", [])
+            cached = bool(ble_config.get("cached", cached))
+            cache_idle_purge = int(ble_config.get("cacheIdlePurge", cache_idle_purge))
+            auto_update = bool(ble_config.get("autoUpdate", auto_update))
+            bonding = str(ble_config.get("bonding", bonding))
 
-        if device is None:
-            connections.append({"id": device_id, "status": "FAILURE"})
-            continue
+    try:
+        connect_options = BleConnectOptions(services, cached, cache_idle_purge)
+        ble_ap().connect(
+            device.device_mac_address,
+            connect_options,
+            retries
+        )
 
+        discover_result = ble_ap().discover(
+            device.device_mac_address,
+            connect_options,
+            retries
+        )
+
+        response_data = {
+            "id": device_id,
+            "sdfProtocolMap": {
+                "ble": [
+                    {
+                        "serviceID": svc.service_id,
+                        "characteristics": [
+                            {
+                                "characteristicID": char.characteristic_id,
+                                "flags": char.properties,
+                                "descriptors": char.descriptors
+                            }
+                            for char in svc.characteristics.values()
+                        ]
+                    }
+                    for svc in discover_result.services
+                ]
+            }
+        }
+        return jsonify(response_data), HTTPStatus.OK
+    except (BleConnectionError, BleDiscoveryError) as e:
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROTOCOLMAP_BLE_NO_CONNECTION,
+            HTTPStatus.BAD_REQUEST,
+            "Connection Failed",
+            str(e)
+        )
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Internal server error: {str(e)}"
+        )
+
+
+@control_app.route('/devices/<device_id>/connections', methods=['PUT'])
+@authenticate_user
+def update_connection(device_id: str):
+    """Update cached ServiceMap for a device (NIPC Section 4.4.2)."""
+    device = session.get(BleExtension, device_id)
+    if device is None:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            f"Device ID {device_id} does not exist or is not a device"
+        )
+
+    # Check if device is connected
+    conn = ble_ap().get_connection(device.device_mac_address)
+    if not conn:
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROTOCOLMAP_BLE_NO_CONNECTION,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            f"No connection found for device {device_id}"
+        )
+
+    # Default service discovery parameters
+    services = []
+    cached = False
+    cache_idle_purge = 3600
+    auto_update = True
+
+    # Parse request body if provided
+    if request.is_json and request.json:
+        protocol_map = request.json.get("sdfProtocolMap", {})
+        ble_config = protocol_map.get("ble", {})
+        if ble_config:
+            services = [
+                {"serviceID": svc.get("serviceID")}
+                for svc in ble_config.get("services", [])
+            ]
+            cached = bool(ble_config.get("cached", cached))
+            cache_idle_purge = int(ble_config.get("cacheIdlePurge", cache_idle_purge))
+            auto_update = bool(ble_config.get("autoUpdate", auto_update))
+
+    try:
+        connect_options = BleConnectOptions(services, cached, cache_idle_purge)
+        discover_result = ble_ap().discover(
+            device.device_mac_address,
+            connect_options,
+            0  # No retries for discovery on existing connection
+        )
+
+        response_data = {
+            "id": device_id,
+            "sdfProtocolMap": {
+                "ble": [
+                    {
+                        "serviceID": svc.service_id,
+                        "characteristics": [
+                            {
+                                "characteristicID": char.characteristic_id,
+                                "flags": char.properties,
+                                "descriptors": char.descriptors
+                            }
+                            for char in svc.characteristics.values()
+                        ]
+                    }
+                    for svc in discover_result.services
+                ]
+            }
+        }
+        return jsonify(response_data), HTTPStatus.OK
+    except BleDiscoveryError as e:
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROTOCOLMAP_BLE_NO_CONNECTION,
+            HTTPStatus.BAD_REQUEST,
+            "Discovery Failed",
+            str(e)
+        )
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Internal server error: {str(e)}"
+        )
+
+
+@control_app.route('/devices/<device_id>/connections', methods=['DELETE'])
+@authenticate_user
+def disconnect_from_device(device_id: str):
+    """Disconnect from a device (NIPC Section 4.4.3)."""
+    device = session.get(BleExtension, device_id)
+    if device is None:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            f"Device ID {device_id} does not exist or is not a device"
+        )
+
+    try:
+        ble_ap().disconnect(device.device_mac_address)
+        return jsonify({"id": device_id}), HTTPStatus.OK
+    except BleDisconnectError as e:
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROTOCOLMAP_BLE_NO_CONNECTION,
+            HTTPStatus.BAD_REQUEST,
+            "Disconnect Failed",
+            str(e)
+        )
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Internal server error: {str(e)}"
+        )
+
+
+@control_app.route('/devices/<device_id>/connections', methods=['GET'])
+@authenticate_user
+def get_connection_status(device_id: str):
+    """Get connection status for a device (NIPC Section 4.4.4)."""
+    device = session.get(BleExtension, device_id)
+    if device is None:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            f"Device ID {device_id} does not exist or is not a device"
+        )
+
+    try:
         conn = ble_ap().get_connection(device.device_mac_address)
 
         if conn:
-            connections.append({"id": device_id, "status": "SUCCESS"})
-        else:
-            connections.append({"id": device_id, "status": "FAILURE"})
-
-    return jsonify({
-        "status": "SUCCESS",
-        "requestID": uuid4(),
-        "connections": connections
-    }), HTTPStatus.OK
-
-
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['GET'])
-@authenticate_user
-def get_connection_by_id(device_id: str):
-    """ Get connection state for a device """
-    device = session.get(BleExtension, device_id)
-
-    conn = ble_ap().get_connection(device.device_mac_address)
-
-    if conn:
-        return jsonify({
-            "status": "SUCCESS",
-            "requestID": str(uuid4()),
-            "id": device_id
-        }), HTTPStatus.OK
-
-    return jsonify({"status": "FAILURE", "reason": "Connection not found"}), HTTPStatus.OK
-
-
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['POST'])
-@authenticate_user
-def connect_by_id(device_id: str):
-    """ Connect API """
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().connect(device.device_mac_address,
-                            BleConnectOptions(
-                                [], False, 3600),
-                            3)
-
-
-@control_app.route('/connectivity/connection', methods=['POST'])
-@authenticate_user
-def connect():
-    """ Connect API """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
-    retries = request.json.get("retries", 3)
-    services = ble.get("services", [])
-    cached = ble.get("cached", False)
-    cache_idle_purge = ble.get("cacheIdlePurge", 3600)
-
-    device = session.get(BleExtension, device_id)
-
-    resp, respcode = ble_ap().connect(device.device_mac_address,
-                                      BleConnectOptions(
-                                          services, cached, cache_idle_purge),
-                                      retries)
-
-    return resp, respcode
-
-
-@control_app.route('/connectivity/connection/id/<device_id>', methods=['DELETE'])
-@authenticate_user
-def disconnect_by_id(device_id: str):
-    """ Disconnect API """
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().disconnect(device.device_mac_address)
-
-
-@control_app.route('/connectivity/connection', methods=['DELETE'])
-@authenticate_user
-def disconnect():
-    """ Disconnect API """
-    device_id = request.args.get("id")
-
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().disconnect(device.device_mac_address)
-
-
-@control_app.route('/connectivity/services/id/<device_id>', methods=['GET'])
-@authenticate_user
-def discover_by_id(device_id: str):
-    """ Service discovery API """
-    device = session.get(BleExtension, device_id)
-
-    return ble_ap().discover(device.device_mac_address,
-                             BleConnectOptions(
-                                 [], False, 3600), 3)
-
-
-@control_app.route('/connectivity/services', methods=['GET'])
-@authenticate_user
-def discover():
-    """ Service discovery API """
-    if not request.args:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.args.get("id")
-
-    device = session.get(BleExtension, device_id)
-
-    services = request.args.getlist("ble[services][serviceID]")
-    cached = request.args.get("ble[cached]", False)
-    cache_idle_purge = request.args.get("ble[cacheIdlePurge]", 3600)
-    retries = request.args.get("retries", 3)
-
-    return ble_ap().discover(device.device_mac_address,
-                             BleConnectOptions(
-                                 services, cached, cache_idle_purge),
-                             retries)
-
-
-@control_app.route('/data/attribute', methods=['GET'])
-@authenticate_user
-def read():
-    """ Function Read """
-    if not request.args:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.args.get("id")
-
-    service_id = request.args["ble[serviceID]"].lower()
-    characteristic_id = request.args["ble[characteristicID]"].lower()
-
-    device = session.get(BleExtension, device_id)
-
-    resp, respcode = ble_ap().read(
-        device.device_mac_address, service_id, characteristic_id)
-
-    return resp, respcode
-
-
-@control_app.route('/data/attribute', methods=['POST', 'PUT'])
-@authenticate_user
-def write():
-    """ Function Write """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
-    service_id = ble["serviceID"].lower()
-    characteristic_id = ble["characteristicID"].lower()
-    value = request.json["value"].lower()
-
-    device = session.get(BleExtension, device_id)
-
-    if device is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    resp, respcode = ble_ap().write(
-        device.device_mac_address, service_id, characteristic_id, value)
-
-    return resp, respcode
-
-
-@control_app.route('/data/subscription', methods=['POST', 'PUT'])
-@authenticate_user
-def subscribe():
-    """ This function subscribes a user device from a BLE service. """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
-    service_id = ble["serviceID"].lower()
-    characteristic_id = ble["characteristicID"].lower()
-
-    device = session.get(BleExtension, device_id)
-
-    if device is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    resp, respcode = ble_ap().subscribe(
-        device.device_mac_address, service_id, characteristic_id)
-
-    # optionally register a topic for the device
-    topic = request.json.get("topic", None)
-
-    if topic is not None:
-        data_format = request.json.get("dataFormat", "default")
-
-        service_id = ble["serviceID"].lower()
-        characteristic_id = ble["characteristicID"].lower()
-
-        device = session.get(BleExtension, device_id)
-
-        gatt_topic = GattTopic(
-            topic, service_id, characteristic_id, data_format, [device])
-        session.merge(gatt_topic)
-        session.commit()
-
-    return resp, respcode
-
-
-@control_app.route('/data/subscription', methods=['DELETE'])
-@authenticate_user
-def unsubscribe():
-    """ This function unsubscribes a user device from a BLE service. """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.json.get("id")
-
-    ble = request.json.get("ble")
-    service_id = ble["serviceID"].lower()
-    characteristic_id = ble["characteristicID"].lower()
-
-    device = session.get(BleExtension, device_id)
-
-    if device is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    resp, respcode = ble_ap().unsubscribe(
-        device.device_mac_address, service_id, characteristic_id)
-
-    return resp, respcode
-
-
-@control_app.route('/registration/topic', methods=['POST', 'PUT'])
-@authenticate_user
-def register_topic():
-    """ Function to register topic """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    device_id = request.json.get("id", None)
-
-    topic = request.json["topic"]
-    data_format = request.json.get("dataFormat", "default")
-    ble = request.json["ble"]
-
-    ad_type = ble["type"]
-
-    data_apps = request.json.get("dataApps", [])
-
-    if ad_type == "gatt":
-        service_id = ble["serviceID"].lower()
-        characteristic_id = ble["characteristicID"].lower()
-
-        device = session.get(BleExtension, device_id)
-        gatt_topic = GattTopic(
-            topic, service_id, characteristic_id, data_format, [device])
-        session.merge(gatt_topic)
-        session.commit()
-    elif ad_type == "connection_events":
-        device = session.get(BleExtension, device_id)
-
-        if not device:
-            return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-        connection_topic = ConnectionTopic(topic, data_format, [device])
-
-        session.merge(connection_topic)
-        session.commit()
-    elif ad_type == "advertisements":
-        if device_id is not None:
-            device = session.get(BleExtension, device_id)
-
-            if device is None:
-                return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-            adv_topic = AdvTopic(topic, data_format, [device])
-            session.merge(adv_topic)
-            session.commit()
-        else:
-            filter_type = ble.get("filterType", "allow")
-            filters = ble.get("filters", [])
-
-            if len(filters) > 0:
-                adv_filters: list[AdvFilter] = []
-                for topic_filter in filters:
-                    adv_filter = AdvFilter(topic, topic_filter.get(
-                        "mac", "*"),
-                        topic_filter.get("adType", "*"),
-                        topic_filter.get("adData", "*")
-                    )
-                    adv_filters.append(adv_filter)
-
-                # if adv_topic already exists, delete all filters and add new ones
-                adv_topic = session.scalar(
-                    select(AdvTopic).filter_by(topic=topic))
-                if adv_topic is not None:
-                    session.query(AdvFilter).filter_by(topic=topic).delete()
-
-                adv_topic = AdvTopic(
-                    topic, data_format, filter_type=filter_type, filters=adv_filters)
-                session.merge(adv_topic)
-            else:
-                adv_topic = AdvTopic(topic, data_format)
-                session.merge(adv_topic)
-            session.commit()
-
-    for data_app in data_apps:
-        data_app_id = data_app["dataAppID"]
-        data_app_topic = DataAppTopic(data_app_id, topic)
-        session.merge(data_app_topic)
-
-    session.commit()
-
-    ret_json = {"status": "SUCCESS",
-                "id": uuid4(), "requestID": uuid4(), "topic": topic}
-    return jsonify(ret_json), HTTPStatus.OK
-
-
-@control_app.route('/registration/topic', methods=['DELETE'])
-@authenticate_user
-def unregister_topic():
-    """ Function to unregister topic """
-    if not request.args:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    topic = request.args["topic"]
-
-    gatt_topic = session.scalar(select(GattTopic).filter_by(topic=topic))
-
-    adv_topic = session.scalar(select(AdvTopic).filter_by(topic=topic))
-
-    if gatt_topic is None and adv_topic is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    if gatt_topic is not None:
-        for device in gatt_topic.devices:
-            gatt_topic.devices.remove(device)
-
-        session.delete(gatt_topic)
-
-        session.commit()
-
-    if adv_topic is not None:
-        for device in adv_topic.devices:
-            adv_topic.devices.remove(device)
-
-        session.delete(adv_topic)
-
-        session.commit()
-
-    if adv_topic is not None and adv_topic.onboarded is False:
-        if len(adv_topic.filters) > 0:
-            session.query(AdvFilter).filter_by(topic=topic).delete()
-
-        session.delete(adv_topic)
-        session.commit()
-    arg_json = {"status": "SUCCESS",
-                "id": uuid4(), "requestID": uuid4(), "topic": topic}
-    return jsonify(arg_json), HTTPStatus.OK
-
-
-@control_app.route('/registration/topic', methods=['GET'])
-@authenticate_user
-def get_topic():
-    """ Fetch registered topic information """
-    topic = request.args.get("topic")
-
-    gatt_topic = session.scalar(select(GattTopic).filter_by(topic=topic))
-
-    adv_topic = session.scalar(select(AdvTopic).filter_by(topic=topic))
-
-    if gatt_topic is None and adv_topic is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    return jsonify({
-        "status": "SUCCESS",
-        "topics": [
-            {
-                "topic": topic
+            response_data = {
+                "id": device_id,
+                "sdfProtocolMap": {
+                    "ble": [
+                        {
+                            "serviceID": svc.service_id,
+                            "characteristics": [
+                                {
+                                    "characteristicID": char.characteristic_id,
+                                    "flags": char.properties,
+                                    "descriptors": char.descriptors
+                                }
+                                for char in svc.characteristics.values()
+                            ]
+                        }
+                        for svc in conn.services.values()
+                    ]
+                }
             }
-        ]
-    }), HTTPStatus.OK
+            return jsonify(response_data), HTTPStatus.OK
+
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROTOCOLMAP_BLE_NO_CONNECTION,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            f"No connection found for device {device_id}"
+        )
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Internal server error: {str(e)}"
+        )
+
+def parse_sdf_reference(sdf_reference: str) -> tuple[str, list[str]]:
+    """Parse an SDF reference into namespace and path components.
+    
+    Args:
+        sdf_reference: SDF reference like
+            "https://example.com/thermometer#/sdfThing/thermometer/sdfProperty/temperature"
+
+    Returns:
+        tuple of (namespace, path_components)
+    """
+    try:
+        # Split on '#' to separate namespace from path
+        if '#' not in sdf_reference:
+            raise ValueError("Invalid SDF reference: missing '#'")
+
+        namespace, json_pointer = sdf_reference.split('#', 1)
+
+        # Parse JSON pointer path (remove leading '/')
+        if not json_pointer.startswith('/'):
+            raise ValueError("Invalid SDF reference: JSON pointer must start with '/'")
+
+        path_components = json_pointer[1:].split('/') if len(json_pointer) > 1 else []
+        return namespace, path_components
+    except Exception as e: # pylint: disable=broad-except
+        raise ValueError(f"Failed to parse SDF reference '{sdf_reference}': {str(e)}") from e
+
+def lookup_sdf_model(namespace: str) -> dict:
+    """Look up an SDF model by namespace.
+    
+    Args:
+        namespace: The namespace URL for the SDF model
+    
+    Returns:
+        The SDF model dictionary
+    
+    Raises:
+        ValueError: If model not found
+    """
+    # First try exact match by sdf_name
+    model = session.scalar(select(SdfModel).filter_by(sdf_name=namespace))
+    if model:
+        return model.model
+
+    # If not found, try to match by namespace in the model itself
+    models = session.execute(select(SdfModel)).scalars().all()
+    for model in models:
+        model_dict = model.model
+        if 'namespace' in model_dict:
+            # Check if any namespace value matches
+            namespaces = model_dict['namespace']
+            if isinstance(namespaces, dict):
+                for _, ns_url in namespaces.items():
+                    if ns_url == namespace:
+                        return model_dict
+            elif isinstance(namespaces, str) and namespaces == namespace:
+                return model_dict
+
+    raise ValueError(f"SDF model not found for namespace '{namespace}'")
+
+def navigate_sdf_model(model: dict, path_components: list[str]) -> dict:
+    """Navigate to a specific property in an SDF model.
+    
+    Args:
+        model: The SDF model dictionary
+        path_components: List of path components like
+            ['sdfThing', 'thermometer', 'sdfProperty', 'temperature']
+
+    Returns:
+        The property definition dictionary
+    
+    Raises:
+        ValueError: If path is invalid or property not found
+    """
+    current = model
+    path_str = '/'.join(path_components)
+
+    try:
+        for component in path_components:
+            if not isinstance(current, dict) or component not in current:
+                raise KeyError(f"Component '{component}' not found")
+            current = current[component]
+
+        return current
+    except (KeyError, TypeError) as e:
+        raise ValueError(f"Invalid SDF path '{path_str}': {str(e)}") from e
+
+def extract_protocol_map(property_def: dict, protocol: str = 'ble') -> dict:
+    """Extract protocol mapping from a property definition.
+    
+    Args:
+        property_def: The property definition from SDF model
+        protocol: Protocol name (default: 'ble')
+    
+    Returns:
+        Protocol mapping dictionary
+    
+    Raises:
+        ValueError: If protocol mapping not found
+    """
+    if 'sdfProtocolMap' not in property_def:
+        raise ValueError("Property does not have protocol mapping")
+
+    protocol_map = property_def['sdfProtocolMap']
+    if protocol not in protocol_map:
+        raise ValueError(f"Protocol '{protocol}' not found in protocol mapping")
+
+    return protocol_map[protocol]
 
 
-@control_app.route('/registration/topic/<topic>', methods=['DELETE'])
+@control_app.route('/devices/<device_id>/properties', methods=['GET'])
 @authenticate_user
-def delete_topic_by_name(topic: str):
-    """ Function to unregister topic """
-    gatt_topic = session.scalar(select(GattTopic).filter_by(topic=topic))
+def read_properties(device_id: str):
+    """Read property values from a device (NIPC Section 4.1.2)."""
+    try:
+        # Get property names from query parameter
+        property_names = request.args.getlist('propertyName')
+        if not property_names:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Missing Property Name",
+                "Query parameter 'propertyName' is required"
+            )
 
-    adv_topic = session.scalar(select(AdvTopic).filter_by(topic=topic))
+        # Look up device
+        device = session.get(BleExtension, device_id)
+        if device is None:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_ID,
+                HTTPStatus.NOT_FOUND,
+                "Device Not Found",
+                f"Device ID {device_id} does not exist or is not a device"
+            )
 
-    if gatt_topic is None and adv_topic is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+        results = []
+        services = []
 
-    if gatt_topic is not None:
-        for device in gatt_topic.devices:
-            gatt_topic.devices.remove(device)
+        for property_name in property_names:
+            try:
+                # URL decode the property name
+                property_name = urllib.parse.unquote(property_name)
 
-        session.delete(gatt_topic)
+                # Parse SDF reference
+                namespace, path_components = parse_sdf_reference(property_name)
 
-        session.commit()
+                # Look up SDF model
+                model = lookup_sdf_model(namespace)
 
-    if adv_topic is not None:
-        for device in adv_topic.devices:
-            adv_topic.devices.remove(device)
+                # Navigate to property
+                property_def = navigate_sdf_model(model, path_components)
 
-        session.delete(adv_topic)
+                # Extract BLE protocol mapping
+                ble_mapping = extract_protocol_map(property_def, 'ble')
 
-        session.commit()
+                # Perform BLE read
+                service_id = ble_mapping['serviceID'].lower()
+                characteristic_id = ble_mapping['characteristicID'].lower()
 
-    if adv_topic is not None and adv_topic.onboarded is False:
-        if len(adv_topic.filters) > 0:
-            session.query(AdvFilter).filter_by(topic=topic).delete()
+                services.append((property_name, service_id, characteristic_id))
+            except Exception as e: # pylint: disable=broad-except
+                results.append({
+                    "type": NipcProblemTypes.INVALID_SDF_URL,
+                    "status": HTTPStatus.BAD_REQUEST.value,
+                    "title": "Invalid SDF Reference",
+                    "detail": str(e)
+                })
 
-        session.delete(adv_topic)
-        session.commit()
+        # if device is not connected, connect first
+        implicit_connect = False
+        if device.device_mac_address not in ble_ap().conn_reqs:
+            implicit_connect = True
+            ble_ap().connect(device.device_mac_address, BleConnectOptions())
+            ble_ap().discover(device.device_mac_address, BleConnectOptions(
+                services=[service_id for _, service_id, _ in services]
+            ))
 
-    return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
+        for property_name, service_id, characteristic_id in services:
+            try:
+                resp = ble_ap().read(
+                    device.device_mac_address, service_id, characteristic_id)
+
+                results.append({
+                    "property": property_name,
+                    "value": base64.b64encode(resp.value).decode('utf-8')
+                })
+            except BleReadError as e:
+                results.append({
+                    "type": NipcProblemTypes.PROPERTY_NOT_READABLE,
+                    "status": HTTPStatus.INTERNAL_SERVER_ERROR.value,
+                    "title": "Property Read Error",
+                    "detail": f"Failed to read property {property_name}: {str(e)}"
+                })
+
+        if implicit_connect:
+            ble_ap().disconnect(device.device_mac_address)
+
+        return jsonify(results), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROPERTY_NOT_READABLE,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Unexpected error: {str(e)}"
+        )
 
 
-@control_app.route('/registration/topic/<topic>', methods=['GET'])
+@control_app.route('/devices/<device_id>/properties', methods=['PUT'])
 @authenticate_user
-def get_topic_by_name(topic: str):
-    """ Fetch registered topic information """
-    gatt_topic = session.scalar(select(GattTopic).filter_by(topic=topic))
+def write_properties(device_id: str):
+    """Write property values to a device (NIPC Section 4.1.1)."""
+    try:
+        # Validate request body
+        try:
+            request_json = request.json
+        except Exception: # pylint: disable=broad-except
+            # Handle case where request.json raises an exception (e.g., no Content-Type)
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Missing Request Body",
+                "Request body with property array is required"
+            )
 
-    adv_topic = session.scalar(select(AdvTopic).filter_by(topic=topic))
+        if not request_json:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Missing Request Body",
+                "Request body with property array is required"
+            )
 
-    if gatt_topic is None and adv_topic is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+        properties_to_write = request_json
+        if not isinstance(properties_to_write, list):
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Invalid Request Format",
+                "Request body must be an array of property objects"
+            )
 
-    return jsonify({
-        "status": "SUCCESS",
-        "topics": [
-            {
-                "topic": topic
-            }
-        ]
-    }), HTTPStatus.OK
+        # Look up device
+        device = session.get(BleExtension, device_id)
+        if device is None:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_ID,
+                HTTPStatus.NOT_FOUND,
+                "Device Not Found",
+                f"Device ID {device_id} does not exist or is not a device"
+            )
 
+        results = []
+        services = []
 
-@control_app.route('/registration/topic/data-app/<data_app_id>', methods=['DELETE'])
+        for prop_obj in properties_to_write:
+            try:
+                property_name = prop_obj['property']
+                value = prop_obj['value']
+
+                # Parse SDF reference
+                namespace, path_components = parse_sdf_reference(property_name)
+
+                # Look up SDF model
+                model = lookup_sdf_model(namespace)
+
+                # Navigate to property
+                property_def = navigate_sdf_model(model, path_components)
+
+                # Extract BLE protocol mapping
+                ble_mapping = extract_protocol_map(property_def, 'ble')
+
+                # Add service to list
+                services.append((property_name,
+                                ble_mapping['serviceID'].lower(),
+                                ble_mapping['characteristicID'].lower(),
+                                value))
+            except Exception as e: # pylint: disable=broad-except
+                results.append({
+                    "type": NipcProblemTypes.INVALID_SDF_URL,
+                    "status": HTTPStatus.BAD_REQUEST.value,
+                    "title": "Invalid SDF Reference",
+                    "detail": str(e)
+                })
+
+        # if device is not connected, connect first
+        implicit_connect = False
+        if device.device_mac_address not in ble_ap().conn_reqs:
+            implicit_connect = True
+            ble_ap().connect(device.device_mac_address, BleConnectOptions())
+            ble_ap().discover(device.device_mac_address, BleConnectOptions(
+                services=[service_id for _, service_id, _, _ in services]
+            ))
+
+        for property_name, service_id, characteristic_id, value in services:
+            try:
+                # Parse SDF reference
+                namespace, path_components = parse_sdf_reference(property_name)
+
+                # Look up SDF model
+                model = lookup_sdf_model(namespace)
+
+                # Navigate to property
+                property_def = navigate_sdf_model(model, path_components)
+
+                # Check if property is writable
+                if property_def.get('writable', True) is False:
+                    results.append({
+                        "type": NipcProblemTypes.PROPERTY_NOT_WRITABLE,
+                        "status": HTTPStatus.BAD_REQUEST.value,
+                        "title": "Property Not Writable",
+                        "detail": f"Property {property_name} is not writable"
+                    })
+                    continue
+
+                # Extract BLE protocol mapping
+                ble_mapping = extract_protocol_map(property_def, 'ble')
+
+                # Assume it's base64 encoded
+                binary_data = base64.b64decode(value)
+
+                # Perform BLE write
+                service_id = ble_mapping['serviceID'].lower()
+                characteristic_id = ble_mapping['characteristicID'].lower()
+
+                ble_ap().write(
+                    device.device_mac_address, service_id, characteristic_id, binary_data)
+
+                results.append({
+                    "status": HTTPStatus.OK.value
+                })
+            except BleWriteError as e:
+                results.append({
+                    "type": NipcProblemTypes.PROPERTY_NOT_WRITABLE,
+                    "status": HTTPStatus.INTERNAL_SERVER_ERROR.value,
+                    "title": "Property Write Error",
+                    "detail": f"Failed to write property {property_name}: {str(e)}"
+                })
+
+        if implicit_connect:
+            ble_ap().disconnect(device.device_mac_address)
+
+        return jsonify(results), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        return create_nipc_problem_response(
+            NipcProblemTypes.PROPERTY_NOT_WRITABLE,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            f"Unexpected error: {str(e)}"
+        )
+
+@control_app.route('/registrations/models', methods=['POST'])
 @authenticate_user
-def delete_topics_by_data_app(data_app_id: str):
-    """ Function to unregister topic """
-    data_app_topics = session.execute(
-        select(DataAppTopic).filter_by(data_app_id=data_app_id)).scalars().all()
+def register_sdf_model():
+    """Register an SDF model (NIPC draft-06 section 3.1.1)."""
+    if not request.is_json:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Request body must be JSON"
+        )
+    try:
+        sdf_model = request.get_json()
+        namespace = sdf_model.get("namespace")
+        default_namespace = sdf_model.get("defaultNamespace")
+        if not namespace or not default_namespace:
+            raise SchemaError(
+                "Missing namespace or defaultNamespace in SDF model")
+        sdf_name = namespace[default_namespace]
+        if "sdfThing" in sdf_model and sdf_model["sdfThing"]:
+            sdf_name += "#/" + next(iter(sdf_model["sdfThing"].keys()))
+        elif "sdfObject" in sdf_model and sdf_model["sdfObject"]:
+            sdf_name += "#/" + next(iter(sdf_model["sdfObject"].keys()))
+        else:
+            raise SchemaError("SDF model must have sdfThing or sdfObject")
+        existing = session.scalar(
+            select(SdfModel).filter_by(sdf_name=sdf_name))
+        if existing:
+            return create_nipc_problem_response(
+                NipcProblemTypes.SDF_MODEL_ALREADY_REGISTERED,
+                HTTPStatus.CONFLICT,
+                "Conflict",
+                "SDF model already registered"
+            )
+        model_obj = SdfModel(sdf_name=sdf_name, model=sdf_model)
+        session.add(model_obj)
+        session.commit()
+        return jsonify([{"sdfName": sdf_name}]), HTTPStatus.OK
+    except SchemaError as e:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            str(e)
+        )
+    except Exception as e: # pylint: disable=broad-except  # pylint: disable=broad-except
+        logging.exception(
+            "Unexpected error during SDF model registration %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-    for data_app_topic in data_app_topics:
-        topic = data_app_topic.topic
 
-        gatt_topic = session.scalar(select(GattTopic).filter_by(topic=topic))
+@control_app.route('/registrations/models', methods=['GET'])
+@authenticate_user
+def get_sdf_model():
+    """Fetch a registered SDF model by sdfName (query parameter) or list all models."""
+    sdf_name = request.args.get('sdfName')
+    if sdf_name:
+        # Get specific model
+        sdf_name = urllib.parse.unquote(sdf_name)
+        model = session.scalar(select(SdfModel).filter_by(sdf_name=sdf_name))
+        if not model:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.NOT_FOUND,
+                "Not Found",
+                "SDF model not found"
+            )
+        return jsonify(model.model), HTTPStatus.OK
 
-        adv_topic = session.scalar(select(AdvTopic).filter_by(topic=topic))
+    # List all models
+    models = session.execute(select(SdfModel)).scalars().all()
+    return jsonify([m.serialize() for m in models]), HTTPStatus.OK
 
-        if gatt_topic is None and adv_topic is None:
-            return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
-        if gatt_topic is not None:
-            for device in gatt_topic.devices:
-                gatt_topic.devices.remove(device)
+@control_app.route('/registrations/models', methods=['PUT'])
+@authenticate_user
+def update_sdf_model():
+    """
+    Update a registered SDF model by sdfName (query parameter). 
+    Namespace and defaultNamespace cannot be changed.
+    """
+    sdf_name = request.args.get('sdfName')
+    if not sdf_name:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing sdfName query parameter"
+        )
 
-            session.delete(gatt_topic)
+    sdf_name = urllib.parse.unquote(sdf_name)
+    if not request.is_json:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request", 
+            "Request body must be JSON"
+        )
+    model = session.scalar(select(SdfModel).filter_by(sdf_name=sdf_name))
+    if not model:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            "SDF model not found"
+        )
+    try:
+        sdf_model = request.get_json()
+        # Disallow changing namespace or defaultNamespace
+        orig = model.model
+        if ("namespace" in sdf_model and sdf_model["namespace"] != orig.get("namespace")) or \
+           ("defaultNamespace" in sdf_model and
+                sdf_model["defaultNamespace"] != orig.get("defaultNamespace")):
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "Cannot update namespace or defaultNamespace of an existing SDF model."
+            )
+        model.model = sdf_model
+        session.commit()
+        return jsonify({"sdfName": sdf_name}), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except  # pylint: disable=broad-except
+        logging.exception("Unexpected error during SDF model update %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-            session.commit()
 
-        if adv_topic is not None:
-            for device in adv_topic.devices:
-                adv_topic.devices.remove(device)
+@control_app.route('/registrations/models', methods=['DELETE'])
+@authenticate_user
+def delete_sdf_model():
+    """Delete a registered SDF model by sdfName (query parameter)."""
+    sdf_name = request.args.get('sdfName')
+    if not sdf_name:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing sdfName query parameter"
+        )
 
-            session.delete(adv_topic)
-
-            session.commit()
-
-        if adv_topic is not None and adv_topic.onboarded is False:
-            if len(adv_topic.filters) > 0:
-                session.query(AdvFilter).filter_by(topic=topic).delete()
-
-            session.delete(adv_topic)
-            session.commit()
-
-    session.query(DataAppTopic).filter_by(dataAppID=data_app_id).delete()
+    sdf_name = urllib.parse.unquote(sdf_name)
+    model = session.scalar(select(SdfModel).filter_by(sdf_name=sdf_name))
+    if not model:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.NOT_FOUND,
+            "Not Found",
+            "SDF model not found"
+        )
+    session.delete(model)
     session.commit()
+    return jsonify({"sdfName": sdf_name}), HTTPStatus.OK
 
-    return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
-
-
-@control_app.route('/registration/topic/data-app/<data_app_id>', methods=['GET'])
+@control_app.route('/registrations/data-apps', methods=['POST'])
 @authenticate_user
-def get_topics_by_data_app(data_app_id: str):
-    """ Fetch registered topics information """
-    data_app_topics = session.execute(
-        select(DataAppTopic).filter_by(data_app_id=data_app_id)).scalars().all()
+def register_data_app():
+    """Register a data application (NIPC)."""
+    if not request.is_json:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Request body must be JSON"
+        )
 
-    topics = []
-    for data_app_topic in data_app_topics:
-        topics.append({"topic": data_app_topic.topic})
+    data_app_id = request.args.get('dataAppId')
+    if not data_app_id:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing dataAppId query parameter"
+        )
 
-    return jsonify({
-        "status": "SUCCESS",
-        "topics": topics
-    }), HTTPStatus.OK
+    try:
+        body = request.get_json()
 
+        events = body.get('events')
 
-@control_app.route('/registration/topic/id/<device_id>', methods=['GET'])
-@authenticate_user
-def get_topics_by_device_id(device_id: str):
-    """ Fetch registered topics information """
-    device = session.get(BleExtension, device_id)
+        for event in events:
+            event_name = event.get('event')
+            namespace, path_components = parse_sdf_reference(event_name)
+            model = lookup_sdf_model(namespace)
+            if not model:
+                return create_nipc_problem_response(
+                    NipcProblemTypes.INVALID_SDF_URL,
+                    HTTPStatus.BAD_REQUEST,
+                    "Bad Request",
+                    "Request body must contain a list of events"
+                )
+            navigate_sdf_model(model, path_components)
 
-    if device is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+        mqtt_client = body.get('mqttClient')
+        if mqtt_client is not True:
+            return create_nipc_problem_response(
+                NipcProblemTypes.ABOUT_BLANK,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "mqttClient must be true"
+            )
 
-    gatt_topics = session.execute(
-        select(GattTopic).filter(GattTopic.devices.contains(device))).scalars().all()
-
-    adv_topics = session.execute(
-        select(AdvTopic).filter(AdvTopic.devices.contains(device))).scalars().all()
-
-    topics = []
-    for gatt_topic in gatt_topics:
-        topics.append({"topic": gatt_topic.topic})
-
-    for adv_topic in adv_topics:
-        topics.append({"topic": adv_topic.topic})
-
-    return jsonify({
-        "status": "SUCCESS",
-        "topics": topics
-    }), HTTPStatus.OK
-
-
-@control_app.route('/registration/topic/id/<device_id>', methods=['DELETE'])
-@authenticate_user
-def delete_topics_by_device_id(device_id: str):
-    """ Function to unregister topic """
-    device = session.get(BleExtension, device_id)
-
-    if device is None:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
-
-    gatt_topics = session.execute(
-        select(GattTopic).filter(GattTopic.devices.contains(device))).scalars().all()
-
-    adv_topics = session.execute(
-        select(AdvTopic).filter(AdvTopic.devices.contains(device))).scalars().all()
-
-    for gatt_topic in gatt_topics:
-        for device in gatt_topic.devices:
-            gatt_topic.devices.remove(device)
-
-        session.delete(gatt_topic)
-
+        data_app = DataApp(data_app_id, [ev["event"] for ev in events])
+        session.add(data_app)
         session.commit()
+        return jsonify(body), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during data app registration %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-    for adv_topic in adv_topics:
-        for device in adv_topic.devices:
-            adv_topic.devices.remove(device)
 
-        session.delete(adv_topic)
-
-        session.commit()
-
-    return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
-
-
-@control_app.route('/bulk', methods=['POST'])
+@control_app.route('/registrations/data-apps', methods=['GET'])
 @authenticate_user
-def bulk():
-    """ Function bulk """
-    if not request.json:
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
+def get_data_app():
+    """Get a data application (NIPC) by ID."""
+    data_app_id = request.args.get('dataAppId')
+    if not data_app_id:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing dataAppId query parameter"
+        )
 
-    device_id = request.json.get("id")
-    control_app_id = request.json.get("controlApp")
+    try:
+        data_app = session.query(DataApp).filter_by(data_app_id=data_app_id).first()
+        if not data_app:
+            return create_nipc_problem_response(
+                NipcProblemTypes.ABOUT_BLANK,
+                HTTPStatus.NOT_FOUND,
+                "Not Found",
+                f"Data app with ID {data_app_id} not found"
+            )
 
-    operations = request.json.get("operations", [])
+        response_body = {
+            "events": [{"event": event} for event in data_app.events],
+            "mqttClient": True
+        }
+        return jsonify(response_body), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during data app retrieval %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-    responses: list[Any] = []
 
-    for operation in operations:
-        path = "/control" + operation["operation"]
-        method = "POST"
-        data = {
-            "id": device_id,
-            "controlApp": control_app_id,
-            "ble": operation["ble"]
+@control_app.route('/registrations/data-apps', methods=['PUT'])
+@authenticate_user
+def update_data_app():
+    """Update a data application (NIPC)."""
+    if not request.is_json:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Request body must be JSON"
+        )
+
+    data_app_id = request.args.get('dataAppId')
+    if not data_app_id:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing dataAppId query parameter"
+        )
+
+    try:
+        data_app = session.query(DataApp).filter_by(data_app_id=data_app_id).first()
+        if not data_app:
+            return create_nipc_problem_response(
+                NipcProblemTypes.ABOUT_BLANK,
+                HTTPStatus.NOT_FOUND,
+                "Not Found",
+                f"Data app with ID {data_app_id} not found"
+            )
+
+        body = request.get_json()
+        events = body.get('events')
+
+        for event in events:
+            event_name = event.get('event')
+            namespace, path_components = parse_sdf_reference(event_name)
+            model = lookup_sdf_model(namespace)
+            if not model:
+                return create_nipc_problem_response(
+                    NipcProblemTypes.INVALID_SDF_URL,
+                    HTTPStatus.BAD_REQUEST,
+                    "Bad Request",
+                    "Request body must contain a list of events"
+                )
+            navigate_sdf_model(model, path_components)
+
+        mqtt_client = body.get('mqttClient')
+        if mqtt_client is not True:
+            return create_nipc_problem_response(
+                NipcProblemTypes.ABOUT_BLANK,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "mqttClient must be true"
+            )
+
+        # Update the data app events
+        data_app.events = [ev["event"] for ev in events]
+        session.commit()
+        return jsonify(body), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during data app update %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
+
+
+@control_app.route('/registrations/data-apps', methods=['DELETE'])
+@authenticate_user
+def delete_data_app():
+    """Delete a data application (NIPC) by ID."""
+    data_app_id = request.args.get('dataAppId')
+    if not data_app_id:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_SDF_URL,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing dataAppId query parameter"
+        )
+
+    try:
+        data_app = session.query(DataApp).filter_by(data_app_id=data_app_id).first()
+        if not data_app:
+            return create_nipc_problem_response(
+                NipcProblemTypes.ABOUT_BLANK,
+                HTTPStatus.NOT_FOUND,
+                "Not Found",
+                f"Data app with ID {data_app_id} not found"
+            )
+
+        # Build response body before deletion
+        response_body = {
+            "events": [{"event": event} for event in data_app.events],
+            "mqttClient": True
         }
 
-        environ = EnvironBuilder(
-            path=path, method=method, json=data, environ_base=request.environ).get_environ()
+        session.delete(data_app)
+        session.commit()
+        return jsonify(response_body), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during data app deletion %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-        with current_app.request_context(environ):
-            try:
-                # Pre process Request
-                rv = current_app.preprocess_request()
+@control_app.route('/devices/<device_id>/events', methods=["POST"])
+@authenticate_user
+def enable_event(device_id: str):
+    """Enable an event for a device."""
+    # check if device exists
+    device = session.query(Device).filter_by(device_id=device_id).first()
+    if not device:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            f"Device with ID {device_id} not found"
+        )
 
-                if rv is None:
-                    # Main Dispatch
-                    rv = current_app.dispatch_request()
+    try:
+        event_name = request.args.get('eventName')
+        if not event_name:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "Missing eventName query parameter"
+            )
 
-            except Exception as e:
-                rv = current_app.handle_user_exception(e)
+        namespace, path_components = parse_sdf_reference(event_name)
+        model = lookup_sdf_model(namespace)
+        if not model:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "Request body must contain a list of events"
+            )
+        protocol_map = navigate_sdf_model(model, path_components)
 
-            response = current_app.make_response(rv)
+        if not protocol_map:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_SDF_URL,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "Request body must contain a list of events"
+            )
 
-            # Post process Request
-            response = current_app.process_response(response)
+        # check if event already exists
+        event = session.query(Event).filter_by(event_name=event_name, device_id=device_id).first()
+        if event:
+            return create_nipc_problem_response(
+                NipcProblemTypes.EVENT_ALREADY_ENABLED,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                "Event already exists"
+            )
 
-        if response.json is not None:
-            jn = dict(response.json)
-            jn["operation"] = operation["operation"]
-            responses.append(jn)
+        # protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"] is the event_type
+        event_type = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"]
+        gatt_service_id = None
+        gatt_char_id = None
+        if event_type == "gatt":
+            gatt_service_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["serviceID"]
+            gatt_char_id = (
+                protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["characteristicID"]
+            )
 
-            if jn["status"] == "FAILURE":
-                break
+        instance_id = uuid.uuid4()
+        # create event
+        event = Event(
+            event_name=event_name,
+            instance_id=instance_id,
+            device_id=device_id,
+            event_type=event_type,
+            gatt_service_id=gatt_service_id,
+            gatt_characteristic_id=gatt_char_id
+        )
+        session.add(event)
+        session.commit()
+        base_path = request.base_url
+        return "", HTTPStatus.CREATED, {"Location": f"{base_path}?instanceId={instance_id}"}
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during event lookup %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
 
-    return jsonify({"status": "SUCCESS", "operations": responses}), HTTPStatus.OK
+@control_app.route('/devices/<device_id>/events', methods=["DELETE"])
+@authenticate_user
+def disable_event(device_id: str):
+    """Disable an event for a device."""
+    instance_id = request.args.get('instanceId')
+    if not instance_id:
+        return create_nipc_problem_response(
+            NipcProblemTypes.INVALID_ID,
+            HTTPStatus.BAD_REQUEST,
+            "Bad Request",
+            "Missing instanceId query parameter"
+        )
+    try:
+        event = session.query(Event).filter_by(device_id=device_id, instance_id=instance_id).first()
+        if not event:
+            return create_nipc_problem_response(
+                NipcProblemTypes.INVALID_ID,
+                HTTPStatus.BAD_REQUEST,
+                "Bad Request",
+                f"Event for device ID {device_id} not found"
+            )
+        session.delete(event)
+        session.commit()
+        return "", HTTPStatus.NO_CONTENT
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during event disable %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )
+
+@control_app.route('/devices/<device_id>/events', methods=["GET"])
+@authenticate_user
+def get_events(device_id: str):
+    """Get events for a device."""
+    try:
+        instance_ids = request.args.getlist('instanceId')
+        if not instance_ids:
+            # return all events for the device
+            events = session.query(Event).filter_by(device_id=device_id).all()
+            return jsonify([
+                {"event": event.event_name, "instanceId": event.instance_id}
+                for event in events
+            ]), HTTPStatus.OK
+        events = []
+        for instance_id in instance_ids:
+            event = session.query(Event).filter_by(
+                device_id=device_id,
+                instance_id=instance_id
+            ).first()
+            if not event:
+                return create_nipc_problem_response(
+                    NipcProblemTypes.INVALID_ID,
+                    HTTPStatus.BAD_REQUEST,
+                    "Bad Request",
+                    f"Event for device ID {device_id} not found"
+                )
+            events.append({"event": event.event_name, "instanceId": event.instance_id})
+        return jsonify(events), HTTPStatus.OK
+    except Exception as e: # pylint: disable=broad-except
+        logging.exception("Unexpected error during event lookup %s", e)
+        return create_nipc_problem_response(
+            NipcProblemTypes.ABOUT_BLANK,
+            HTTPStatus.INTERNAL_SERVER_ERROR,
+            "Internal Server Error",
+            "Internal server error"
+        )

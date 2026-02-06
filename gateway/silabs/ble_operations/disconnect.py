@@ -10,8 +10,6 @@ provides response data, and is part of a larger system/application.
 
 """
 
-from http import HTTPStatus
-from flask import Response, jsonify
 import bgapi
 from silabs.ble_operations.operation import Operation
 
@@ -40,13 +38,6 @@ class DisconnectOperation(Operation):
             self.log.info(evt)
             self.is_done = True
             self.set()
-
-    def response(self) -> tuple[Response, int]:
-        """ return response """
-        if self.is_set():
-            return jsonify({"status": "SUCCESS"}), HTTPStatus.OK
-
-        return jsonify({"status": "FAILURE"}), HTTPStatus.BAD_REQUEST
 
     def __repr__(self):
         return f"DisconnectOperation({self.handle})"
