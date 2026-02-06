@@ -36,6 +36,11 @@
             "description": "Control App ID"
         },
         {
+            "name": "control-app.auth-type",
+            "type": "java.lang.String",
+            "description": "Control App authentication type (token or cert)"
+        },
+        {
             "name": "control-app.cert_path",
             "type": "java.lang.String",
             "description": "Control App certificate path"
@@ -51,9 +56,64 @@
             "description": "Data App ID"
         },
         {
+            "name": "data-app.auth-type",
+            "type": "java.lang.String",
+            "description": "Data App authentication type (token or cert)"
+        },
+        {
             "name": "data-app.cert_path",
             "type": "java.lang.String",
             "description": "Data App certificate path"
+        },
+        {
+            "name": "data-app.mqtt-type",
+            "type": "java.lang.String",
+            "description": "Data receiver mode: client or broker"
+        },
+        {
+            "name": "data-app.username",
+            "type": "java.lang.String",
+            "description": "Broker username for broker MQTT mode"
+        },
+        {
+            "name": "data-app.password",
+            "type": "java.lang.String",
+            "description": "Broker password for broker MQTT mode"
+        },
+        {
+            "name": "data-app.broker-ca-path",
+            "type": "java.lang.String",
+            "description": "Broker CA certificate path for broker MQTT mode"
+        },
+        {
+            "name": "oauth.client-id",
+            "type": "java.lang.String",
+            "description": "OAuth client ID"
+        },
+        {
+            "name": "oauth.client-secret",
+            "type": "java.lang.String",
+            "description": "OAuth client secret"
+        },
+        {
+            "name": "oauth.auth-endpoint",
+            "type": "java.lang.String",
+            "description": "OAuth authorization endpoint"
+        },
+        {
+            "name": "oauth.token-endpoint",
+            "type": "java.lang.String",
+            "description": "OAuth token endpoint"
+        },
+        {
+            "name": "oauth.redirect-uri",
+            "type": "java.lang.String",
+            "description": "OAuth redirect URI"
+        },
+        {
+            "name": "oauth.scopes",
+            "type": "java.lang.String",
+            "description": "OAuth scopes (space-separated)"
         }
     ]
 }

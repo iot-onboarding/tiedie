@@ -13,217 +13,557 @@ SPDX-License-Identifier: Apache-2.0
 </head>
 
 <body th:insert="~{layout :: body}">
-    <div id="main">
-        <h1>Device Information</h1>
+<div id="main">
+    <div class="d-flex align-items-center mb-3">
+        <h1 class="flex-grow-1">Device Information</h1>
+        <form th:action="@{/devices/{id}/update(id=${device.id})}" method="get">
+            <button class="btn btn-primary" type="submit">Edit</button>
+        </form>
+        <form class="ms-2" th:action="@{/devices/{id}/delete(id=${device.id})}" method="post">
+            <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+    </div>
 
-        <span th:if="${parameters != null}" class="badge rounded-pill text-bg-success">Connected</span>
+    <span th:if="${parameters != null}" class="badge rounded-pill text-bg-success mb-2">Connected</span>
 
+    <table class="table">
+        <tbody>
+        <tr>
+            <th>Device ID</th>
+            <td th:text="${device.id}"></td>
+        </tr>
+        <tr>
+            <th>Display Name</th>
+            <td th:text="${device.displayName}"></td>
+        </tr>
+        <tr>
+            <th>MAC Address</th>
+            <td th:text="${device.bleExtension.deviceMacAddress}"></td>
+        </tr>
+        <tr>
+            <th>Active</th>
+            <td th:text="${device.active ? 'Yes' : 'No'}"></td>
+        </tr>
+        <tr>
+            <th>Address Type</th>
+            <td th:text="${device.bleExtension.isRandom ? 'Random static' : 'Public'}"></td>
+        </tr>
+        <tr>
+            <th>Version Support</th>
+            <td th:text="${device.bleExtension.versionSupport}"></td>
+        </tr>
+        <tr>
+            <th>Mobility</th>
+            <td th:text="${device.bleExtension.mobility != null ? device.bleExtension.mobility : false}"></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="row border my-3 p-3">
+        <form class="col-6" th:action="@{/devices/{id}/sdf(id=${device.id})}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="sdfFile" class="form-label">Upload SDF model</label>
+                <input type="file" class="form-control" id="sdfFile" name="sdfFile" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload SDF model</button>
+        </form>
+    </div>
+
+    <div class="row border my-3 p-3" th:if="${sdfModels != null and !#maps.isEmpty(sdfModels)}">
+        <select class="form-select" id="sdf_select">
+            <option value="" selected>Select SDF model</option>
+            <option th:each="entry : ${sdfModels}"
+                    th:value="${entry.key}"
+                    th:text="${entry.key}"></option>
+        </select>
+    </div>
+
+    <div class="row border my-3 p-3 sdf-model-card"
+         hidden
+         th:each="entry, entryStat : ${sdfModels}"
+         th:attr="data-sdf-name=${entry.key},id=${'div-' + entry.key}">
+        <div class="d-flex mb-2">
+            <h3 class="flex-grow-1">SDF Model</h3>
+            <button type="button"
+                    class="btn btn-danger"
+                    th:attr="data-sdf-name=${entry.key}"
+                    onclick="deleteSdfModel(this)">
+                Delete SDF model
+            </button>
+        </div>
+
+        <p>
+            Namespace:
+            <span class="ble-sdf-property"
+                  th:text="${entry.value.namespace != null ? entry.value.namespace[entry.value.defaultNamespace] : ''}"></span>
+        </p>
+
+        <div th:if="${entry.value.sdfThing != null}">
+            <div class="border rounded p-3 mb-3" th:each="thing, thingStat : ${entry.value.sdfThing}">
+                <h5 th:text="${thing.key}"></h5>
+                <p th:text="${thing.value.description}"></p>
+
+                <div th:if="${thing.value.sdfProperty != null and !#maps.isEmpty(thing.value.sdfProperty)}">
+                    <h6>Properties</h6>
+                    <table class="table">
+                        <tbody>
+                        <tr th:each="property : ${thing.value.sdfProperty}"
+                            th:with="sdfName=${entry.value.namespace[entry.value.defaultNamespace] + '#/sdfThing/' + thing.key + '/sdfProperty/' + property.key}">
+                            <td class="ble-ad-data text-black" scope="row">
+                                <span th:text="${property.value.description != null ? property.value.description : property.key}"></span>
+                                <p class="ble-sdf-property" th:text="${sdfName}"></p>
+                            </td>
+                            <td class="ble-ad-data text-black property-value"></td>
+                            <td class="text-end">
+                                <button class="btn btn-primary"
+                                        th:if="${property.value.readable == true}"
+                                        th:attr="data-sdf-name=${sdfName}"
+                                        onclick="readProperty(this)">Read</button>
+                                <form class="input-group mt-2"
+                                      th:if="${property.value.writable == true}"
+                                      onsubmit="writeProperty(this); return false;">
+                                    <input type="text" class="form-control" placeholder="Enter hex value">
+                                    <button type="submit" class="btn btn-primary" th:attr="data-sdf-name=${sdfName}">
+                                        Write
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${thing.value.sdfAction != null and !#maps.isEmpty(thing.value.sdfAction)}">
+                    <h6>Actions</h6>
+                    <table class="table">
+                        <tbody>
+                        <tr th:each="action : ${thing.value.sdfAction}"
+                            th:with="sdfActionName=${entry.value.namespace[entry.value.defaultNamespace] + '#/sdfThing/' + thing.key + '/sdfAction/' + action.key}">
+                            <td class="ble-ad-data text-black" scope="row">
+                                <span th:text="${action.value.description != null ? action.value.description : action.key}"></span>
+                                <p class="ble-sdf-property" th:text="${sdfActionName}"></p>
+                            </td>
+                            <td class="text-end">
+                                <form class="input-group mt-2" onsubmit="return false;">
+                                    <input type="text" class="form-control" placeholder="Enter hex value">
+                                    <button type="submit" class="btn btn-success" disabled>Invoke</button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${thing.value.sdfEvent != null and !#maps.isEmpty(thing.value.sdfEvent)}">
+                    <h6>Events</h6>
+                    <table class="table">
+                        <tbody>
+                        <tr th:each="eventItem : ${thing.value.sdfEvent}"
+                            th:with="sdfEventName=${entry.value.namespace[entry.value.defaultNamespace] + '#/sdfThing/' + thing.key + '/sdfEvent/' + eventItem.key}">
+                            <td class="ble-ad-data text-black" scope="row">
+                                <span th:text="${eventItem.value.description != null ? eventItem.value.description : eventItem.key}"></span>
+                                <p class="ble-sdf-property" th:text="${sdfEventName}"></p>
+                            </td>
+                            <td class="text-end"
+                                th:with="enabledInstanceId=${enabledEvents != null ? enabledEvents.get(sdfEventName) : null}">
+                                <button type="button" class="btn btn-danger"
+                                        th:if="${enabledInstanceId != null and !#strings.isEmpty(enabledInstanceId)}"
+                                        th:attr="data-sdf-name=${sdfEventName},data-instance-id=${enabledInstanceId}"
+                                        onclick="disableEvent(this)">
+                                    Disable Event
+                                </button>
+                                <button type="button" class="btn btn-warning"
+                                        th:if="${enabledInstanceId == null or #strings.isEmpty(enabledInstanceId)}"
+                                        th:attr="data-sdf-name=${sdfEventName}"
+                                        onclick="enableEvent(this)">
+                                    Enable Event
+                                </button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:if="${thing.value.sdfObject != null and !#maps.isEmpty(thing.value.sdfObject)}"
+                     th:with="accordionId=${'accordion-thing-' + entryStat.index + '-' + thingStat.index}">
+                    <div class="accordion" th:id="${accordionId}">
+                        <div class="accordion-item"
+                             th:each="objectItem, objectStat : ${thing.value.sdfObject}"
+                             th:with="objectPath=${entry.value.namespace[entry.value.defaultNamespace] + '#/sdfThing/' + thing.key + '/sdfObject/' + objectItem.key},
+                                      headingId=${'heading-thing-' + entryStat.index + '-' + thingStat.index + '-' + objectStat.index},
+                                      collapseId=${'collapse-thing-' + entryStat.index + '-' + thingStat.index + '-' + objectStat.index}">
+                            <h2 class="accordion-header" th:id="${headingId}">
+                                <button class="accordion-button collapsed" type="button"
+                                        data-bs-toggle="collapse"
+                                        th:attr="data-bs-target=${'#' + collapseId},aria-expanded='false',aria-controls=${collapseId}">
+                                    <span th:text="${objectItem.value.description != null ? objectItem.value.description : objectItem.key}"></span>
+                                </button>
+                            </h2>
+                            <div class="accordion-collapse collapse"
+                                 th:id="${collapseId}"
+                                 th:attr="aria-labelledby=${headingId},data-bs-parent=${'#' + accordionId}">
+                                <div class="accordion-body">
+                                    <div th:if="${objectItem.value.sdfProperty != null and !#maps.isEmpty(objectItem.value.sdfProperty)}">
+                                        <h6>Properties</h6>
+                                        <table class="table">
+                                            <tbody>
+                                            <tr th:each="property : ${objectItem.value.sdfProperty}"
+                                                th:with="sdfName=${objectPath + '/sdfProperty/' + property.key}">
+                                                <td class="ble-ad-data text-black" scope="row">
+                                                    <span th:text="${property.value.description != null ? property.value.description : property.key}"></span>
+                                                    <p class="ble-sdf-property" th:text="${sdfName}"></p>
+                                                </td>
+                                                <td class="ble-ad-data text-black property-value"></td>
+                                                <td class="text-end">
+                                                    <button class="btn btn-primary"
+                                                            th:if="${property.value.readable == true}"
+                                                            th:attr="data-sdf-name=${sdfName}"
+                                                            onclick="readProperty(this)">Read</button>
+                                                    <form class="input-group mt-2"
+                                                          th:if="${property.value.writable == true}"
+                                                          onsubmit="writeProperty(this); return false;">
+                                                        <input type="text" class="form-control" placeholder="Enter hex value">
+                                                        <button type="submit" class="btn btn-primary" th:attr="data-sdf-name=${sdfName}">
+                                                            Write
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div th:if="${objectItem.value.sdfAction != null and !#maps.isEmpty(objectItem.value.sdfAction)}">
+                                        <h6>Actions</h6>
+                                        <table class="table">
+                                            <tbody>
+                                            <tr th:each="action : ${objectItem.value.sdfAction}"
+                                                th:with="sdfActionName=${objectPath + '/sdfAction/' + action.key}">
+                                                <td class="ble-ad-data text-black" scope="row">
+                                                    <span th:text="${action.value.description != null ? action.value.description : action.key}"></span>
+                                                    <p class="ble-sdf-property" th:text="${sdfActionName}"></p>
+                                                </td>
+                                                <td class="text-end">
+                                                    <form class="input-group mt-2" onsubmit="return false;">
+                                                        <input type="text" class="form-control" placeholder="Enter hex value">
+                                                        <button type="submit" class="btn btn-success" disabled>Invoke</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div th:if="${objectItem.value.sdfEvent != null and !#maps.isEmpty(objectItem.value.sdfEvent)}">
+                                        <h6>Events</h6>
+                                        <table class="table">
+                                            <tbody>
+                                            <tr th:each="eventItem : ${objectItem.value.sdfEvent}"
+                                                th:with="sdfEventName=${objectPath + '/sdfEvent/' + eventItem.key}">
+                                                <td class="ble-ad-data text-black" scope="row">
+                                                    <span th:text="${eventItem.value.description != null ? eventItem.value.description : eventItem.key}"></span>
+                                                    <p class="ble-sdf-property" th:text="${sdfEventName}"></p>
+                                                </td>
+                                                <td class="text-end"
+                                                    th:with="enabledInstanceId=${enabledEvents != null ? enabledEvents.get(sdfEventName) : null}">
+                                                    <button type="button" class="btn btn-danger"
+                                                            th:if="${enabledInstanceId != null and !#strings.isEmpty(enabledInstanceId)}"
+                                                            th:attr="data-sdf-name=${sdfEventName},data-instance-id=${enabledInstanceId}"
+                                                            onclick="disableEvent(this)">
+                                                        Disable Event
+                                                    </button>
+                                                    <button type="button" class="btn btn-warning"
+                                                            th:if="${enabledInstanceId == null or #strings.isEmpty(enabledInstanceId)}"
+                                                            th:attr="data-sdf-name=${sdfEventName}"
+                                                            onclick="enableEvent(this)">
+                                                        Enable Event
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${entry.value.sdfObject != null and !#maps.isEmpty(entry.value.sdfObject)}"
+             th:with="accordionId=${'accordion-root-' + entryStat.index}">
+            <div class="accordion" th:id="${accordionId}">
+                <div class="accordion-item"
+                     th:each="objectItem, objectStat : ${entry.value.sdfObject}"
+                     th:with="objectPath=${entry.value.namespace[entry.value.defaultNamespace] + '#/sdfObject/' + objectItem.key},
+                              headingId=${'heading-root-' + entryStat.index + '-' + objectStat.index},
+                              collapseId=${'collapse-root-' + entryStat.index + '-' + objectStat.index}">
+                    <h2 class="accordion-header" th:id="${headingId}">
+                        <button class="accordion-button collapsed" type="button"
+                                data-bs-toggle="collapse"
+                                th:attr="data-bs-target=${'#' + collapseId},aria-expanded='false',aria-controls=${collapseId}">
+                            <span th:text="${objectItem.value.description != null ? objectItem.value.description : objectItem.key}"></span>
+                        </button>
+                    </h2>
+                    <div class="accordion-collapse collapse"
+                         th:id="${collapseId}"
+                         th:attr="aria-labelledby=${headingId},data-bs-parent=${'#' + accordionId}">
+                        <div class="accordion-body">
+                            <div th:if="${objectItem.value.sdfProperty != null and !#maps.isEmpty(objectItem.value.sdfProperty)}">
+                                <h6>Properties</h6>
+                                <table class="table">
+                                    <tbody>
+                                    <tr th:each="property : ${objectItem.value.sdfProperty}"
+                                        th:with="sdfName=${objectPath + '/sdfProperty/' + property.key}">
+                                        <td class="ble-ad-data text-black" scope="row">
+                                            <span th:text="${property.value.description != null ? property.value.description : property.key}"></span>
+                                            <p class="ble-sdf-property" th:text="${sdfName}"></p>
+                                        </td>
+                                        <td class="ble-ad-data text-black property-value"></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-primary"
+                                                    th:if="${property.value.readable == true}"
+                                                    th:attr="data-sdf-name=${sdfName}"
+                                                    onclick="readProperty(this)">Read</button>
+                                            <form class="input-group mt-2"
+                                                  th:if="${property.value.writable == true}"
+                                                  onsubmit="writeProperty(this); return false;">
+                                                <input type="text" class="form-control" placeholder="Enter hex value">
+                                                <button type="submit" class="btn btn-primary" th:attr="data-sdf-name=${sdfName}">
+                                                    Write
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div th:if="${objectItem.value.sdfAction != null and !#maps.isEmpty(objectItem.value.sdfAction)}">
+                                <h6>Actions</h6>
+                                <table class="table">
+                                    <tbody>
+                                    <tr th:each="action : ${objectItem.value.sdfAction}"
+                                        th:with="sdfActionName=${objectPath + '/sdfAction/' + action.key}">
+                                        <td class="ble-ad-data text-black" scope="row">
+                                            <span th:text="${action.value.description != null ? action.value.description : action.key}"></span>
+                                            <p class="ble-sdf-property" th:text="${sdfActionName}"></p>
+                                        </td>
+                                        <td class="text-end">
+                                            <form class="input-group mt-2" onsubmit="return false;">
+                                                <input type="text" class="form-control" placeholder="Enter hex value">
+                                                <button type="submit" class="btn btn-success" disabled>Invoke</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div th:if="${objectItem.value.sdfEvent != null and !#maps.isEmpty(objectItem.value.sdfEvent)}">
+                                <h6>Events</h6>
+                                <table class="table">
+                                    <tbody>
+                                    <tr th:each="eventItem : ${objectItem.value.sdfEvent}"
+                                        th:with="sdfEventName=${objectPath + '/sdfEvent/' + eventItem.key}">
+                                        <td class="ble-ad-data text-black" scope="row">
+                                            <span th:text="${eventItem.value.description != null ? eventItem.value.description : eventItem.key}"></span>
+                                            <p class="ble-sdf-property" th:text="${sdfEventName}"></p>
+                                        </td>
+                                        <td class="text-end"
+                                            th:with="enabledInstanceId=${enabledEvents != null ? enabledEvents.get(sdfEventName) : null}">
+                                            <button type="button" class="btn btn-danger"
+                                                    th:if="${enabledInstanceId != null and !#strings.isEmpty(enabledInstanceId)}"
+                                                    th:attr="data-sdf-name=${sdfEventName},data-instance-id=${enabledInstanceId}"
+                                                    onclick="disableEvent(this)">
+                                                Disable Event
+                                            </button>
+                                            <button type="button" class="btn btn-warning"
+                                                    th:if="${enabledInstanceId == null or #strings.isEmpty(enabledInstanceId)}"
+                                                    th:attr="data-sdf-name=${sdfEventName}"
+                                                    onclick="enableEvent(this)">
+                                                Enable Event
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row border my-3 p-3">
+        <form class="col-6" th:if="${parameters == null}" th:action="@{/devices/{id}/connect(id=${device.id})}" method="post">
+            <div class="mb-3">
+                <label for="serviceUUIDs" class="form-label">Service UUIDs (comma-separated)</label>
+                <input type="text" class="form-control" id="serviceUUIDs" name="serviceUUIDs"
+                       placeholder="1800,180A">
+            </div>
+            <button type="submit" class="btn btn-primary">Connect</button>
+        </form>
+
+        <form class="col-6" th:if="${parameters != null}" th:action="@{/devices/{id}/disconnect(id=${device.id})}" method="post">
+            <button type="submit" class="btn btn-danger">Disconnect</button>
+        </form>
+    </div>
+
+    <div class="row" th:if="${parameters != null}">
         <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">Service UUID</th>
+                <th scope="col">Characteristic UUID</th>
+                <th scope="col">Value</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
             <tbody>
-                <tr>
-                    <th>Device ID</th>
-                    <td th:text="${device.id}" />
-                </tr>
-                <tr>
-                    <th>Device Display Name</th>
-                    <td th:text="${device.displayName}" />
-                </tr>
-                <tr>
-                    <th>Device MAC Address</th>
-                    <td th:text="${device.bleExtension.deviceMacAddress}" />
-                </tr>
-                <tr>
-                    <th>Device Pass Key</th>
-                    <td th:text="${device.bleExtension.pairingPassKey.key}" />
-                </tr>
-                <tr>
-                    <th>Device Version Support</th>
-                    <td th:text="${device.bleExtension.versionSupport}" />
-                </tr>
+            <tr th:each="parameter, stat: ${parameters}">
+                <td class="ble-ad-data text-black" scope="row" th:text="${parameter.serviceUUID}"></td>
+                <td class="ble-ad-data text-black" th:text="${parameter.charUUID}"></td>
+                <td class="ble-ad-data text-black" th:id="'value-' + ${stat.index}"></td>
+                <td>
+                    <button class="btn btn-primary"
+                            th:if="${#lists.contains(parameter.flags, 'read')}"
+                            th:onclick="readValue([[${stat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">
+                        Read
+                    </button>
+                    <form class="input-group mt-2"
+                          th:if="${#lists.contains(parameter.flags, 'write')}"
+                          onsubmit="writeValue(this); return false;">
+                        <input type="text" class="form-control" placeholder="Enter hex value">
+                        <button class="btn btn-primary" type="submit"
+                                th:attr="data-index=${stat.index},data-device-id=${device.id},data-service-id=${parameter.serviceUUID},data-char-id=${parameter.charUUID}">
+                            Write
+                        </button>
+                    </form>
+                </td>
+            </tr>
             </tbody>
         </table>
-
-        <div class="row" th:if="${parameters == null}">
-            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/connect(id=${device.id})}"
-                th:object="${device}">
-                <button type="submit" class="btn btn-primary">Connect</button>
-            </form>
-
-            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/delete(id=${device.id})}"
-                th:object="${device}">
-                <button type="submit" class="btn btn-danger">Delete</button>
-            </form>
-
-            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/advertisements(id=${device.id})}"
-                th:object="${device}">
-                <button type="submit" class="btn btn-success">Subscribe to advertisements</button>
-            </form>
-        </div>
-
-        <div th:if="${parameters != null}">
-            <form class="col-4" action="#" method="post" th:action="@{/devices/{id}/disconnect(id=${device.id})}"
-                th:object="${device}">
-                <button type="submit" class="btn btn-danger">Disconnect</button>
-            </form>
-            <table class="table">
-                <thead>
-                    <th scope="col">GATT Service UUID</th>
-                    <th scope="col">GATT Characteristic UUID</th>
-                    <th scope="col">Value</th>
-                    <th scope="col" />
-                </thead>
-                <tbody>
-                    <tr th:each="parameter, iStat: ${parameters}">
-                        <td class="ble-ad-data text-black" scope="row" th:text="${parameter.serviceUUID}" />
-                        <td class="ble-ad-data text-black" th:text="${parameter.charUUID}" />
-                        <td class="ble-ad-data text-black" th:id="'value-' + ${iStat.index}" />
-                        <td>
-                            <button class="btn btn-primary" th:if="${#lists.contains(parameter.flags, 'read')}"
-                                th:onclick="readValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Read</button>
-                            <button class="btn btn-success" th:if="${#lists.contains(parameter.flags, 'write')}"
-                                th:onclick="writeValue([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Write</button>
-                            <button class="btn btn-warning"
-                                th:if="${#lists.contains(parameter.flags, 'notify') or #lists.contains(parameter.flags, 'indicate')}"
-                                th:onclick="subscribe([[${iStat.index}]], [[${device.id}]], [[${parameter.serviceUUID}]], [[${parameter.charUUID}]])">Subscribe</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Modal -->
-        <div class="modal fade" id="writeModal" tabindex="-1" aria-labelledby="writeModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="writeModalLabel">Write value</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="writeValue" class="form-label">Value</label>
-                            <input type="text" required class="form-control" id="writeValue"
-                                placeholder="Value to be written in hex" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary">Write</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- <div class="modal fade" id="subscribeModal" tabindex="-1" aria-labelledby="subscribeModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="subscribeModalLabel">Subscribe</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="topic" class="form-label">Topic</label>
-                            <input type="text" required class="form-control" id="topic" required
-                                placeholder="Topic" />
-                        </div>
-
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="dataFormat">
-                            <label class="form-check-label" for="dataFormat">Payload data format</label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary">Save changes</button>
-                    </div>
-                </div>
-            </div>
-        </div> -->
-
-        <script th:inline="javascript">
-            function readValue(index, id, svcUUID, charUUID) {
-                // call API with svcUUID and charUUID
-                console.log("readValue: " + svcUUID + ", " + charUUID);
-
-                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/read`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        document.getElementById(`value-${index}`).innerHTML = data.value;
-                    });
-            }
-
-            function writeValue(index, id, svcUUID, charUUID) {
-                // call API with svcUUID and charUUID
-                console.log("writeValue: " + svcUUID + ", " + charUUID);
-                const modal = new bootstrap.Modal('#writeModal');
-                modal.show();
-
-                const writeButton = document.querySelector('#writeModal .btn-primary');
-
-                writeButton.onclick = () => {
-                    const value = document.getElementById("writeValue").value;
-
-                    console.log("writeValue: " + value);
-
-                    fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/write`, {
-                        method: 'POST',
-                        body: value,
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    })
-                        .then(response => response.json())
-                        .then(data => {
-                            console.log(data);
-                            document.getElementById(`value-${index}`).innerHTML = data.value;
-
-                            modal.hide();
-                        });
-                }
-            }
-
-            function subscribe(index, id, svcUUID, charUUID) {
-                // call API with svcUUID and charUUID
-                console.log("subscribe: " + svcUUID + ", " + charUUID);
-
-                fetch(`/devices/${id}/svc/${svcUUID}/char/${charUUID}/subscribe`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log(data);
-                        var topic = data.topic;
-                        window.location.href = `/subscription?topic=${topic}`;
-                    });
-            }
-
-            var path = window.location.pathname;
-            var id = path.split("/")[2];
-
-            var topic = `data-app/${id}/connection`;
-
-		var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
-
-            ws.onopen = () => {
-                ws.send("");
-            }
-
-            ws.onmessage = (event) => {
-                var obj = JSON.parse(event.data);
-
-                console.log(obj);
-            };
-        </script>
     </div>
+
+    <script th:inline="javascript">
+        const deviceId = /*[[${device.id}]]*/ "";
+
+        const selectElement = document.getElementById("sdf_select");
+        if (selectElement) {
+            selectElement.addEventListener("change", (event) => {
+                const selectedValue = event.target.value;
+                const sdfModelDivs = document.querySelectorAll("[id^='div-']");
+                sdfModelDivs.forEach((div) => {
+                    div.hidden = true;
+                });
+                if (selectedValue) {
+                    const selectedDiv = document.getElementById("div-" + selectedValue);
+                    if (selectedDiv) {
+                        selectedDiv.hidden = false;
+                    }
+                }
+            });
+        }
+
+        function readValue(index, id, serviceUUID, charUUID) {
+        fetch(`/devices/${id}/svc/${serviceUUID}/char/${charUUID}/read`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"}
+        }).then((response) => response.json())
+            .then((data) => {
+                document.getElementById(`value-${index}`).innerText = data.value || "";
+            });
+        }
+
+        function writeValue(form) {
+        const button = form.querySelector("button[type='submit']");
+        const value = form.querySelector("input").value;
+        const index = button.dataset.index;
+        const id = button.dataset.deviceId;
+        const serviceUUID = button.dataset.serviceId;
+        const charUUID = button.dataset.charId;
+
+        fetch(`/devices/${id}/svc/${serviceUUID}/char/${charUUID}/write`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({value: value})
+        }).then((response) => response.json())
+            .then((data) => {
+                document.getElementById(`value-${index}`).innerText = data.value || value;
+            });
+        }
+
+        function readProperty(button) {
+        const sdfName = button.dataset.sdfName;
+        fetch(`/devices/${deviceId}/read`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sdfName: sdfName})
+        }).then((response) => response.json())
+            .then((data) => {
+                const row = button.closest("tr");
+                const valueCell = row.querySelector(".property-value");
+                if (!data || data.length === 0 || !data[0].value) {
+                    valueCell.innerText = "";
+                    return;
+                }
+                const bytes = atob(data[0].value);
+                const hex = Array.from(bytes).map((char) => char.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+                valueCell.innerText = hex;
+            });
+        }
+
+        function writeProperty(form) {
+        const button = form.querySelector("button[type='submit']");
+        const sdfName = button.dataset.sdfName;
+        const input = form.querySelector("input").value;
+
+        const bytes = input.match(/.{1,2}/g)?.map((item) => String.fromCharCode(parseInt(item, 16))).join("") || "";
+        const base64 = btoa(bytes);
+
+        fetch(`/devices/${deviceId}/write`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sdfName: sdfName, value: base64})
+        }).then(() => {
+            const row = form.closest("tr");
+            const valueCell = row.querySelector(".property-value");
+            valueCell.innerText = input;
+        });
+        }
+
+        function enableEvent(button) {
+        const sdfName = button.dataset.sdfName;
+        fetch(`/devices/${deviceId}/event`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sdfName: sdfName, enable: true})
+        }).then(() => window.location.reload());
+        }
+
+        function disableEvent(button) {
+        const sdfName = button.dataset.sdfName;
+        const instanceId = button.dataset.instanceId;
+        fetch(`/devices/${deviceId}/event`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sdfName: sdfName, enable: false, instanceId: instanceId})
+        }).then(() => window.location.reload());
+        }
+
+        function deleteSdfModel(button) {
+        const sdfName = button.dataset.sdfName;
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = `/devices/${deviceId}/deleteSdf/${encodeURIComponent(sdfName)}`;
+        document.body.appendChild(form);
+        form.submit();
+        }
+    </script>
+</div>
 </body>
 
 </html>

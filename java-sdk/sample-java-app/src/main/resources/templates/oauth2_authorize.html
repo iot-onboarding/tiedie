@@ -9,13 +9,16 @@ SPDX-License-Identifier: Apache-2.0
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head th:insert="~{layout :: head}">
-    <title id="title">Home</title>
+    <title id="title">OAuth2 Authorization</title>
 </head>
 
 <body th:insert="~{layout :: body}">
 <div id="main">
-    <h1>TieDie Sample App</h1>
-    <p><a href="/devices">Go to devices</a></p>
+    <h1>OAuth2 Authorization</h1>
+    <p>Click below to authorize this sample app against your OAuth provider.</p>
+    <form action="/oauth2/authorize" method="post">
+        <button type="submit" class="btn btn-primary">Connect to OAuth</button>
+    </form>
 </div>
 </body>
 

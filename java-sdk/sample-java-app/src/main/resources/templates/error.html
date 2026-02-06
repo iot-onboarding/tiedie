@@ -17,10 +17,10 @@ SPDX-License-Identifier: Apache-2.0
         <h1>Error</h1>
 
         <div class="alert alert-danger" role="alert">
-            <span th:text="${message}" />
+            <span th:text="${error != null ? error : message}"></span>
         </div>
 
-        <pre th:text="${trace}"></pre>
+        <pre th:if="${trace != null}" th:text="${trace}"></pre>
     </div>
 </body>
 

@@ -61,6 +61,9 @@ public class BleExtension {
     @JsonProperty("separateBroadcastAddress")
     private List<String> separateBroadcastAddress;
 
+    @JsonProperty("mobility")
+    private Boolean mobility;
+
     private List<String> pairingMethods;
 
     /**

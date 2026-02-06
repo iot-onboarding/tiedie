@@ -13,54 +13,114 @@ SPDX-License-Identifier: Apache-2.0
 </head>
 
 <body th:insert="~{layout :: body}">
-    <div id="main">
+<div id="main">
+    <h1>Event</h1>
+    <h3 th:text="${event}"></h3>
 
-        <h1>Topic</h1>
-        <h2>[[${topic}]]</h2>
+    <table class="table">
+        <thead>
+        <tr>
+            <th scope="col">Notification</th>
+        </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+    </table>
 
-        <form class="col-4" action="#" method="post" th:action="@{/unsubscribe?topic={topic}(topic=${topic})}"
-            th:object="${device}">
-            <button type="submit" class="btn btn-danger">Unsubscribe</button>
-        </form>
+    <script th:inline="javascript">
+        const tbody = document.getElementById("tbody");
+        const topic = /*[[${event}]]*/ "";
+        const ws = new WebSocket(`ws://${window.location.host}/ws/subscription?event=${encodeURIComponent(topic)}`);
 
-        <table class="table">
-            <thead>
-                <th scope="col">Notification</th>
-            </thead>
-            <tbody id="tbody">
+        let adsMap = {};
 
-            </tbody>
-        </table>
-        
-        <script th:inline="javascript">
-            var tbody = document.getElementById("tbody");
-            var topic = new URLSearchParams(window.location.search).get('topic');
-		
-	    var ws = new WebSocket(`ws://${window.location.host}/subscription/${topic}`);
+        ws.onopen = () => {
+            ws.send("subscribe");
+        };
 
-            ws.onopen = () => {
-                ws.send("");
+        ws.onmessage = (event) => {
+            const dataSub = JSON.parse(event.data);
+            if (!dataSub || !dataSub.data) {
+                return;
             }
 
-            ws.onmessage = (event) => {
-                var obj = JSON.parse(event.data);
-                var data = atob(obj.data);
+            const data = atob(dataSub.data);
 
-                var raw = "";
-                for (var i = 0; i < data.length; i++) {
-                    raw += data.charCodeAt(i).toString(16).padStart(2, '0');
+            if (dataSub.bleAdvertisement) {
+                const macAddress = dataSub.bleAdvertisement.macAddress;
+                const rssi = dataSub.bleAdvertisement.rssi;
+
+                let rawAd = new Uint8Array(data.length);
+                for (let i = 0; i < data.length; i++) {
+                    rawAd[i] = data.charCodeAt(i);
                 }
-                // console.log(raw);
 
-                var row = document.createElement("tr");
-                var cell = document.createElement("td");
-                cell.className = "ble-ad-data text-black";
-                cell.innerText = raw;
-                row.appendChild(cell);
-                tbody.appendChild(row);
-            };
-        </script>
-    </div>
+                const ad = [];
+                while (rawAd.length > 0) {
+                    const length = rawAd[0];
+                    if (length === 0) {
+                        break;
+                    }
+
+                    const type = rawAd[1].toString(16).padStart(2, "0");
+                    const value = rawAd.slice(2, length + 1);
+                    const hex = [...value].map((x) => x.toString(16).padStart(2, "0")).join("");
+                    ad.push({type: type, value: hex});
+                    rawAd = rawAd.slice(length + 1);
+                }
+
+                adsMap[macAddress] = {macAddress: macAddress, rssi: rssi, ad: ad};
+                return;
+            }
+
+            let raw = "";
+            for (let i = 0; i < data.length; i++) {
+                raw += data.charCodeAt(i).toString(16).padStart(2, "0");
+            }
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.className = "ble-ad-data text-black";
+            cell.innerText = raw;
+            row.appendChild(cell);
+            tbody.appendChild(row);
+        };
+
+        setInterval(() => {
+            const adsTable = Object.values(adsMap);
+            if (adsTable.length === 0) {
+                return;
+            }
+
+            tbody.innerHTML = "";
+            adsTable.sort((a, b) => b.rssi - a.rssi);
+
+            for (let i = 0; i < adsTable.length; i++) {
+                const row = tbody.insertRow(i);
+                const macAddressCell = row.insertCell(0);
+                const rssiCell = row.insertCell(1);
+                const adCell = row.insertCell(2);
+
+                macAddressCell.innerHTML = adsTable[i].macAddress;
+                rssiCell.innerHTML = adsTable[i].rssi;
+
+                for (const ad of adsTable[i].ad) {
+                    const type = document.createElement("span");
+                    type.className = "ble-ad-type";
+                    type.innerHTML = ad.type;
+
+                    const value = document.createElement("span");
+                    value.className = "ble-ad-data";
+                    value.innerHTML = ad.value;
+
+                    adCell.appendChild(type);
+                    adCell.appendChild(value);
+                }
+            }
+
+            adsMap = {};
+        }, 2000);
+    </script>
+</div>
 </body>
 
 </html>
