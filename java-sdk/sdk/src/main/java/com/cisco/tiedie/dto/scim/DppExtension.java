@@ -14,7 +14,7 @@ import lombok.extern.jackson.Jacksonized;
 import java.util.List;
 
 /**
- * A schema that extends the device schema to enable WiFi EasyConnect (otherwise known as Device Provisioning Protocol).
+ * A schema that extends the device schema to enable Wi-Fi EasyConnect (otherwise known as Device Provisioning Protocol).
  * <p>
  * The extension is identified using the following schema URI:
  * <p>
@@ -35,7 +35,7 @@ public class DppExtension {
     /**
      * It is the array of strings of all the bootstrapping methods available on the enrollee device.
      * For example, [QR, NFC].
-     * This attribute is optional, case insensitive, mutable, and returned by default.
+     * This attribute is optional, case-insensitive, mutable, and returned by default.
      */
     private List<String> bootstrappingMethod;
 
@@ -48,7 +48,7 @@ public class DppExtension {
 
     /**
      * The manufacturer assigns the MAC address stored as string. It is a unique 48-bit value.
-     * This attribute is optional, case insensitive, mutable, and returned by default.
+     * This attribute is optional, case-insensitive, mutable, and returned by default.
      * <p>
      * The regex pattern is as follows:
      * <p>

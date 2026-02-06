@@ -3,23 +3,20 @@
 // See LICENSE file in this distribution.
 // SPDX-License-Identifier: Apache-2.0
 
-package com.cisco.tiedie.dto.control;
+package com.cisco.tiedie.dto.nipc;
 
-import java.util.List;
-
-import com.cisco.tiedie.dto.scim.Device;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
-
-@SuperBuilder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public abstract class RegistrationOptions {
-    private Device device;
-    private DataFormat dataFormat;
-    private List<String> dataAppIds;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ProblemDetails {
+    private NipcProblemType type;
+    private Integer status;
+    private String title;
+    private String detail;
 }

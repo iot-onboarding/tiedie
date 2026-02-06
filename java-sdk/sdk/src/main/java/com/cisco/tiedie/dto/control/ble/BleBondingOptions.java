@@ -7,9 +7,19 @@ package com.cisco.tiedie.dto.control.ble;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public enum BleAdvertisementFilterType {
-    @JsonProperty("allow")
-    ALLOW,
-    @JsonProperty("deny")
-    DENY
+public enum BleBondingOptions {
+    @JsonProperty("default")
+    DEFAULT,
+
+    @JsonProperty("none")
+    NONE,
+
+    @JsonProperty("justworks")
+    JUST_WORKS,
+
+    @JsonProperty("passkey")
+    PASSKEY,
+
+    @JsonProperty("oob")
+    OOB
 }

@@ -3,13 +3,13 @@
 // See LICENSE file in this distribution.
 // SPDX-License-Identifier: Apache-2.0
 
-package com.cisco.tiedie.dto.control;
+package com.cisco.tiedie.dto.nipc;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
-public class DiscoverResponse {
-    private List<DataParameter> dataParameters;
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Event {
+    private String event;
 }
