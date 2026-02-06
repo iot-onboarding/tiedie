@@ -1,0 +1,25 @@
+<!--
+Copyright (c) 2023, Cisco Systems, Inc. and/or its affiliates.
+All rights reserved.
+See LICENSE file in this distribution.
+SPDX-License-Identifier: Apache-2.0
+-->
+
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head th:insert="~{layout :: head}">
+    <title id="title">OAuth2 Authorization</title>
+</head>
+
+<body th:insert="~{layout :: body}">
+<div id="main">
+    <h1>OAuth2 Authorization</h1>
+    <p>Click below to authorize this sample app against your OAuth provider.</p>
+    <form action="/oauth2/authorize" method="post">
+        <button type="submit" class="btn btn-primary">Connect to OAuth</button>
+    </form>
+</div>
+</body>
+
+</html>

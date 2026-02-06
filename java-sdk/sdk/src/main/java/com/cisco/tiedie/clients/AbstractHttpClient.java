@@ -21,12 +21,16 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @SuppressWarnings("SameParameterValue")
 abstract class AbstractHttpClient {
 
     private static final String DEFAULT_NIPC_CONTENT_TYPE = "application/nipc+json";
+    private static final Logger LOGGER = Logger.getLogger(AbstractHttpClient.class.getName());
+    private static final AtomicLong REQUEST_COUNTER = new AtomicLong(0);
 
     private final String baseUrl;
 
@@ -45,6 +49,39 @@ abstract class AbstractHttpClient {
                 .callTimeout(1, TimeUnit.MINUTES);
 
         httpClient = authenticator.setAuthOptions(httpClientBuilder)
+                .addNetworkInterceptor(chain -> {
+                    Request request = chain.request();
+                    long requestId = REQUEST_COUNTER.incrementAndGet();
+
+                    LOGGER.info(() -> String.format(
+                            "HTTP[%d] Request %s %s headers=%s",
+                            requestId,
+                            request.method(),
+                            request.url(),
+                            mapHeaders(request.headers())
+                    ));
+
+                    try {
+                        Response response = chain.proceed(request);
+                        LOGGER.info(() -> String.format(
+                                "HTTP[%d] Response %d %s headers=%s",
+                                requestId,
+                                response.code(),
+                                response.message(),
+                                mapHeaders(response.headers())
+                        ));
+                        return response;
+                    } catch (IOException e) {
+                        LOGGER.warning(String.format(
+                                "HTTP[%d] Request failed: %s %s error=%s",
+                                requestId,
+                                request.method(),
+                                request.url(),
+                                e.getMessage()
+                        ));
+                        throw e;
+                    }
+                })
                 .build();
     }
 
