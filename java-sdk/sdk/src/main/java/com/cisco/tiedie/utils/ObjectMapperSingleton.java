@@ -28,6 +28,10 @@ public class ObjectMapperSingleton {
     }
 
     public static ObjectMapper getCborInstance() {
+        if (cborMapper != null) {
+            return cborMapper;
+        }
+
         cborMapper = new CBORMapper();
         cborMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 

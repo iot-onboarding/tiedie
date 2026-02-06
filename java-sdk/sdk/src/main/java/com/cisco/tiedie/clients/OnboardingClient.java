@@ -56,6 +56,17 @@ public class OnboardingClient extends AbstractHttpClient {
     }
 
     /**
+     * Update an existing device on the controller.
+     *
+     * @param device {@link Device} object. Must have a valid ID.
+     * @return Updated device object.
+     * @throws IOException if the request could not be executed due to cancellation, a connectivity problem or timeout.
+     */
+    public HttpResponse<Device> updateDevice(Device device) throws IOException {
+        return put("/Devices/" + device.getId(), device, Device.class);
+    }
+
+    /**
      * Get the Device object using its unique ID.
      *
      * @param id Unique ID of the device

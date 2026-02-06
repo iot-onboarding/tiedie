@@ -5,33 +5,36 @@
 
 package com.cisco.tiedie.dto.control.ble;
 
-import java.util.List;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
- * BLE Connection options
+ * BLE Connection options.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BleConnectRequest {
     /**
-     * Optional list of services to be discoveered
+     * Optional list of services to discover.
      */
     private List<BleService> services;
-    /**
-     * Number of times to retry the connect request at the AP.
-     */
-    @Builder.Default
-    private int retries = 3;
 
-    /**
-     * Flag to retry the connect request at multiple APs.
-     */
-    private boolean retryMultipleAPs;
+    private Boolean cached;
+
+    @JsonProperty("cacheIdlePurge")
+    private Integer cacheIdlePurge;
+
+    @JsonProperty("autoUpdate")
+    private Boolean autoUpdate;
+
+    private BleBondingOptions bonding;
 }

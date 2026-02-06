@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BleDiscoverRequest {
     /**
-     * Optional list of services to be discoveered
+     * Optional list of services to be discovered
      */
     private List<BleService> services;
 }

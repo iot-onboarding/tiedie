@@ -7,7 +7,7 @@ package com.cisco.tiedie.dto.control.ble;
 
 import com.cisco.tiedie.dto.control.DataParameter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -16,12 +16,29 @@ import java.util.List;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BleDiscoverResponse {
+    @JsonProperty("sdfProtocolMap")
+    private BleServiceProtocolMap sdfProtocolMap;
+
+    // Legacy fallback field to tolerate older response shapes.
     private List<BleService> services;
 
     public List<DataParameter> toParameterList(String deviceId) {
         List<DataParameter> parameters = new ArrayList<>();
 
-        for (BleService service : services) {
+        List<BleService> discoveredServices = services;
+        if (sdfProtocolMap != null && sdfProtocolMap.ble != null) {
+            discoveredServices = sdfProtocolMap.ble;
+        }
+
+        if (discoveredServices == null) {
+            return parameters;
+        }
+
+        for (BleService service : discoveredServices) {
+            if (service.getCharacteristics() == null) {
+                continue;
+            }
+
             for (BleCharacteristic characteristic : service.getCharacteristics()) {
                 var parameter = new BleDataParameter();
                 parameter.setDeviceId(deviceId);
@@ -33,5 +50,11 @@ public class BleDiscoverResponse {
         }
 
         return parameters;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class BleServiceProtocolMap {
+        private List<BleService> ble;
     }
 }

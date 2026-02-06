@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -68,10 +69,9 @@ public class CertificateHelper {
                 rootCertExtUtils.createSubjectKeyIdentifier(rootKeyPair.getPublic()));
 
         X509CertificateHolder rootCertHolder = rootCertBuilder.build(rootCertContentSigner);
-        X509Certificate rootCert = new JcaX509CertificateConverter()
-                .getCertificate(rootCertHolder);
 
-        return rootCert;
+        return new JcaX509CertificateConverter()
+                .getCertificate(rootCertHolder);
     }
 
     public static X509Certificate createAppCertificate(KeyPair issuedCertKeyPair, String appCN, KeyPair rootKeyPair, X500Name rootCertSubject)
@@ -99,10 +99,9 @@ public class CertificateHelper {
         issuedCertBuilder.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
 
         X509CertificateHolder issuedCertHolder = issuedCertBuilder.build(csrContentSigner);
-        X509Certificate issuedCert = new JcaX509CertificateConverter()
-                .getCertificate(issuedCertHolder);
 
-        return issuedCert;
+        return new JcaX509CertificateConverter()
+                .getCertificate(issuedCertHolder);
     }
 
     public static InputStream createPemInputStream(final X509Certificate cert) throws IOException {
@@ -111,7 +110,7 @@ public class CertificateHelper {
         pemWriter.writeObject(cert);
         pemWriter.flush();
         pemWriter.close();
-        return new ByteArrayInputStream(writer.toString().getBytes("UTF-8"));
+        return new ByteArrayInputStream(writer.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     public static KeyStore createKeyStore(KeyPair keyPair, Certificate certificate, String alias) throws Exception {
