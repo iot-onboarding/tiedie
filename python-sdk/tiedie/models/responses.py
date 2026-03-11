@@ -41,6 +41,7 @@ class NipcProblemTypes(str, Enum):
     # Property API errors
     PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
     PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
+    PROPERTY_WRITE_FAILED = _IANA_BASE + "property-write-failed"
 
     # Event API errors
     EVENT_ALREADY_ENABLED = _IANA_BASE + "event-already-enabled"
