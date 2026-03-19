@@ -10,8 +10,7 @@ This module implements BLE dispatch for SCIM.
 from tiedie_exceptions import DeviceExists
 from nipc_models import BleExtension
 from database import session
-from scim_extensions import scim_ext_create, scim_ext_read, \
-    scim_ext_update, scim_ext_delete
+from scim_extensions import register_scim_extension
 
 def ble_create_device(schemas,entry,request,device_id,update=False):
     """
@@ -119,7 +118,11 @@ def ble_delete_device(entry_id):
     session.delete(entry)
     session.commit()
 
-scim_ext_create.append(ble_create_device)
-scim_ext_update.append(ble_update_device)
-scim_ext_read.append(ble_read_device)
-scim_ext_delete.append(ble_delete_device)
+def register_ble_extension():
+    """Register BLE SCIM extension hooks."""
+    register_scim_extension(
+        ble_create_device,
+        ble_read_device,
+        ble_update_device,
+        ble_delete_device,
+    )
