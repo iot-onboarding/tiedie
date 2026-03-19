@@ -5,69 +5,11 @@
 """
 Unit tests for SDF model registration and management (NIPC draft-12)
 """
-import uuid
-import pytest
-from flask import Flask
 from flask.testing import FlaskClient
-from testcontainers.postgres import PostgresContainer
-from app_factory import create_app
-from database import db
-from models import OnboardingAppKey
 # pylint: disable-next=unused-import
 from scim_fdo import FDOExtension
 # pylint: disable-next=unused-import
 from scim_ethermab import EtherMABExtension
-
-
-@pytest.fixture(name="postgres")
-def fixture_postgres():
-    """Fixture for Postgres test container."""
-    with PostgresContainer("postgres:13.1") as p:
-        yield p
-
-
-@pytest.fixture(name="app")
-def fixture_app(postgres: PostgresContainer):
-    """Fixture for Flask app with test DB."""
-    app = create_app(postgres.get_connection_url())
-    with app.app_context():
-        db.create_all()
-    yield app
-
-
-@pytest.fixture(name="client")
-def fixture_client(app: Flask) -> FlaskClient:
-    """Fixture for Flask test client."""
-    return app.test_client()
-
-
-@pytest.fixture(name="api_key")
-def fixture_api_key(app):
-    """Fixture for onboarding app key."""
-    with app.app_context():
-        key = uuid.uuid4()
-        authkey = OnboardingAppKey("onboarding-app", str(key))
-        db.session.add(authkey)
-        db.session.commit()
-        yield key
-
-
-@pytest.fixture(name="control_api_key")
-def fixture_endpoint_app_token(client: FlaskClient, api_key: str):
-    """Fixture for endpoint app token."""
-    response = client.post(
-        "/scim/v2/EndpointApps",
-        json={
-            "schemas": ["urn:ietf:params:scim:schemas:core:2.0:EndpointApp"],
-            "applicationType": "deviceControl",
-            "applicationName": "Device Control App 1",
-        },
-        headers={
-            "x-api-key": api_key
-        }
-    )
-    assert response.json is not None
-    return response.json.get("clientToken")
 
 
 def sample_sdf_model():
