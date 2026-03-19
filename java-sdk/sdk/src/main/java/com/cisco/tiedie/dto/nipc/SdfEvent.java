@@ -9,10 +9,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
+import java.util.Map;
+
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SdfEvent {
     private String description;
+
+    @JsonProperty("sdfProtocolMap")
+    private Map<String, Object> sdfProtocolMap;
 
     @JsonProperty("sdfOutputData")
     private SdfOutputData sdfOutputData;

@@ -20,7 +20,7 @@ from enum import Enum
 import uuid
 import werkzeug.serving
 import OpenSSL
-from flask import Blueprint, jsonify, make_response, request
+from flask import Blueprint, Response, jsonify, make_response, request
 from sqlalchemy import select
 from ap_factory import ble_ap
 from database import session
@@ -40,8 +40,8 @@ from tiedie_exceptions import SchemaError
 class NipcProblemTypes(str, Enum):
     """
     NIPC Problem Details error types as defined in the NIPC draft
-    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-12) 
-    Section 6 and IANA registry Section 10.4.
+    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-18)
+    Section 6 and IANA registry Section 11.6.
     """
     # Base URI for IANA HTTP Problem Types registry
     _IANA_BASE = "https://www.iana.org/assignments/nipc-problem-types#"
@@ -52,10 +52,13 @@ class NipcProblemTypes(str, Enum):
     EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "extension-operation-not-executed"
     SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "sdf-model-already-registered"
     SDF_MODEL_IN_USE = _IANA_BASE + "sdf-model-in-use"
+    UNSUPPORTED_URI_SCHEME = _IANA_BASE + "unsupported-uri-scheme"
 
     # Property API errors
     PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
+    PROPERTY_READ_FAILED = _IANA_BASE + "property-read-failed"
     PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
+    PROPERTY_WRITE_FAILED = _IANA_BASE + "property-write-failed"
 
     # Event API errors
     EVENT_ALREADY_ENABLED = _IANA_BASE + "event-already-enabled"
@@ -80,7 +83,7 @@ class NipcProblemTypes(str, Enum):
         _IANA_BASE + "protocolmap-zigbee-invalid-endpoint-or-cluster"
 
     # Extension API errors
-    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "extension-broadcast-invalid-data"
+    EXTENSION_TRANSMIT_INVALID_DATA = _IANA_BASE + "extension-transmit-invalid-data"
     EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "extension-firmware-rollback"
     EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "extension-firmware-update-failed"
 
@@ -95,7 +98,7 @@ def create_nipc_problem_response(
     status: HTTPStatus,
     title: str,
     detail: str
-) -> tuple:
+) -> Response:
     """Create a NIPC Problem Details response.
     
     Args:
@@ -113,7 +116,58 @@ def create_nipc_problem_response(
         "title": title,
         "detail": detail
     }
-    return jsonify(response), status
+    problem_response = make_response(jsonify(response), status)
+    problem_response.headers["Content-Type"] = "application/problem+json"
+    return problem_response
+
+
+def _parse_connection_options(payload: dict | None) -> tuple[int, list[dict], bool, int]:
+    """Parse connection options from request payload."""
+    retries = 3
+    services: list[dict] = []
+    cached = False
+    cache_expiry_duration = 3600
+
+    if payload:
+        retries = int(payload.get("retries", retries))
+        protocol_information = payload.get("protocolInformation", {})
+        ble_config = protocol_information.get("ble", {}) if isinstance(protocol_information, dict) else {}
+        if isinstance(ble_config, dict):
+            services = [
+                {"serviceID": svc.get("serviceID")}
+                for svc in ble_config.get("services", [])
+                if isinstance(svc, dict) and svc.get("serviceID")
+            ]
+            cached = bool(ble_config.get("cached", cached))
+            cache_expiry_duration = int(
+                ble_config.get("cacheExpiryDuration", cache_expiry_duration)
+            )
+
+    return retries, services, cached, cache_expiry_duration
+
+
+def _build_connection_response(device_id: str, services) -> dict:
+    return {
+        "id": device_id,
+        "protocolInformation": {
+            "ble": {
+                "services": [
+                    {
+                        "serviceID": svc.service_id,
+                        "characteristics": [
+                            {
+                                "characteristicID": char.characteristic_id,
+                                "flags": char.properties,
+                                "descriptors": char.descriptors
+                            }
+                            for char in svc.characteristics.values()
+                        ]
+                    }
+                    for svc in services
+                ]
+            }
+        }
+    }
 
 
 class PeerCertWSGIRequestHandler(werkzeug.serving.WSGIRequestHandler):
@@ -175,31 +229,11 @@ def connect(device_id: str):
             f"Device ID {device_id} does not exist or is not a device"
         )
 
-    # Default connection parameters
-    retries = 3
-    retry_multiple_aps = True
-    services = []
-    cached = False
-    cache_idle_purge = 3600
-    auto_update = True
-    bonding = "default"
-
-    # Parse request body if provided
-    if request.is_json and request.get_json():
-        retries = request.get_json().get("retries", retries)
-        retry_multiple_aps = request.get_json().get("retryMultipleAPs", retry_multiple_aps)
-
-        protocol_map = request.get_json().get("sdfProtocolMap", {})
-        ble_config = protocol_map.get("ble", {})
-        if ble_config:
-            services = ble_config.get("services", [])
-            cached = bool(ble_config.get("cached", cached))
-            cache_idle_purge = int(ble_config.get("cacheIdlePurge", cache_idle_purge))
-            auto_update = bool(ble_config.get("autoUpdate", auto_update))
-            bonding = str(ble_config.get("bonding", bonding))
+    request_json = request.get_json() if request.is_json else None
+    retries, services, cached, cache_expiry_duration = _parse_connection_options(request_json)
 
     try:
-        connect_options = BleConnectOptions(services, cached, cache_idle_purge)
+        connect_options = BleConnectOptions(services, cached, cache_expiry_duration)
         ble_ap().connect(
             device.device_mac_address,
             connect_options,
@@ -212,25 +246,7 @@ def connect(device_id: str):
             retries
         )
 
-        response_data = {
-            "id": device_id,
-            "sdfProtocolMap": {
-                "ble": [
-                    {
-                        "serviceID": svc.service_id,
-                        "characteristics": [
-                            {
-                                "characteristicID": char.characteristic_id,
-                                "flags": char.properties,
-                                "descriptors": char.descriptors
-                            }
-                            for char in svc.characteristics.values()
-                        ]
-                    }
-                    for svc in discover_result.services
-                ]
-            }
-        }
+        response_data = _build_connection_response(device_id, discover_result.services)
         return jsonify(response_data), HTTPStatus.OK
     except (BleConnectionError, BleDiscoveryError) as e:
         return create_nipc_problem_response(
@@ -271,52 +287,18 @@ def update_connection(device_id: str):
             f"No connection found for device {device_id}"
         )
 
-    # Default service discovery parameters
-    services = []
-    cached = False
-    cache_idle_purge = 3600
-    auto_update = True
-
-    # Parse request body if provided
-    if request.is_json and request.json:
-        protocol_map = request.json.get("sdfProtocolMap", {})
-        ble_config = protocol_map.get("ble", {})
-        if ble_config:
-            services = [
-                {"serviceID": svc.get("serviceID")}
-                for svc in ble_config.get("services", [])
-            ]
-            cached = bool(ble_config.get("cached", cached))
-            cache_idle_purge = int(ble_config.get("cacheIdlePurge", cache_idle_purge))
-            auto_update = bool(ble_config.get("autoUpdate", auto_update))
+    request_json = request.get_json() if request.is_json else None
+    _retries, services, cached, cache_expiry_duration = _parse_connection_options(request_json)
 
     try:
-        connect_options = BleConnectOptions(services, cached, cache_idle_purge)
+        connect_options = BleConnectOptions(services, cached, cache_expiry_duration)
         discover_result = ble_ap().discover(
             device.device_mac_address,
             connect_options,
             0  # No retries for discovery on existing connection
         )
 
-        response_data = {
-            "id": device_id,
-            "sdfProtocolMap": {
-                "ble": [
-                    {
-                        "serviceID": svc.service_id,
-                        "characteristics": [
-                            {
-                                "characteristicID": char.characteristic_id,
-                                "flags": char.properties,
-                                "descriptors": char.descriptors
-                            }
-                            for char in svc.characteristics.values()
-                        ]
-                    }
-                    for svc in discover_result.services
-                ]
-            }
-        }
+        response_data = _build_connection_response(device_id, discover_result.services)
         return jsonify(response_data), HTTPStatus.OK
     except BleDiscoveryError as e:
         return create_nipc_problem_response(
@@ -383,25 +365,7 @@ def get_connection_status(device_id: str):
         conn = ble_ap().get_connection(device.device_mac_address)
 
         if conn:
-            response_data = {
-                "id": device_id,
-                "sdfProtocolMap": {
-                    "ble": [
-                        {
-                            "serviceID": svc.service_id,
-                            "characteristics": [
-                                {
-                                    "characteristicID": char.characteristic_id,
-                                    "flags": char.properties,
-                                    "descriptors": char.descriptors
-                                }
-                                for char in svc.characteristics.values()
-                            ]
-                        }
-                        for svc in conn.services.values()
-                    ]
-                }
-            }
+            response_data = _build_connection_response(device_id, conn.services.values())
             return jsonify(response_data), HTTPStatus.OK
 
         return create_nipc_problem_response(
@@ -605,7 +569,7 @@ def read_properties(device_id: str):
                 })
             except BleReadError as e:
                 results.append({
-                    "type": NipcProblemTypes.PROPERTY_NOT_READABLE,
+                    "type": NipcProblemTypes.PROPERTY_READ_FAILED,
                     "status": HTTPStatus.INTERNAL_SERVER_ERROR.value,
                     "title": "Property Read Error",
                     "detail": f"Failed to read property {property_name}: {str(e)}"
@@ -617,7 +581,7 @@ def read_properties(device_id: str):
         return jsonify(results), HTTPStatus.OK
     except Exception as e: # pylint: disable=broad-except
         return create_nipc_problem_response(
-            NipcProblemTypes.PROPERTY_NOT_READABLE,
+            NipcProblemTypes.PROPERTY_READ_FAILED,
             HTTPStatus.INTERNAL_SERVER_ERROR,
             "Internal Server Error",
             f"Unexpected error: {str(e)}"
@@ -749,7 +713,7 @@ def write_properties(device_id: str):
                 })
             except BleWriteError as e:
                 results.append({
-                    "type": NipcProblemTypes.PROPERTY_NOT_WRITABLE,
+                    "type": NipcProblemTypes.PROPERTY_WRITE_FAILED,
                     "status": HTTPStatus.INTERNAL_SERVER_ERROR.value,
                     "title": "Property Write Error",
                     "detail": f"Failed to write property {property_name}: {str(e)}"
@@ -761,7 +725,7 @@ def write_properties(device_id: str):
         return jsonify(results), HTTPStatus.OK
     except Exception as e: # pylint: disable=broad-except
         return create_nipc_problem_response(
-            NipcProblemTypes.PROPERTY_NOT_WRITABLE,
+            NipcProblemTypes.PROPERTY_WRITE_FAILED,
             HTTPStatus.INTERNAL_SERVER_ERROR,
             "Internal Server Error",
             f"Unexpected error: {str(e)}"
@@ -1194,14 +1158,13 @@ def enable_event(device_id: str):
                 "Event already exists"
             )
 
-        # protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"] is the event_type
-        event_type = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["type"]
+        event_type = protocol_map["sdfProtocolMap"]["ble"]["type"]
         gatt_service_id = None
         gatt_char_id = None
         if event_type == "gatt":
-            gatt_service_id = protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["serviceID"]
+            gatt_service_id = protocol_map["sdfProtocolMap"]["ble"]["serviceID"]
             gatt_char_id = (
-                protocol_map["sdfOutputData"]["sdfProtocolMap"]["ble"]["characteristicID"]
+                protocol_map["sdfProtocolMap"]["ble"]["characteristicID"]
             )
 
         instance_id = uuid.uuid4()

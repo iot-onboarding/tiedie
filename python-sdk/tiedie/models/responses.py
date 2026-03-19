@@ -25,8 +25,8 @@ from tiedie.models.ble import BleDataParameter, BleService
 class NipcProblemTypes(str, Enum):
     """
     NIPC Problem Details error types as defined in the NIPC draft
-    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-09)
-    Section 6 and IANA registry Section 10.4.
+    (https://datatracker.ietf.org/doc/html/draft-ietf-asdf-nipc-18)
+    Section 6 and IANA registry Section 11.6.
     """
     # Base URI for IANA HTTP Problem Types registry
     _IANA_BASE = "https://www.iana.org/assignments/nipc-problem-types#"
@@ -37,9 +37,11 @@ class NipcProblemTypes(str, Enum):
     EXTENSION_OPERATION_NOT_EXECUTED = _IANA_BASE + "extension-operation-not-executed"
     SDF_MODEL_ALREADY_REGISTERED = _IANA_BASE + "sdf-model-already-registered"
     SDF_MODEL_IN_USE = _IANA_BASE + "sdf-model-in-use"
+    UNSUPPORTED_URI_SCHEME = _IANA_BASE + "unsupported-uri-scheme"
 
     # Property API errors
     PROPERTY_NOT_READABLE = _IANA_BASE + "property-not-readable"
+    PROPERTY_READ_FAILED = _IANA_BASE + "property-read-failed"
     PROPERTY_NOT_WRITABLE = _IANA_BASE + "property-not-writable"
     PROPERTY_WRITE_FAILED = _IANA_BASE + "property-write-failed"
 
@@ -66,7 +68,7 @@ class NipcProblemTypes(str, Enum):
         _IANA_BASE + "protocolmap-zigbee-invalid-endpoint-or-cluster"
 
     # Extension API errors
-    EXTENSION_BROADCAST_INVALID_DATA = _IANA_BASE + "extension-broadcast-invalid-data"
+    EXTENSION_TRANSMIT_INVALID_DATA = _IANA_BASE + "extension-transmit-invalid-data"
     EXTENSION_FIRMWARE_ROLLBACK = _IANA_BASE + "extension-firmware-rollback"
     EXTENSION_FIRMWARE_UPDATE_FAILED = _IANA_BASE + "extension-firmware-update-failed"
 
@@ -144,10 +146,18 @@ class ValueResponse(SuccessResponse):
 
     value: Optional[str] = None
 
-class BleServiceProtocolMap(BaseModel):
-    """ Represents a map of BLE service protocol. """
+class BleDiscoverServices(BaseModel):
+    """ Represents BLE service collection. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    ble: list[BleService]
+    services: list[BleService]
+
+
+class BleDiscoverProtocolInformation(BaseModel):
+    """ Represents protocol information for BLE. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    ble: BleDiscoverServices
 
 class BleDiscoverResponse(SuccessResponse):
     """
@@ -157,13 +167,13 @@ class BleDiscoverResponse(SuccessResponse):
 
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    sdf_protocol_map: BleServiceProtocolMap
+    protocol_information: BleDiscoverProtocolInformation
 
     def to_parameter_list(self, device_id: str) -> List[BleDataParameter]:
         """ Create a generic parameter list from the services and characteristics. """
         parameter_list: List[BleDataParameter] = []
 
-        for service in self.sdf_protocol_map.ble:
+        for service in self.protocol_information.ble.services:
             if service.characteristics is None:
                 continue
             for characteristic in service.characteristics:
