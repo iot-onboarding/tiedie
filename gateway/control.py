@@ -131,7 +131,11 @@ def _parse_connection_options(payload: dict | None) -> tuple[int, list[dict], bo
     if payload:
         retries = int(payload.get("retries", retries))
         protocol_information = payload.get("protocolInformation", {})
-        ble_config = protocol_information.get("ble", {}) if isinstance(protocol_information, dict) else {}
+        ble_config = (
+            protocol_information.get("ble", {})
+            if isinstance(protocol_information, dict)
+            else {}
+        )
         if isinstance(ble_config, dict):
             services = [
                 {"serviceID": svc.get("serviceID")}
