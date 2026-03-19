@@ -18,22 +18,26 @@ applications and IoT devices through an application layer gateway.
 
 ## Installation
 
-```bash
-# Optionally, create a virtual env
-python3 -m venv venv
-source venv/bin/activate
+Using a virtual environment is recommended.
+If your system uses `python3` instead of `python`, substitute `python3` in the commands below.
 
-pip3 install .
+```bash
+python -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install .
 ```
 
 ## Usage
 
 ### Authentication
 
-There are two methods of authentication with TieDie.
+There are three methods of authentication with TieDie.
 
 1. API key based
 2. Certificate based
+3. OAuth2 based
 
 To authenticate, the CA certificate of the server is also
 required to verify the certificate sent by the server.
@@ -68,6 +72,37 @@ authenticator = CertificateAuthenticator(
 )
 ```
 
+#### OAuth2 based
+
+To authenticate using OAuth2 authorization code flow:
+
+```python
+from requests_oauth2client import OAuth2Client, OAuth2AuthorizationCodeAuth
+from tiedie.api.auth import OAuth2Authenticator
+
+oauth2client = OAuth2Client(
+    "<token_endpoint>",
+    authorization_endpoint="<authorization_endpoint>",
+    redirect_uri="<redirect_uri>",
+    auth=("<client_id>", "<client_secret>"),
+)
+
+authenticator = OAuth2Authenticator(oauth2client)
+
+# Redirect the user to this URL to authorize.
+az_request = oauth2client.authorization_request(scope="<scopes>")
+print(az_request.uri)
+
+# After callback, validate the callback URL and set session_auth.
+az_response = az_request.validate_callback("<callback_url>")
+authenticator.session_auth = OAuth2AuthorizationCodeAuth(
+    oauth2client,
+    code=az_response,
+)
+```
+
+The `session_auth` field must be set after the authorization code callback before making API requests with `OAuth2Authenticator`.
+
 ### Onboarding Client
 
 The onboarding client can be created as follows:
@@ -101,6 +136,24 @@ print(response.body.application_id)
 print(response.body.client_token)
 ```
 
+#### Get endpoint apps
+
+```python
+response = onboarding_client.get_endpoint_apps()
+
+assert response.status_code == 200
+print(response.body.resources)
+```
+
+#### Get one endpoint app
+
+```python
+response = onboarding_client.get_endpoint_app(app_id)
+
+assert response.status_code == 200
+print(response.body.application_id)
+```
+
 #### Onboard a device
 
 ```python
@@ -120,6 +173,16 @@ device = Device(
 response = onboarding_client.create_device(device)
 
 print(response.body.device_id)
+```
+
+#### Update a device
+
+```python
+device.display_name = "BLE Monitor Updated"
+response = onboarding_client.update_device(device)
+
+assert response.status_code == 200
+print(response.body.display_name)
 ```
 
 #### Fetch a device
@@ -152,6 +215,8 @@ assert response.status_code == 204
 The control API client can be created as follows:
 
 ```python
+from tiedie.api.control_client import ControlClient
+
 control_client = ControlClient(
     base_url="https://<host>/nipc",
     authenticator=authenticator
@@ -172,116 +237,104 @@ response = control_client.connect(device)
 response = control_client.disconnect(device)
 ```
 
+For SDF APIs, `sdf_name` should be the full SDF path, for example:
+`https://example.com/heartrate#/sdfObject/healthsensor`.
+
 #### Read
 
 ```python
-from tiedie.models.ble import BleDataParameter
-
-response = control_client.read(device, BleDataParameter(
-    device_id=device_id,
-    service_id="1800",
-    characteristic_id="2a00"
-))
+sdf_name = "https://example.com/heartrate#/sdfObject/healthsensor"
+response = control_client.read_property(device_id, sdf_name)
 ```
 
 #### Write
 
 ```python
-from tiedie.models.ble import BleDataParameter
-
-response = control_client.write(
-    device,
-    BleDataParameter(
-        device_id=device_id,
-        service_id="1800",
-        characteristic_id="2a00"
-    ),
-    "00001111")
-```
-
-#### Subscribe
-
-```python
-from tiedie.models.ble import BleDataParameter
-
-response = control_client.subscribe(
-    device,
-    BleDataParameter(
-        device_id=device_id,
-        service_id="1800",
-        characteristic_id="2a00"
-    )
+# value must be base64-encoded bytes
+response = control_client.write_property(
+    device_id,
+    sdf_name,
+    "<base64_value>"
 )
 ```
 
-#### Unsubscribe
+#### Get connection state
 
 ```python
-from tiedie.models.ble import BleDataParameter
-
-response = control_client.unsubscribe(
-    device,
-    BleDataParameter(
-        device_id=device_id,
-        service_id="1800",
-        characteristic_id="2a00"
-    )
-)
+response = control_client.get_connection(device)
 ```
 
-#### Register Topic
-
-To register a topic on a GATT subscription:
+#### Discover services and characteristics
 
 ```python
-from tiedie.models.common import DataRegistrationOptions
-from tiedie.models.ble import BleDataParameter
-
-response = control_client.register_event(topic, device, DataRegistrationOptions(
-        data_apps=["app1", "app2"],
-        data_parameter=BleDataParameter(
-            device_id=device_id, service_id="1800", characteristic_id="2a00")
-    )
-)
+response = control_client.discover(device)
 ```
 
-To register a topic on advertisements for onboarded devices:
+#### Events
+
+To enable an event for a device:
 
 ```python
-from tiedie.models.ble import AdvertisementRegistrationOptions
-
-response = control_client.register_event(
-    topic, device, AdvertisementRegistrationOptions(
-        data_apps=["app1", "app2"]
-    )
-)
+response = control_client.enable_event(device_id, "<event_name>")
+instance_id = response.body
 ```
 
-To register a topic on advertisements for non-onboarded devices:
+To get all enabled events for a device:
 
 ```python
-from tiedie.models.ble import AdvertisementRegistrationOptions, BleAdvertisementFilter, BleAdvertisementFilterType
-
-response = control_client.register_event(topic, None, AdvertisementRegistrationOptions(
-        data_apps=["app1", "app2"],
-        advertisement_filter_type=BleAdvertisementFilterType.ALLOW,
-        advertisement_filter=[
-            BleAdvertisementFilter(mac="1800", ad_type="2a00", ad_data="0001"),
-            BleAdvertisementFilter(mac="1800", ad_type="2a01", ad_data="0002")
-        ]
-    )
-)
+response = control_client.get_all_events(device_id)
 ```
 
-To register a topic on connection status: 
+To get one enabled event:
 
 ```python
-from tiedie.models.common import ConnectionRegistrationOptions
+response = control_client.get_event(device_id, instance_id)
+```
 
-response = control_client.register_event(topic, device, ConnectionRegistrationOptions(
-        data_apps=["app1", "app2"],
-    )
+To disable an event:
+
+```python
+response = control_client.disable_event(device_id, instance_id)
+```
+
+#### SDF Model Registration APIs
+
+```python
+from tiedie.models.requests import SdfModel
+
+model = SdfModel.model_validate_json("<sdf_model_json>")
+
+# Register
+register_response = control_client.register_sdf_model(model)
+
+# List all registered models
+list_response = control_client.get_sdf_models()
+
+# Fetch one model by SDF name
+get_response = control_client.get_sdf_model(sdf_name)
+
+# Update an existing model by SDF name
+update_response = control_client.update_sdf_model(sdf_name, model)
+
+# Unregister a model by SDF name
+delete_response = control_client.unregister_sdf_model(sdf_name)
+```
+
+#### Data App Registration APIs
+
+```python
+from tiedie.models.responses import DataAppRegistration, Event
+
+data_app_id = "<data_app_id>"
+registration = DataAppRegistration(
+    events=[Event(event="<event_name>")],
+    mqtt_client=True
 )
+
+create_response = control_client.create_data_app(data_app_id, registration)
+get_response = control_client.get_data_app(data_app_id)
+update_response = control_client.update_data_app(data_app_id, registration)
+delete_response = control_client.delete_data_app(data_app_id)
 ```
 
 ### Data Receiver Client
@@ -289,22 +342,32 @@ response = control_client.register_event(topic, device, ConnectionRegistrationOp
 The data receiver client can be created as follows:
 
 ```python
-data_receiver_client = DataReceiverClient("<host>"
-                                  authenticator=authenticator,
-                                  port=8883,
-                                  disable_tls=False,
-                                  insecure_tls=True)
+from tiedie.api.data_receiver_client import DataReceiverClient
+
+data_receiver_client = DataReceiverClient(
+    "<host>",
+    authenticator=authenticator,
+    port=8883,
+    disable_tls=False,
+    insecure_tls=True,
+)
 data_receiver_client.connect()
 ```
 
 #### Subscriptions
 
 ```python
-# callback which receives the subscription message protobuf
+# callback receives CBOR-decoded subscription payload
 def callback(data_subscription):
     print(data_subscription)
 
 data_receiver_client.subscribe(topic, callback)
+```
+
+To unsubscribe from a topic:
+
+```python
+data_receiver_client.unsubscribe(topic)
 ```
 
 To disconnect the client:
