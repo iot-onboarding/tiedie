@@ -17,8 +17,7 @@ longer need to lay down additional bridges or make use of USB dongles.
 ## How do I use it?
 
 Two SDKs are provided, Java and Python.  A gateway then can operate on
-a Linux system with an [IEEE
-802.15.4](https://standards.ieee.org/ieee/802.15.4/7029/) interface.
+a Linux system with an [IEEE 802.15.4](https://standards.ieee.org/ieee/802.15.4/7029/) interface.
 The order of operations is this:
 
 1. Provision applications to control devices
@@ -45,17 +44,17 @@ applies.  Please also see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Standards
 
-This repository contains code that implements-
+This repository contains code that implements:
 
  - [draft-ietf-scim-device-model](https://datatracker.ietf.org/doc/draft-ietf-scim-device-model/)
- - [draft-brinckman-asdf-nipc](https://datatracker.ietf.org/doc/draft-brinckman-nipc/)
+ - [draft-ietf-asdf-nipc](https://datatracker.ietf.org/doc/draft-ietf-asdf-nipc/)
 
 With this combination, applications can control their non-IP devices
 using the SCIM provisioning interface and an application layer gateway
 (ALG).  The specifications support provisioning of IP devices as well.
 The code will support those functions in the future.
 
-Please see the LICENSE file for licensing.
+Please see the [LICENSE](LICENSE) file for licensing.
 
 ## Organization
 

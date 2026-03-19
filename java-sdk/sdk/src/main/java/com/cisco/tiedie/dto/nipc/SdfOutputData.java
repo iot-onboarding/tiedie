@@ -6,16 +6,10 @@
 package com.cisco.tiedie.dto.nipc;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-
-import java.util.Map;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SdfOutputData {
     private String type;
-
-    @JsonProperty("sdfProtocolMap")
-    private Map<String, Object> sdfProtocolMap;
 }

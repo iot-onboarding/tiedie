@@ -16,18 +16,15 @@ import java.util.List;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BleDiscoverResponse {
-    @JsonProperty("sdfProtocolMap")
-    private BleServiceProtocolMap sdfProtocolMap;
-
-    // Legacy fallback field to tolerate older response shapes.
-    private List<BleService> services;
+    @JsonProperty("protocolInformation")
+    private ProtocolInformation protocolInformation;
 
     public List<DataParameter> toParameterList(String deviceId) {
         List<DataParameter> parameters = new ArrayList<>();
 
-        List<BleService> discoveredServices = services;
-        if (sdfProtocolMap != null && sdfProtocolMap.ble != null) {
-            discoveredServices = sdfProtocolMap.ble;
+        List<BleService> discoveredServices = null;
+        if (protocolInformation != null && protocolInformation.ble != null) {
+            discoveredServices = protocolInformation.ble.services;
         }
 
         if (discoveredServices == null) {
@@ -54,7 +51,13 @@ public class BleDiscoverResponse {
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class BleServiceProtocolMap {
-        private List<BleService> ble;
+    private static class ProtocolInformation {
+        private BleServices ble;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private static class BleServices {
+        private List<BleService> services;
     }
 }
