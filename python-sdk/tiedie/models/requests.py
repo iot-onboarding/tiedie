@@ -50,8 +50,8 @@ class TiedieWriteRequest(TiedieReadRequest):
 
     value: str
 
-class BleConnectProtocolMap(BaseModel):
-    """ Object with BLE connect protocol map """
+class BleProtocolInformation(BaseModel):
+    """ Object with BLE protocol information """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     ble: BleConnectRequest
@@ -63,9 +63,8 @@ class TiedieConnectRequest(BaseModel):
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    sdf_protocol_map: BleConnectProtocolMap
+    protocol_information: BleProtocolInformation
     retries: Optional[int] = 3
-    retry_multiple_aps: Optional[bool] = Field(alias=str("retryMultipleAPs"), default=True)
 
 class SdfProperty(BaseModel):
     """ Object with SDF property """
@@ -109,14 +108,14 @@ class SdfOutputData(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     type: Optional[str] = None
-    sdf_protocol_map: EventProtocolMap
 
 class SdfEvent(BaseModel):
     """ Object with SDF event """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     description: Optional[str] = None
-    sdf_output_data: SdfOutputData
+    sdf_protocol_map: EventProtocolMap
+    sdf_output_data: Optional[SdfOutputData] = None
 
 class SdfAction(BaseModel):
     """ Object with SDF action """

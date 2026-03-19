@@ -158,21 +158,17 @@ def fixture_sdf_model(app: Flask):
                         "sdfEvent": {
                             "isPresent": {
                                 "description": "BLE advertisements",
-                                "sdfOutputData": {
-                                    "sdfProtocolMap": {
-                                        "ble": {
-                                            "type": "advertisements"
-                                        }
+                                "sdfProtocolMap": {
+                                    "ble": {
+                                        "type": "advertisements"
                                     }
                                 }
                             },
                             "isConnected": {
                                 "description": "BLE connection event",
-                                "sdfOutputData": {
-                                    "sdfProtocolMap": {
-                                        "ble": {
-                                            "type": "connection_events"
-                                        }
+                                "sdfProtocolMap": {
+                                    "ble": {
+                                        "type": "connection_events"
                                     }
                                 }
                             }

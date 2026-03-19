@@ -68,7 +68,7 @@ def test_connect(mock_server: responses.RequestsMock,
 
     body = json.dumps({
         "id": device_id,
-        "sdfProtocolMap": {
+        "protocolInformation": {
             "ble": {
                 "services": [
                     {
@@ -134,11 +134,10 @@ def test_connect(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "sdfProtocolMap": {
+                "protocolInformation": {
                     "ble": {}
                 },
                 "retries": 3,
-                "retryMultipleAPs": True,
             }),
         ],
         content_type="application/nipc+json",
@@ -226,7 +225,7 @@ def test_discovery(mock_server: responses.RequestsMock,
     device_id = str(uuid4())
 
     body = json.dumps({
-        "sdfProtocolMap": {
+        "protocolInformation": {
             "ble": {
                 "services": [
                     {
@@ -292,11 +291,10 @@ def test_discovery(mock_server: responses.RequestsMock,
         status=200,
         match=[
             matchers.json_params_matcher({
-                "sdfProtocolMap": {
+                "protocolInformation": {
                     "ble": {}
                 },
-                "retries": 3,
-                "retryMultipleAPs": True
+                "retries": 3
             }),
         ],
         content_type="application/nipc+json",

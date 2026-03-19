@@ -198,21 +198,17 @@ def fixture_sdf_model(app: Flask):
                         "sdfEvent": {
                             "isPresent": {
                                 "description": "BLE advertisements",
-                                "sdfOutputData": {
-                                    "sdfProtocolMap": {
-                                        "ble": {
-                                            "type": "advertisements"
-                                        }
+                                "sdfProtocolMap": {
+                                    "ble": {
+                                        "type": "advertisements"
                                     }
                                 }
                             },
                             "isConnected": {
                                 "description": "BLE connection event",
-                                "sdfOutputData": {
-                                    "sdfProtocolMap": {
-                                        "ble": {
-                                            "type": "connection_events"
-                                        }
+                                "sdfProtocolMap": {
+                                    "ble": {
+                                        "type": "connection_events"
                                     }
                                 }
                             }
@@ -262,15 +258,16 @@ def test_connect_device(client: FlaskClient, api_key: str, control_api_key: str)
         },
         json={
             "retries": 3,
-            "retryMultipleAPs": True
+            "protocolInformation": {
+                "ble": {}
+            }
         }
     )
 
     assert response.status_code == 200
     assert response.json is not None
     assert response.json.get("id") == device["id"]
-    if "sdfProtocolMap" in response.json:
-        assert isinstance(response.json["sdfProtocolMap"], dict)
+    assert isinstance(response.json.get("protocolInformation"), dict)
 
     response = client.get(
         f"/nipc/devices/{device['id']}/connections",
@@ -308,7 +305,9 @@ def test_update_connection(client: FlaskClient, api_key: str, control_api_key: s
         },
         json={
             "retries": 3,
-            "retryMultipleAPs": True
+            "protocolInformation": {
+                "ble": {}
+            }
         }
     )
 
@@ -321,7 +320,7 @@ def test_update_connection(client: FlaskClient, api_key: str, control_api_key: s
             "x-api-key": control_api_key
         },
         json={
-            "sdfProtocolMap": {
+            "protocolInformation": {
                 "ble": {
                     "services": [
                         {
@@ -369,7 +368,9 @@ def test_connection_errors(client: FlaskClient, control_api_key: str):
         },
         json={
             "retries": 3,
-            "retryMultipleAPs": True
+            "protocolInformation": {
+                "ble": {}
+            }
         }
     )
 
@@ -390,7 +391,7 @@ def test_property_read_with_explicit_connection(client: FlaskClient, api_key: st
     response = client.post(
         f"/nipc/devices/{device['id']}/connections",
         headers={"x-api-key": control_api_key},
-        json={"retries": 3, "retryMultipleAPs": True}
+        json={"retries": 3, "protocolInformation": {"ble": {}}}
     )
     assert response.status_code == 200
     assert response.json.get("id") == device["id"]

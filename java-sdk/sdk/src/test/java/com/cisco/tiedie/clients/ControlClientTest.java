@@ -110,18 +110,14 @@ class ControlClientTest {
                 )
         ));
 
-        SdfOutputData isPresentOutputData = new SdfOutputData();
-        isPresentOutputData.setType("boolean");
-        isPresentOutputData.setSdfProtocolMap(Map.of(
+        SdfEvent isPresentEvent = new SdfEvent();
+        isPresentEvent.setDescription("Presence state changed");
+        isPresentEvent.setSdfProtocolMap(Map.of(
                 "ble", Map.of(
                         "serviceID", "181A",
                         "characteristicID", "2A6E"
                 )
         ));
-
-        SdfEvent isPresentEvent = new SdfEvent();
-        isPresentEvent.setDescription("Presence state changed");
-        isPresentEvent.setSdfOutputData(isPresentOutputData);
 
         SdfAction toggleLedAction = new SdfAction();
         toggleLedAction.setDescription("Toggle LED state");
@@ -172,12 +168,12 @@ class ControlClientTest {
         try {
             mockWebServer.enqueue(new MockResponse().setResponseCode(200)
                     .setBody("{" +
-                            "\"sdfProtocolMap\":{\"ble\":[{" +
+                            "\"protocolInformation\":{\"ble\":{\"services\":[{" +
                             "\"serviceID\":\"1800\"," +
                             "\"characteristics\":[{" +
                             "\"characteristicID\":\"2a00\",\"flags\":[\"read\",\"write\"]" +
                             "}]" +
-                            "}]}}"));
+                            "}]}}}"));
 
             ControlClient controlClient = createControlClient(mockWebServer);
             String deviceId = UUID.randomUUID().toString();
@@ -192,9 +188,8 @@ class ControlClientTest {
             assertEquals("POST", request.getMethod());
             assertEquals("/nipc/devices/" + deviceId + "/connections", request.getPath());
             assertJsonEquals("{" +
-                    "\"sdfProtocolMap\":{\"ble\":{}}," +
-                    "\"retries\":3," +
-                    "\"retryMultipleAPs\":true" +
+                    "\"protocolInformation\":{\"ble\":{}}," +
+                    "\"retries\":3" +
                     "}", request.getBody().readUtf8());
         } finally {
             mockWebServer.shutdown();
@@ -208,12 +203,12 @@ class ControlClientTest {
         try {
             mockWebServer.enqueue(new MockResponse().setResponseCode(200)
                     .setBody("{" +
-                            "\"sdfProtocolMap\":{\"ble\":[{" +
+                            "\"protocolInformation\":{\"ble\":{\"services\":[{" +
                             "\"serviceID\":\"1800\"," +
                             "\"characteristics\":[{" +
                             "\"characteristicID\":\"2a00\",\"flags\":[\"read\"]" +
                             "}]" +
-                            "}]}}"));
+                            "}]}}}"));
 
             ControlClient controlClient = createControlClient(mockWebServer);
             String deviceId = UUID.randomUUID().toString();
@@ -238,12 +233,12 @@ class ControlClientTest {
         try {
             mockWebServer.enqueue(new MockResponse().setResponseCode(200)
                     .setBody("{" +
-                            "\"sdfProtocolMap\":{\"ble\":[{" +
+                            "\"protocolInformation\":{\"ble\":{\"services\":[{" +
                             "\"serviceID\":\"1800\"," +
                             "\"characteristics\":[{" +
                             "\"characteristicID\":\"2a00\",\"flags\":[\"read\"]" +
                             "}]" +
-                            "}]}}"));
+                            "}]}}}"));
 
             ControlClient controlClient = createControlClient(mockWebServer);
             String deviceId = UUID.randomUUID().toString();
@@ -600,12 +595,12 @@ class ControlClientTest {
         try {
             mockWebServer.enqueue(new MockResponse().setResponseCode(200)
                     .setBody("{" +
-                            "\"sdfProtocolMap\":{\"ble\":[{" +
+                            "\"protocolInformation\":{\"ble\":{\"services\":[{" +
                             "\"serviceID\":\"1800\"," +
                             "\"characteristics\":[{" +
                             "\"characteristicID\":\"2a00\",\"flags\":[\"read\"]" +
                             "}]" +
-                            "}]}}"));
+                            "}]}}}"));
 
             ControlClient controlClient = createControlClient(mockWebServer);
             String deviceId = UUID.randomUUID().toString();

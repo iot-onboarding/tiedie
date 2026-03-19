@@ -30,8 +30,8 @@ public class BleConnectRequest {
 
     private Boolean cached;
 
-    @JsonProperty("cacheIdlePurge")
-    private Integer cacheIdlePurge;
+    @JsonProperty("cacheExpiryDuration")
+    private Integer cacheExpiryDuration;
 
     @JsonProperty("autoUpdate")
     private Boolean autoUpdate;
