@@ -16,6 +16,9 @@ For BLE functionality, the gateway supports two access point backends:
 1. Silabs dev kit backend (EFR32xG21, default)
 2. Mock backend (no BLE hardware required)
 
+Support for an additional gateway backend is planned in the future and is tracked in
+[Issue #78](https://github.com/iot-onboarding/tiedie/issues/78).
+
 ## Setup
 
 Flash the **Bluetooth - NCP** demo binary using Simplicity Studio.
