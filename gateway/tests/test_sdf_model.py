@@ -86,6 +86,16 @@ def sample_sdf_model():
                             }
                         }
                     }
+                },
+                "sdfEvent": {
+                    "isPresent": {
+                        "description": "BLE advertisements",
+                        "sdfProtocolMap": {
+                            "ble": {
+                                "type": "advertisements"
+                            }
+                        }
+                    }
                 }
             }
         }

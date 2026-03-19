@@ -77,14 +77,13 @@ class BleBondingOptions(Enum):
 class BleConnectRequest(BaseModel):
     """ 
     Represents a request for establishing a connection with BLE devices.
-    It includes a list of services, the number of retries, and a flag for
-    retryMultipleAPs. 
+    It includes protocol information and cache behavior settings.
     """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     services: Optional[List[BleService]] = None
     cached: Optional[bool] = None
-    cache_idle_purge: Optional[int] = None
+    cache_expiry_duration: Optional[int] = Field(alias=str("cacheExpiryDuration"), default=None)
     auto_update: Optional[bool] = None
     bonding: Optional[BleBondingOptions] = None
 

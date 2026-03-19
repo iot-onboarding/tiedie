@@ -81,15 +81,13 @@ public class ControlClient extends AbstractHttpClient {
 
     private static Map<String, Object> connectRequestBody(
             BleConnectRequest request,
-            int retries,
-            boolean retryMultipleAps
+            int retries
     ) {
         BleConnectRequest safeRequest = request == null ? new BleConnectRequest() : request;
 
         return Map.of(
-                "sdfProtocolMap", Map.of("ble", safeRequest),
-                "retries", retries,
-                "retryMultipleAPs", retryMultipleAps
+                "protocolInformation", Map.of("ble", safeRequest),
+                "retries", retries
         );
     }
 
@@ -122,7 +120,7 @@ public class ControlClient extends AbstractHttpClient {
     ) throws IOException {
         validateDevice(device);
 
-        Map<String, Object> tiedieRequest = connectRequestBody(request, retries, retryMultipleAps);
+        Map<String, Object> tiedieRequest = connectRequestBody(request, retries);
 
         NipcResponse<BleDiscoverResponse> response = postWithNipcResponse(
                 "/devices/" + device.getId() + "/connections",
@@ -169,7 +167,7 @@ public class ControlClient extends AbstractHttpClient {
     ) throws IOException {
         validateDevice(device);
 
-        Map<String, Object> tiedieRequest = connectRequestBody(request, retries, retryMultipleAps);
+        Map<String, Object> tiedieRequest = connectRequestBody(request, retries);
 
         NipcResponse<BleDiscoverResponse> response = putWithNipcResponse(
                 "/devices/" + device.getId() + "/connections",

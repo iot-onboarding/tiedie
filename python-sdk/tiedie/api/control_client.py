@@ -21,7 +21,7 @@ from pydantic import RootModel
 
 from tiedie.models.ble import DataParameter
 from tiedie.models.requests import (
-    BleConnectProtocolMap,
+    BleProtocolInformation,
     BleConnectRequest,
     PropertyWriteRequest,
     SdfModel,
@@ -59,8 +59,7 @@ class ControlClient(AbstractHttpClient):
 
     def connect(self, device: Device,
                 request: BleConnectRequest = BleConnectRequest(),
-                retries=3,
-                retry_multiple_aps=True) \
+                retries=3) \
             -> NipcResponse[Optional[Sequence[DataParameter]]]:
         """Initiates a connection with an IoT device and retrieves GATT
         services.
@@ -71,8 +70,6 @@ class ControlClient(AbstractHttpClient):
                 Defaults to None.
             retries (int, optional): The number of times to retry the connection.
                 Defaults to 3.
-            retry_multiple_aps (bool, optional): Whether to retry the connection with multiple
-                access points. Defaults to True.
 
         Raises:
             ValueError: Raised if device ID is not present in the device
@@ -87,9 +84,9 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            sdf_protocol_map=BleConnectProtocolMap(ble=request),
-            retries=retries,
-            retry_multiple_aps=retry_multiple_aps)
+            protocol_information=BleProtocolInformation(ble=request),
+            retries=retries
+        )
 
         ble_discover_response = self.post_with_nipc_response(
             f'/devices/{device.device_id}/connections', tiedie_request, BleDiscoverResponse)
@@ -97,9 +94,8 @@ class ControlClient(AbstractHttpClient):
         # Handle success case: extract parameter list from BLE discovery response
         if (ble_discover_response.is_success and
                 isinstance(ble_discover_response.body, BleDiscoverResponse)):
-            sdf_protocol_map = ble_discover_response.body.sdf_protocol_map
-            if sdf_protocol_map is not None and sdf_protocol_map != []:
-                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            if parameter_list:
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
                     body=parameter_list
@@ -139,9 +135,8 @@ class ControlClient(AbstractHttpClient):
         # Handle success case: extract parameter list from BLE discovery response
         if (ble_discover_response.is_success and
                 isinstance(ble_discover_response.body, BleDiscoverResponse)):
-            sdf_protocol_map = ble_discover_response.body.sdf_protocol_map
-            if sdf_protocol_map is not None and sdf_protocol_map != []:
-                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            if parameter_list:
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
                     body=parameter_list
@@ -155,9 +150,8 @@ class ControlClient(AbstractHttpClient):
         )
 
     def discover(self, device: Device,
-                 request=BleConnectRequest(),
-                 retries=3,
-                 retry_multiple_aps=True) \
+                 request: BleConnectRequest = BleConnectRequest(),
+                 retries=3) \
             -> NipcResponse[Optional[Sequence[DataParameter]]]:
         """Discovers services and characteristics of an IoT device.
 
@@ -169,8 +163,6 @@ class ControlClient(AbstractHttpClient):
             request (BleConnectRequest, optional): The connection request object.
                 Defaults to None.
             retries (int, optional): The number of times to retry the connection.
-            retry_multiple_aps (bool, optional): Whether to retry the connection with multiple
-                access points.
 
         Returns:
             NipcResponse[Optional[Sequence[DataParameter]]]: The NIPC response object contains
@@ -181,9 +173,8 @@ class ControlClient(AbstractHttpClient):
             raise ValueError("Device ID is required for connection")
 
         tiedie_request = TiedieConnectRequest(
-            sdf_protocol_map=BleConnectProtocolMap(ble=request),
-            retries=retries,
-            retry_multiple_aps=retry_multiple_aps
+            protocol_information=BleProtocolInformation(ble=request),
+            retries=retries
         )
 
         ble_discover_response = self.put_with_nipc_response(
@@ -192,9 +183,8 @@ class ControlClient(AbstractHttpClient):
         # Handle success case: extract parameter list from BLE discovery response
         if ble_discover_response.is_success and \
             isinstance(ble_discover_response.body, BleDiscoverResponse):
-            if ble_discover_response.body.sdf_protocol_map is not None and \
-                ble_discover_response.body.sdf_protocol_map != []:
-                parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
+            if parameter_list:
                 return NipcResponse[Optional[Sequence[DataParameter]]](
                     http=ble_discover_response.http,
                     body=parameter_list

@@ -15,3 +15,14 @@
 **/venv
 **/build
 **/.DS_Store
+
+# IDE/editor state
+**/.idea/
+**/.vscode/
+**/.windsurf/
+
+# Python SDK test artifacts
+python-sdk/tiedie/junit/
+python-sdk/tiedie/coverage.xml
+python-sdk/tiedie/htmlcov/
+python-sdk/tiedie/.coverage
