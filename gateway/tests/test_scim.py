@@ -9,52 +9,11 @@ Test SCIM server implementation
 """
 
 import uuid
-from flask import Flask
 from flask.testing import FlaskClient
-import pytest
-from testcontainers.postgres import PostgresContainer
-from app_factory import create_app
-from models import OnboardingAppKey
 # pylint: disable-next=unused-import
 from scim_fdo import FDOExtension
 # pylint: disable-next=unused-import
 from scim_ethermab import EtherMABExtension
-from database import db
-
-
-@pytest.fixture(name="postgres")
-def fixture_postgres():
-    """ Postgres container """
-    with PostgresContainer("postgres:13.1") as p:
-        yield p
-
-
-@pytest.fixture(name="app")
-def fixture_app(postgres: PostgresContainer):
-    """ Flask application """
-    app = create_app(postgres.get_connection_url())
-
-    with app.app_context():
-        db.create_all()
-
-    yield app
-
-
-@pytest.fixture(name="client")
-def fixture_client(app: Flask) -> FlaskClient:
-    """ Flask client """
-    return app.test_client()
-
-
-@pytest.fixture(name="api_key")
-def fixture_api_key(app):
-    """ Create onboarding API key for testing """
-    with app.app_context():
-        key = uuid.uuid4()
-        authkey = OnboardingAppKey("onboarding-app", str(key))
-        db.session.add(authkey)
-        db.session.commit()
-        yield key
 
 
 def test_create_device(client: FlaskClient, api_key: str):
