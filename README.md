@@ -16,8 +16,10 @@ longer need to lay down additional bridges or make use of USB dongles.
 
 ## How do I use it?
 
-Two SDKs are provided, Java and Python.  A gateway then can operate on
-a Linux system with an [IEEE 802.15.4](https://standards.ieee.org/ieee/802.15.4/7029/) interface.
+Two SDKs are provided, Java and Python.  The gateway runs on Linux and
+uses a BLE access-point integration (for example, the Silabs EFR32xG21
+kit used in this repository) for BLE functionality.
+The SDKs support API key, certificate, and OAuth authentication modes.
 The order of operations is this:
 
 1. Provision applications to control devices

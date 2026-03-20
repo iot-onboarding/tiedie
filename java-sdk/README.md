@@ -9,11 +9,12 @@ SPDX-License-Identifier: Apache-2.0
 
 This SDK is used to access IOT devices via the virtualized interfaces
 for BLE.  A sample application making use of the SDK can be found in
-./sample-java-sdk.
+./sample-java-app.
 
 ## Prerequisites
 
-For the Java SDK, Java version 11 or greater or openjdk version 11 to 18 should be used.
+The Java SDK can be consumed by Java version 11 or later.
+The sample application in `./sample-java-app` requires Java 17.
 
 ## Build 
 
@@ -21,11 +22,6 @@ All instructions for building the SDK take place in the SDK directory.
 
 ```bash
 cd ./sdk
-```
-
-Build the JAR using the following command: 
-
-```bash
 ./gradlew build
 ```
 
@@ -35,10 +31,11 @@ You can find the SDK JAR at `build/libs/tiedie-sdk-java-1.0.jar`.
 
 ### Authentication
 
-There are two methods of authentication with TieDie.
+There are three methods of authentication with TieDie.
 
 1. API key based
 2. Certificate based
+3. OAuth2 bearer token based
 
 To authenticate, the CA certificate of the server is also
 required to verify the certificate sent by the server.
@@ -78,7 +75,24 @@ FileInputStream clientKeystoreStream = new FileInputStream("/path/to/client.p12"
 KeyStore keyStore = KeyStore.getInstance("PKCS12");
 keyStore.load(clientKeystoreStream, "password".toCharArray());
 
-Authenticator authenticator = CertificateAuthenticator.create(inputStream, keyStore, "password");
+Authenticator authenticator = CertificateAuthenticator.create(caInputStream, keyStore, "password");
+```
+
+#### OAuth2 bearer token based
+
+To authenticate using OAuth2 bearer tokens, create an authenticator with an OAuth client ID
+and a token supplier that returns the current access token.
+
+```java
+Supplier<String> tokenSupplier = () -> getAccessToken();
+
+// Option 1: Use a CA PEM stream for TLS trust
+try (InputStream caInputStream = new FileInputStream("/path/to/ca.pem")) {
+    Authenticator authenticator = OAuth2Authenticator.create(caInputStream, "client_id", tokenSupplier);
+}
+
+// Option 2: Use the JVM default trust store
+Authenticator authenticator = OAuth2Authenticator.create("client_id", tokenSupplier);
 ```
 
 ### Onboarding Client
@@ -102,7 +116,7 @@ EndpointApp endpointApp = EndpointApp.builder()
 HttpResponse<EndpointApp> response = onboardingClient.createEndpointApp(endpointApp);
 endpointApp = response.getBody();
 
-var authenticator = ApiKeyAuthenticator.create(caStream, dataAppId, endpointApp.getClientToken());
+var authenticator = ApiKeyAuthenticator.create(caInputStream, "control-app", endpointApp.getClientToken());
 ```
 
 #### Onboard a device
@@ -118,7 +132,7 @@ Device device = Device.builder()
             .pairingPassKey(new BleExtension.PairingPassKey(123456))
             .build())
         .endpointAppsExtension(
-            new EndpointAppsExtension(List.of(endpointApp1, endpointApp2))
+            new EndpointAppsExtension(List.of(endpointApp))
         )
         .build();
         
@@ -144,7 +158,7 @@ HttpResponse<Void> response = onboardingClient.deleteDevice(deviceId);
 The control API client can be created as follows:
 
 ```java
-ControlClient controlClient = new ControlClient("https://<host>/control", authenticator);
+ControlClient controlClient = new ControlClient("https://<host>/nipc", authenticator);
 ```
 
 You can control a device using the APIs using the corresponding `Device` object.
@@ -152,83 +166,120 @@ You can control a device using the APIs using the corresponding `Device` object.
 #### Connect
 
 ```java
-TiedieResponse<List<DataParameter>> response = controlClient.connect(device);
+NipcResponse<List<DataParameter>> response = controlClient.connect(device);
 ```
 
 #### Disconnect
 
 ```java
-TiedieResponse<Void> response = controlClient.disconnect(device);
+NipcResponse<TiedieDeviceResponse> response = controlClient.disconnect(device);
 ```
 
-#### Read
+#### BLE Read
 
 ```java
-var dataParameter = new BleDataParameter(deviceId, serviceUUID, charUUID);
-// ... or ...
-var dataParameter = new ZigbeeDataParameter(deviceId, endpointID, clusterID, attributeID, type);
-
-TiedieResponse<DataResponse> response = controlClient.read(dataParameter);
+NipcResponse<DataResponse> response = controlClient.read(device, serviceId, characteristicId);
 ```
 
-#### Write
+#### BLE Write
 
 ```java
-TiedieResponse<DataResponse> response = controlClient.write(dataParameter);
+NipcResponse<DataResponse> response = controlClient.write(device, serviceId, characteristicId, value);
 ```
 
-#### Subscribe
+#### Discover
 
 ```java
-TiedieResponse<Void> subscribe = controlClient.subscribe(dataParameter);
+NipcResponse<List<DataParameter>> response = controlClient.discover(device);
 ```
 
-#### Register Topic
-
-To register a topic on a GATT subscription:
+#### Get Connection
 
 ```java
-TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic, 
-        DataRegistrationOptions.builder()
-                .dataFormat(DataFormat.DEFAULT)
-                .dataParameter(dataParameter)
-                .build());
+NipcResponse<List<DataParameter>> response = controlClient.getConnection(device);
 ```
 
-To register a topic on advertisements:
+For SDF APIs, `sdfName` should be the full SDF path, for example:
+`https://example.com/heartrate#/sdfObject/healthsensor`.
+
+#### SDF Property Read
 
 ```java
-TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic,
-        AdvertisementRegistrationOptions.builder()
-                .dataFormat(DataFormat.DEFAULT)
-                .advertisementFilterType(BleAdvertisementFilterType.DENY)
-                .advertisementFilters(List.of(
-                        new BleAdvertisementFilter("*", "ff", "4c00*"),
-                        new BleAdvertisementFilter("*", "01", "1a")
-                ))
-                .build());
+String sdfName = "https://example.com/heartrate#/sdfObject/healthsensor";
+NipcResponse<List<PropertyReadResult>> response = controlClient.readProperty(deviceId, sdfName);
 ```
 
-To register a topic on connection status: 
+#### SDF Property Write
 
 ```java
-TiedieResponse<Void> topicResponse = controlClient.registerTopic(topic, 
-        ConnectionRegistrationOptions.builder()
-                .dataFormat(DataFormat.DEFAULT)
-                .devices(List.of(response.getBody()))
-                .build());
+String sdfName = "https://example.com/heartrate#/sdfObject/healthsensor";
+NipcResponse<List<PropertyWriteResult>> response = controlClient.writeProperty(deviceId, sdfName, value);
+```
+
+#### SDF Model Registration APIs
+
+Use these APIs to register SDF models and manage them (create/read/update/delete):
+
+```java
+SdfModel model = ...;
+String sdfName = "https://example.com/heartrate#/sdfObject/healthsensor";
+
+// Create
+NipcResponse<List<ModelRegistrationResponse>> registerResponse = controlClient.registerSdfModel(model);
+
+// Read all
+NipcResponse<List<ModelRegistrationResponse>> listResponse = controlClient.getSdfModels();
+
+// Read one
+NipcResponse<SdfModel> getResponse = controlClient.getSdfModel(sdfName);
+
+// Update
+NipcResponse<ModelRegistrationResponse> updateResponse = controlClient.updateSdfModel(sdfName, model);
+
+// Delete
+NipcResponse<ModelRegistrationResponse> deleteResponse = controlClient.unregisterSdfModel(sdfName);
+```
+
+#### Get Data App
+
+```java
+NipcResponse<DataAppRegistration> response = controlClient.getDataApp("data-app");
 ```
 
 #### Register Data App
 
 ```java
-TiedieResponse<Void> dataAppResponse = controlClient.registerDataApp("data-app", topic);
+DataAppRegistration dataAppRegistration = new DataAppRegistration();
+dataAppRegistration.setMqttClient(true);
+
+NipcResponse<DataAppRegistration> response = controlClient.createDataApp("data-app", dataAppRegistration);
+```
+
+#### Update Data App
+
+```java
+DataAppRegistration dataAppRegistration = new DataAppRegistration();
+dataAppRegistration.setMqttClient(true);
+
+NipcResponse<DataAppRegistration> response = controlClient.updateDataApp("data-app", dataAppRegistration);
 ```
 
 #### Un-register Data App
 
 ```java
-TiedieResponse<Void> response = controlClient.unregisterTopic(topic, deviceIds);
+NipcResponse<DataAppRegistration> response = controlClient.deleteDataApp("data-app");
+```
+
+#### Event APIs
+
+```java
+NipcResponse<String> enableResponse = controlClient.enableEvent(deviceId, eventName);
+String instanceId = enableResponse.getBody();
+
+NipcResponse<List<TiedieEventResponse>> eventResponse = controlClient.getEvent(deviceId, instanceId);
+NipcResponse<List<TiedieEventResponse>> allEventsResponse = controlClient.getAllEvents(deviceId);
+
+NipcResponse<Void> disableResponse = controlClient.disableEvent(deviceId, instanceId);
 ```
 
 ### Data Receiver Client
@@ -246,4 +297,19 @@ dataReceiverClient.connect();
 dataReceiverClient.subscribe("<topic>", (DataSubscription dataSubscription) -> {
     // ... Handle the advertisement                
 });
+```
+
+#### Multi-topic Subscriptions
+
+```java
+dataReceiverClient.subscribe(List.of("topic/a", "topic/b"), (dataSubscription, topic) -> {
+    // ... Handle subscription payload and source topic
+});
+```
+
+#### Unsubscribe
+
+```java
+dataReceiverClient.unsubscribe("topic/a");
+dataReceiverClient.unsubscribe(List.of("topic/a", "topic/b"));
 ```
