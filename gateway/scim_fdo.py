@@ -11,13 +11,14 @@ import requests
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, relationship, mapped_column
-from scim_extensions import scim_ext_create, scim_ext_read, \
-    scim_ext_update,scim_ext_delete
+from scim_extensions import register_scim_extension
 from models import Device
 from database import session,db
 from tiedie_exceptions import SchemaError,DeviceExists,FDONotSupported
 from config import FDO_SUPPORT, FDO_OWNER_URI, FDO_CA_CERT, FDO_CLIENT_CERT, \
     WANT_FDO
+
+FDO_ENABLED = bool(WANT_FDO)
 
 class FDOExtension(db.Model):
     """
@@ -35,7 +36,7 @@ class FDOExtension(db.Model):
         Populate Object with the two required attributes.
         """
 
-        if not WANT_FDO:
+        if not FDO_ENABLED:
             raise FDONotSupported
 
         self.device_id = device_id
@@ -150,8 +151,22 @@ def fdo_delete_device(entry_id):
     session.delete(entry)
     session.commit()
 
-if WANT_FDO:
-    scim_ext_create.append(fdo_create_device)
-    scim_ext_read.append(fdo_read_device)
-    scim_ext_update.append(fdo_update_device)
-    scim_ext_delete.append(fdo_delete_device)
+def register_fdo_extension(enabled=None):
+    """Register FDO extension hooks when enabled."""
+    # pylint: disable=global-statement
+    global FDO_ENABLED
+
+    if enabled is None:
+        FDO_ENABLED = bool(WANT_FDO)
+    else:
+        FDO_ENABLED = bool(enabled)
+
+    if not FDO_ENABLED:
+        return
+
+    register_scim_extension(
+        fdo_create_device,
+        fdo_read_device,
+        fdo_update_device,
+        fdo_delete_device,
+    )
