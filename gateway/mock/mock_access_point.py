@@ -120,9 +120,6 @@ class MockAccessPoint(AccessPoint):
         if address not in self.conn_reqs:
             raise BleReadError("not connected")
 
-        if service_uuid != "180d" or char_uuid != "2a38":
-            raise BleReadError("Invalid service or characteristic uuid")
-
         value = b"test"  # mock value
         return ReadResponse(
             address=address,
