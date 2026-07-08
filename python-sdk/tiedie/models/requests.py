@@ -25,11 +25,24 @@ class BlePropertyProtocolMap(BaseModel):
     characteristic_id: str = Field(alias=str("characteristicID"))
 
 
+class ZigbeePropertyProtocolMap(BaseModel):
+    """ Object with Zigbee property protocol map """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    endpoint_id: int = Field(alias=str("endpointID"))
+    cluster_id: int = Field(alias=str("clusterID"))
+    attribute_id: int = Field(alias=str("attributeID"))
+    attribute_type: int
+    manufacturer_code: Optional[int] = None
+    profile_id: int = Field(alias=str("profileID"), default=260)
+
+
 class PropertyProtocolMap(BaseModel):
     """ Object with protocol map for property """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    ble: BlePropertyProtocolMap
+    ble: Optional[BlePropertyProtocolMap] = None
+    zigbee: Optional[ZigbeePropertyProtocolMap] = None
 
 
 class TiedieReadRequest(BaseModel):
@@ -65,6 +78,20 @@ class TiedieConnectRequest(BaseModel):
 
     protocol_information: BleProtocolInformation
     retries: Optional[int] = 3
+
+
+class ZigbeeProtocolInformation(BaseModel):
+    """ Object with Zigbee protocol information """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    zigbee: dict
+
+
+class TiedieZigbeeDiscoverRequest(BaseModel):
+    """ A request for discovering Zigbee endpoints. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    protocol_information: ZigbeeProtocolInformation
 
 class SdfProperty(BaseModel):
     """ Object with SDF property """

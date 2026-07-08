@@ -21,9 +21,9 @@ from urllib.parse import quote, unquote
 
 from flask import Flask, render_template, request, redirect
 from flask_socketio import SocketIO, namespace
-from requests_oauth2client import OAuth2AuthorizationCodeAuth
+from requests_oauth2client import OAuth2AccessTokenAuth, BearerToken
 from tiedie.models import (Device, BleDataParameter,
-                           BleExtension,
+                           BleExtension, ZigbeeExtension,
                            DataAppRegistration,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
@@ -35,7 +35,7 @@ import configuration
 sys.path.append(os.path.dirname(os.path.dirname(os.getcwd())))
 
 app = Flask(__name__)
-socketio = SocketIO(app, websocket=True, cors_allowed_origins="*")
+socketio = SocketIO(app, async_mode="threading", cors_allowed_origins="*")
 
 app.jinja_env.filters['quote'] = lambda s: quote(s, safe='')
 
@@ -57,7 +57,76 @@ else:
 
 client_config = configuration.ClientConfig(app)
 
+TOKEN_FILE = "/config/.oauth_tokens.json" if os.environ.get("DOCKER_BUILD") else \
+    os.path.join(os.path.dirname(__file__), '..', 'config', '.oauth_tokens.json')
+
+
+def save_oauth_token(token: BearerToken):
+    """Save OAuth token to a file for reuse across restarts."""
+    data = token.as_dict()
+    if token.expires_at is not None:
+        data['expires_at'] = token.expires_at.isoformat()
+    with open(TOKEN_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2)
+    os.chmod(TOKEN_FILE, 0o600)
+
+
+def load_oauth_token():
+    """Load a previously saved OAuth token from file."""
+    try:
+        with open(TOKEN_FILE, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        from datetime import datetime, timezone
+        expires_at = None
+        if 'expires_at' in data and data['expires_at'] is not None:
+            expires_at = datetime.fromisoformat(data['expires_at'])
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return BearerToken(
+            access_token=data['access_token'],
+            refresh_token=data.get('refresh_token'),
+            token_type=data.get('token_type', 'Bearer'),
+            expires_at=expires_at,
+            scope=data.get('scope'),
+        )
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None
+
+
+def clear_oauth_token():
+    """Remove cached OAuth tokens that can no longer be used."""
+    try:
+        os.remove(TOKEN_FILE)
+    except FileNotFoundError:
+        pass
+
+
+def try_load_cached_oauth():
+    """Try to restore OAuth session from cached tokens. Returns True on success."""
+    if client_config.oauth_client_id is None:
+        return False
+    token = load_oauth_token()
+    if token is None:
+        return False
+    try:
+        if token.is_expired(leeway=60):
+            if not token.refresh_token:
+                clear_oauth_token()
+                return False
+            token = client_config.oauth2client.refresh_token(refresh_token=token.refresh_token)
+            save_oauth_token(token)
+        client_config.oauth_authenticator.session_auth = OAuth2AccessTokenAuth(
+            client_config.oauth2client, token
+        )
+        return True
+    except Exception as e:
+        clear_oauth_token()
+        print(f"Failed to restore cached OAuth tokens: {e}")
+        return False
+
+
 app.az_request = None
+app.oauth_authenticated = try_load_cached_oauth()
 app.onboarding_client = None
 app.control_client = None
 app.data_receiver_client = None
@@ -82,7 +151,8 @@ def init_clients():
 def redirect_to_oauth():
     """Redirects to OAuth2 authorization endpoint if client ID is provided."""
     if client_config.oauth_client_id is not None and \
-        app.az_request is None and not request.path.startswith("/oauth"):
+        app.az_request is None and not app.oauth_authenticated and \
+        not request.path.startswith("/oauth"):
         return redirect("/oauth2/authorize")
     if not request.path.startswith("/oauth"):
         init_clients()
@@ -112,10 +182,12 @@ def oauth_callback():
     az_response = app.az_request.validate_callback(request.url)
     if az_response.code is None:
         app.az_request = None
-    client_config.oauth_authenticator.session_auth = OAuth2AuthorizationCodeAuth(
-        client_config.oauth2client,
-        code=az_response,
+    token = client_config.oauth2client.authorization_code(az_response)
+    save_oauth_token(token)
+    client_config.oauth_authenticator.session_auth = OAuth2AccessTokenAuth(
+        client_config.oauth2client, token
     )
+    app.oauth_authenticated = True
     init_clients()
     return redirect("/devices")
 
@@ -269,23 +341,31 @@ def add_device():
     content = request.form.to_dict()
     print(content)
     active = content.get('active', 'off') == 'on'
-    is_random = content.get('isRandom', 'off') == 'on'
-    version_support = content['versionSupport'].split(',')
+    version_support = request.form.getlist('versionSupport')
 
-    pairing_method = content.get('pairingMethod')
-    mobility = content.get('mobility', 'off') == 'on'
+    ble_extension = None
+    zigbee_extension = None
+    if content.get('protocol') == 'zigbee':
+        zigbee_extension = ZigbeeExtension(
+            device_eui64_address=content['deviceEui64Address'],
+            version_support=version_support,
+        )
+    else:
+        pairing_method = content.get('pairingMethod')
+        ble_extension = BleExtension(
+            device_mac_address=content['deviceMacAddress'],
+            version_support=version_support,
+            is_random=content.get('isRandom', 'off') == 'on',
+            mobility=content.get('mobility', 'off') == 'on',
+            null_pairing=NullPairing() if pairing_method == 'null' else None,
+            pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
+        )
 
     device = Device(
         display_name=content['displayName'],
         active=active,
-        ble_extension=BleExtension(
-            device_mac_address=content['deviceMacAddress'],
-            version_support=version_support,
-            is_random=is_random,
-            mobility=mobility,
-            null_pairing=NullPairing() if pairing_method == 'null' else None,
-            pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
-        ),
+        ble_extension=ble_extension,
+        zigbee_extension=zigbee_extension,
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id)
             for endpoint_app in app.endpoint_apps
@@ -324,24 +404,32 @@ def update_device(device_id):
     print(request.form)
 
     active = content.get('active', 'off') == 'on'
-    is_random = content.get('isRandom', 'off') == 'on'
     version_support = request.form.getlist('versionSupport')
 
-    pairing_method = content.get('pairingMethod')
-    mobility = content.get('mobility', 'off') == 'on'
+    ble_extension = None
+    zigbee_extension = None
+    if device.zigbee_extension is not None:
+        zigbee_extension = ZigbeeExtension(
+            device_eui64_address=content['deviceEui64Address'],
+            version_support=version_support,
+        )
+    else:
+        pairing_method = content.get('pairingMethod')
+        ble_extension = BleExtension(
+            device_mac_address=content['deviceMacAddress'],
+            version_support=version_support,
+            is_random=content.get('isRandom', 'off') == 'on',
+            mobility=content.get('mobility', 'off') == 'on',
+            null_pairing=NullPairing() if pairing_method == 'null' else None,
+            pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
+        )
 
     device = Device(
         device_id=device_id,
         display_name=content['displayName'],
         active=active,
-        ble_extension=BleExtension(
-            device_mac_address=content['deviceMacAddress'],
-            version_support=version_support,
-            is_random=is_random,
-            mobility=mobility,
-            null_pairing=NullPairing() if pairing_method == 'null' else None,
-            pairing_just_works=PairingJustWorks() if pairing_method == 'justWorks' else None,
-        ),
+        ble_extension=ble_extension,
+        zigbee_extension=zigbee_extension,
         endpoint_apps_extension=EndpointAppsExtension(applications=[
             Application(value=endpoint_app.application_id)
             for endpoint_app in app.endpoint_apps
@@ -377,30 +465,36 @@ def get_device(device_id):
     response = app.control_client.get_sdf_models()
 
     if response.status_code == 200 and response.body is not None and len(response.body.root) > 0:
-        print(response.body)
         for sdf_name_resp in response.body.root:
             response = app.control_client.get_sdf_model(sdf_name_resp.sdf_name)
+            print(response)
             if response.status_code == 200 and response.body is not None:
                 sdf_models[sdf_name_resp.sdf_name] = response.body
 
     tiedie_response = app.control_client.get_connection(device)
 
     parameters = None
-    if tiedie_response.http and tiedie_response.http.status_code == 200 and \
+    zigbee_joined = None
+    if device.zigbee_extension is not None:
+        zigbee_joined = tiedie_response.http is not None and \
+            tiedie_response.http.status_code == 200 and tiedie_response.error is None
+    elif tiedie_response.http and tiedie_response.http.status_code == 200 and \
             tiedie_response.body is not None:
         parameters = [
             p for p in tiedie_response.body if isinstance(p, BleDataParameter)
         ]
 
     events = []
-    response = app.control_client.get_all_events(device_id)
-    if response.http and response.http.status_code == 200 and response.body is not None:
-        events = list(response.body.root)
+    if device.ble_extension is not None:
+        response = app.control_client.get_all_events(device_id)
+        if response.http and response.http.status_code == 200 and response.body is not None:
+            events = list(response.body.root)
 
     return render_template(
         "device.html",
         device=device,
         parameters=parameters,
+        zigbee_joined=zigbee_joined,
         sdf_models=sdf_models,
         events=events
     )
@@ -568,9 +662,9 @@ def register_sdf_model(device_id: str):
     sdf_name = sdf_model.namespace[sdf_model.default_namespace]
 
     if sdf_model.sdf_thing is not None and len(sdf_model.sdf_thing) > 0:
-        sdf_name += "#/" + list(sdf_model.sdf_thing.keys())[0]
+        sdf_name += "#/sdfThing/" + list(sdf_model.sdf_thing.keys())[0]
     elif sdf_model.sdf_object is not None and len(sdf_model.sdf_object) > 0:
-        sdf_name += "#/" + list(sdf_model.sdf_object.keys())[0]
+        sdf_name += "#/sdfObject/" + list(sdf_model.sdf_object.keys())[0]
 
     response = app.control_client.get_sdf_models()
 
@@ -578,12 +672,11 @@ def register_sdf_model(device_id: str):
             len(response.body.root) > 0 and \
             any(sdf_name_resp.sdf_name == sdf_name for sdf_name_resp in response.body.root):
         print(response.body)
-        encoded_ref = quote(sdf_name, safe='')
-        response = app.control_client.update_sdf_model(encoded_ref, sdf_model)
+        response = app.control_client.update_sdf_model(sdf_name, sdf_model)
     else:
         response = app.control_client.register_sdf_model(sdf_model)
 
-    if response.http is not None and response.http.status_code != 200:
+    if response.is_error:
         return render_template(
             "error.html",
             error="Failed to register SDF model"

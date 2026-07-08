@@ -28,4 +28,4 @@ WORKDIR /app/sample-python-app
 
 RUN python -m pip install -r requirements.txt
 
-CMD gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:3000 --chdir=src app:app
+CMD gunicorn --worker-class gthread --threads 100 -w 1 -b 0.0.0.0:3000 --chdir=src app:app
