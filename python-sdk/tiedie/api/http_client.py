@@ -281,6 +281,7 @@ class AbstractHttpClient:
         data = self._serialize_body(body)
 
         self.headers['Content-Type'] = content_type
+        self.headers['Accept'] = self.media_type
 
         logger.debug("POST %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
@@ -307,6 +308,7 @@ class AbstractHttpClient:
         data = self._serialize_body(body)
 
         self.headers['Content-Type'] = content_type
+        self.headers['Accept'] = self.media_type
 
         logger.debug("PUT %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
@@ -332,6 +334,9 @@ class AbstractHttpClient:
 
         params = self._get_query_parameters(body)
 
+        self.headers['Content-Type'] = self.media_type
+        self.headers['Accept'] = self.media_type
+
         logger.debug("GET %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)
         logger.debug("Params: %s", params)
@@ -354,6 +359,8 @@ class AbstractHttpClient:
         """ API DELETE with NIPC response format """
 
         params = self._get_query_parameters(body)
+
+        self.headers['Accept'] = self.media_type
 
         logger.debug("DELETE %s", self.base_url + path)
         logger.debug("Headers: %s", self.headers)

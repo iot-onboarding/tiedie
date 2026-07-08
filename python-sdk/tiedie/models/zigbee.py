@@ -23,7 +23,7 @@ class Attribute(BaseModel):
     """ Stores attribute information with an ID and type. """
     model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
 
-    attribute_id: int
+    attribute_id: int = Field(alias=str("attributeID"))
     attribute_type: int
 
 
@@ -31,16 +31,16 @@ class Cluster(BaseModel):
     """ Represents clusters with an ID and a list of attributes. """
     model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
 
-    cluster_id: int
-    attributes: list[Attribute]
+    cluster_id: int = Field(alias=str("clusterID"))
+    attributes: Optional[list[Attribute]] = None
 
 
 class Endpoint(BaseModel):
     """ Represents endpoints with an ID and a list of clusters. """
     model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
 
-    endpoint_id: int
-    clusters: list[Cluster]
+    endpoint_id: int = Field(alias=str("endpointID"))
+    clusters: Optional[list[Cluster]] = None
 
 
 class ZigbeeReadRequest(BaseModel):
@@ -66,25 +66,43 @@ class ZigbeeWriteRequest(BaseModel):
 class ZigbeeDataParameter(DataParameter):
     """  Zigbee data with device and attribute information. """
 
-    endpoint_id: str
+    endpoint_id: int
     cluster_id: int
     attribute_id: int
     attribute_type: int
+
+
+class ZigbeeDiscoverEndpoints(BaseModel):
+    """ Represents a collection of Zigbee endpoints. """
+    model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
+
+    endpoints: Optional[List[Endpoint]] = None
+
+
+class ZigbeeDiscoverProtocolInformation(BaseModel):
+    """ Represents protocol information for Zigbee. """
+    model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
+
+    zigbee: ZigbeeDiscoverEndpoints
 
 
 class ZigbeeDiscoverResponse(SuccessResponse):
     """ Response containing discovered Zigbee endpoint data. """
     model_config = ConfigDict(populate_by_name=False, alias_generator=to_camel)
 
-    endpoints: List[Endpoint]
+    device_id: str = Field(alias=str("id"))
+    protocol_information: Optional[ZigbeeDiscoverProtocolInformation] = None
 
-    def to_parameter_list(self, device_id: str):
+    def to_parameter_list(self, device_id: str) -> List[ZigbeeDataParameter]:
         """ Function to return parameter list """
-        parameters = []
+        parameters: List[ZigbeeDataParameter] = []
 
-        for endpoint in self.endpoints:
-            for cluster in endpoint.clusters:
-                for attribute in cluster.attributes:
+        if self.protocol_information is None:
+            return parameters
+
+        for endpoint in self.protocol_information.zigbee.endpoints or []:
+            for cluster in endpoint.clusters or []:
+                for attribute in cluster.attributes or []:
                     parameter = ZigbeeDataParameter(
                         device_id=device_id,
                         endpoint_id=endpoint.endpoint_id,

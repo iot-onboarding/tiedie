@@ -16,10 +16,12 @@ from responses import matchers
 from tiedie.api.auth import ApiKeyAuthenticator, CertificateAuthenticator
 from tiedie.api.control_client import ControlClient
 from tiedie.models.ble import BleDataParameter
-from tiedie.models.requests import SdfModel
+from tiedie.models.requests import (PropertyProtocolMap, SdfModel,
+                                    ZigbeePropertyProtocolMap)
 from tiedie.models.responses import DataAppRegistration, Event
 from tiedie.models.scim import (BleExtension, Device, PairingJustWorks,
-                                PairingPassKey)
+                                PairingPassKey, ZigbeeExtension)
+from tiedie.models.zigbee import ZigbeeDataParameter
 
 
 @pytest.fixture(name="mock_server")
@@ -58,6 +60,43 @@ def mock_control_client(request: pytest.FixtureRequest):
         base_url="https://control.example.com/nipc",
         authenticator=request.getfixturevalue(request.param)
     )
+
+
+def zigbee_device(device_id: str) -> Device:
+    """Create a Zigbee device for control client tests."""
+    return Device(
+        display_name="Zigbee Monitor",
+        active=True,
+        device_id=device_id,
+        zigbee_extension=ZigbeeExtension(
+            version_support=["3.0"],
+            device_eui64_address="50:32:5f:ff:fe:e7:67:28"
+        )
+    )
+
+
+def test_zigbee_property_protocol_map():
+    """Test a direct Zigbee property protocol map."""
+    protocol_map = PropertyProtocolMap(
+        zigbee=ZigbeePropertyProtocolMap(
+            endpoint_id=1,
+            cluster_id=1026,
+            attribute_id=0,
+            attribute_type=41,
+            manufacturer_code=4151
+        )
+    )
+
+    assert protocol_map.model_dump(by_alias=True, exclude_none=True) == {
+        "zigbee": {
+            "endpointID": 1,
+            "clusterID": 1026,
+            "attributeID": 0,
+            "attributeType": 41,
+            "manufacturerCode": 4151,
+            "profileID": 260
+        }
+    }
 
 
 def test_connect(mock_server: responses.RequestsMock,
@@ -218,6 +257,16 @@ def test_disconnect(mock_server: responses.RequestsMock,
         assert response.body is not None
 
 
+def test_connect_and_disconnect_reject_zigbee(control_client: ControlClient):
+    """Explicit connect and disconnect operations remain BLE-only."""
+    device = zigbee_device(str(uuid4()))
+
+    with pytest.raises(ValueError, match="BLE device"):
+        control_client.connect(device)
+    with pytest.raises(ValueError, match="BLE device"):
+        control_client.disconnect(device)
+
+
 def test_discovery(mock_server: responses.RequestsMock,
                    control_client: ControlClient):
     """ Test Discovery """
@@ -335,6 +384,172 @@ def test_discovery(mock_server: responses.RequestsMock,
         assert response.body[3].flags == ["read"]
     else:
         assert response.body is None
+
+
+def test_empty_ble_discovery_preserves_none(
+        mock_server: responses.RequestsMock,
+        control_client: ControlClient):
+    """An empty BLE service map keeps the existing None body behavior."""
+    device_id = str(uuid4())
+    response_body = {
+        "id": device_id,
+        "protocolInformation": {"ble": {"services": []}}
+    }
+    url = f"https://control.example.com/nipc/devices/{device_id}/connections"
+    mock_server.get(
+        url,
+        json=response_body,
+        status=200,
+        content_type="application/nipc+json"
+    )
+    mock_server.put(
+        url,
+        json=response_body,
+        status=200,
+        match=[matchers.json_params_matcher({
+            "protocolInformation": {"ble": {}},
+            "retries": 3
+        })],
+        content_type="application/nipc+json"
+    )
+    device = Device(
+        display_name="BLE Monitor",
+        active=True,
+        device_id=device_id,
+        ble_extension=BleExtension(
+            device_mac_address="AA:BB:CC:11:22:33",
+            version_support=["5.0"]
+        )
+    )
+
+    connection_response = control_client.get_connection(device)
+    discovery_response = control_client.discover(device)
+
+    assert connection_response.is_success
+    assert connection_response.body is None
+    assert discovery_response.is_success
+    assert discovery_response.body is None
+
+
+def test_get_zigbee_connection(mock_server: responses.RequestsMock,
+                               control_client: ControlClient):
+    """Test retrieving Zigbee endpoints from an existing connection."""
+    device_id = str(uuid4())
+    response_body = {
+        "id": device_id,
+        "protocolInformation": {
+            "zigbee": {
+                "endpoints": [{
+                    "endpointID": 1,
+                    "clusters": [{
+                        "clusterID": 1026,
+                        "attributes": [{
+                            "attributeID": 0,
+                            "attributeType": 41
+                        }]
+                    }]
+                }]
+            }
+        }
+    }
+    mock_server.get(
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
+        json=response_body,
+        status=200,
+        content_type="application/nipc+json"
+    )
+
+    response = control_client.get_connection(zigbee_device(device_id))
+
+    assert response.is_success
+    assert response.body is not None
+    assert len(response.body) == 1
+    assert isinstance(response.body[0], ZigbeeDataParameter)
+    assert response.body[0].endpoint_id == 1
+    assert response.body[0].cluster_id == 1026
+    assert response.body[0].attribute_id == 0
+    assert response.body[0].attribute_type == 41
+
+
+def test_get_zigbee_connection_without_endpoints(
+        mock_server: responses.RequestsMock,
+        control_client: ControlClient):
+    """A successful Zigbee connection response without endpoints is joined."""
+    device_id = str(uuid4())
+    mock_server.get(
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
+        json={"id": device_id},
+        status=200,
+        content_type="application/nipc+json"
+    )
+
+    response = control_client.get_connection(zigbee_device(device_id))
+
+    assert response.is_success
+    assert response.body == []
+
+
+def test_get_zigbee_connection_error(mock_server: responses.RequestsMock,
+                                     control_client: ControlClient):
+    """A Zigbee connection error indicates that the device has not joined."""
+    device_id = str(uuid4())
+    mock_server.get(
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
+        json={
+            "type": ("https://www.iana.org/assignments/nipc-problem-types#"
+                     "protocolmap-zigbee-connection-timeout"),
+            "status": 404,
+            "title": "No Zigbee connection"
+        },
+        status=404,
+        content_type="application/problem+json"
+    )
+
+    response = control_client.get_connection(zigbee_device(device_id))
+
+    assert response.is_error
+    assert response.body is None
+    assert response.error is not None
+    assert response.error.status == 404
+
+
+def test_zigbee_discovery(mock_server: responses.RequestsMock,
+                          control_client: ControlClient):
+    """Test discovering endpoints for a joined Zigbee device."""
+    device_id = str(uuid4())
+    mock_server.put(
+        f"https://control.example.com/nipc/devices/{device_id}/connections",
+        json={
+            "id": device_id,
+            "protocolInformation": {
+                "zigbee": {
+                    "endpoints": [{
+                        "endpointID": 1,
+                        "clusters": [{
+                            "clusterID": 1026,
+                            "attributes": [{
+                                "attributeID": 0,
+                                "attributeType": 41
+                            }]
+                        }]
+                    }]
+                }
+            }
+        },
+        status=200,
+        match=[matchers.json_params_matcher({
+            "protocolInformation": {"zigbee": {}}
+        })],
+        content_type="application/nipc+json"
+    )
+
+    response = control_client.discover(zigbee_device(device_id), retries=9)
+
+    assert response.is_success
+    assert response.body is not None
+    assert len(response.body) == 1
+    assert isinstance(response.body[0], ZigbeeDataParameter)
+    assert response.body[0].endpoint_id == 1
 
 
 def test_read(mock_server: responses.RequestsMock,
@@ -485,6 +700,28 @@ def test_register_sdf_model(mock_server: responses.RequestsMock, control_client:
         assert response.body.root[0].sdf_name == expected_sdf_name
 
 
+def test_get_sdf_models_uses_sdf_accept(
+        mock_server: responses.RequestsMock,
+        control_client: ControlClient):
+    """SDF model retrieval requests the SDF media type."""
+    sdf_name = "https://example.com/thermometer#/sdfObject/healthsensor"
+    mock_server.get(
+        "https://control.example.com/nipc/registrations/models",
+        json=[{"sdfName": sdf_name}],
+        status=200,
+        match=[matchers.header_matcher({
+            "Accept": "application/sdf+json"
+        })],
+        content_type="application/sdf+json"
+    )
+
+    response = control_client.get_sdf_models()
+
+    assert response.status_code == 200
+    assert response.body is not None
+    assert response.body.root[0].sdf_name == sdf_name
+
+
 def test_property_read_api(mock_server: responses.RequestsMock, control_client: ControlClient):
     """Test reading a property using the property API"""
     device_id = str(uuid4())
@@ -493,12 +730,17 @@ def test_property_read_api(mock_server: responses.RequestsMock, control_client: 
         "property": property_ref,
         "value": "dGVzdA=="
     }], separators=(',', ':'))
-    encoded_property_ref = url_parse.quote(property_ref)
+    encoded_property_ref = url_parse.quote(property_ref, safe="")
+    control_client.headers["Content-Type"] = "application/sdf+json"
     mock_server.get(
         f"https://control.example.com/nipc/devices/{device_id}/properties"
         f"?propertyName={encoded_property_ref}",
         body=body,
         status=200,
+        match=[matchers.header_matcher({
+            "Accept": "application/nipc+json",
+            "Content-Type": "application/nipc+json"
+        })],
         content_type="application/nipc+json",
     )
     response = control_client.read_property(device_id, property_ref)
@@ -529,7 +771,13 @@ def test_property_write_api(mock_server: responses.RequestsMock, control_client:
         f"https://control.example.com/nipc/devices/{device_id}/properties",
         body=resp_body,
         status=200,
-        match=[matchers.json_params_matcher(req_body)],
+        match=[
+            matchers.json_params_matcher(req_body),
+            matchers.header_matcher({
+                "Accept": "application/nipc+json",
+                "Content-Type": "application/nipc+json"
+            })
+        ],
         content_type="application/nipc+json",
     )
     response = control_client.write_property(device_id, property_ref, value)

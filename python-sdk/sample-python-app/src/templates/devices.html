@@ -16,7 +16,8 @@ SPDX-License-Identifier: Apache-2.0
             <thead>
                 <th scope="col">Device ID</th>
                 <th scope="col">Device Display Name</th>
-                <th scope="col">Device MAC Address</th>
+                <th scope="col">Protocol</th>
+                <th scope="col">Device Address</th>
                 <th scope="col"></th>
                 <th scope="col"></th>
             </thead>
@@ -25,7 +26,13 @@ SPDX-License-Identifier: Apache-2.0
                 <tr>
                     <td scope="row">{{ device.device_id }}</td>
                     <td> {{ device.display_name }}</td>
+                    {% if device.zigbee_extension != None %}
+                    <td>Zigbee</td>
+                    <td>{{ device.zigbee_extension.device_eui64_address }}</td>
+                    {% else %}
+                    <td>BLE</td>
                     <td>{{ device.ble_extension.device_mac_address }}</td>
+                    {% endif %}
                     <!-- <td>
                         <span id="{{ device.device_id }}-connected" class="badge rounded-pill text-bg-success d-none">Connected</span>
                         <span id="{{ device.device_id }}-disconnected" class="badge rounded-pill text-bg-danger">Disconnected</span>
