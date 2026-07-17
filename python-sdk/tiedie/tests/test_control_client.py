@@ -18,7 +18,7 @@ from tiedie.api.control_client import ControlClient
 from tiedie.models.ble import BleDataParameter
 from tiedie.models.requests import (PropertyProtocolMap, SdfModel,
                                     ZigbeePropertyProtocolMap)
-from tiedie.models.responses import DataAppRegistration, Event
+from tiedie.models.responses import DataAppRegistration, Event, ProblemDetails
 from tiedie.models.scim import (BleExtension, Device, PairingJustWorks,
                                 PairingPassKey, ZigbeeExtension)
 from tiedie.models.zigbee import ZigbeeDataParameter
@@ -824,10 +824,10 @@ def test_enable_event(mock_server: responses.RequestsMock, control_client: Contr
     event_ref = "https://example.com/thermometer#/sdfObject/healthsensor/sdfEvent/isPresent"
     instance_id = str(uuid4())
 
-    encoded_event_ref = url_parse.quote(event_ref)
+    encoded_event_ref = url_parse.quote(event_ref, safe="")
     location_header = (
         f"https://control.example.com/nipc/devices/{device_id}/events"
-        f"?instanceId={instance_id}"
+        f"?source=device&instanceId={instance_id}"
     )
     post_url = (
         f"https://control.example.com/nipc/devices/{device_id}/events"
@@ -836,12 +836,112 @@ def test_enable_event(mock_server: responses.RequestsMock, control_client: Contr
     mock_server.post(
         post_url,
         body="",
-        status=200,
+        status=201,
         headers={"Location": location_header},
+        match=[matchers.header_matcher({
+            "Accept": "application/nipc+json",
+            "Content-Type": "application/nipc+json"
+        })],
         content_type="application/nipc+json",
     )
     response = control_client.enable_event(device_id, event_ref)
 
-    assert response.http and response.http.status_code == 200
+    assert response.http and response.http.status_code == 201
     if response.is_success:
         assert response.body == instance_id
+
+
+def test_enable_event_error_without_location(
+        mock_server: responses.RequestsMock,
+        control_client: ControlClient):
+    """An event enable NIPC error is returned without Location parsing."""
+    device_id = str(uuid4())
+    event_ref = "https://example.com/sensor#/sdfObject/sensor/sdfEvent/change"
+    encoded_event_ref = url_parse.quote(event_ref, safe="")
+    mock_server.post(
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?eventName={encoded_event_ref}",
+        json={
+            "type": ("https://www.iana.org/assignments/nipc-problem-types#"
+                     "event-already-enabled"),
+            "status": 409,
+            "title": "Event already enabled"
+        },
+        status=409,
+        content_type="application/problem+json"
+    )
+
+    response = control_client.enable_event(device_id, event_ref)
+
+    assert response.is_error
+    assert response.body is None
+    assert response.error is not None
+    assert response.error.status == 409
+
+
+def test_disable_event(mock_server: responses.RequestsMock,
+                       control_client: ControlClient):
+    """Test disabling an event using its instance ID."""
+    device_id = str(uuid4())
+    instance_id = str(uuid4())
+    mock_server.delete(
+        f"https://control.example.com/nipc/devices/{device_id}/events"
+        f"?instanceId={instance_id}",
+        body="",
+        status=204,
+        match=[matchers.header_matcher({"Accept": "application/nipc+json"})],
+        content_type="application/nipc+json"
+    )
+
+    response = control_client.disable_event(device_id, instance_id)
+
+    assert response.is_success
+    assert response.http and response.http.status_code == 204
+    assert response.body is None
+
+
+def test_get_events(mock_server: responses.RequestsMock,
+                    control_client: ControlClient):
+    """Test retrieving one event instance and all event instances."""
+    device_id = str(uuid4())
+    instance_id = str(uuid4())
+    event_ref = "https://example.com/sensor#/sdfObject/sensor/sdfEvent/change"
+    response_body = [
+        {"event": event_ref, "instanceId": instance_id},
+        {
+            "type": ("https://www.iana.org/assignments/nipc-problem-types#"
+                     "event-not-enabled"),
+            "status": 404,
+            "title": "Event not enabled",
+            "detail": "No event instance matched the request"
+        }
+    ]
+    base_url = f"https://control.example.com/nipc/devices/{device_id}/events"
+    mock_server.get(
+        f"{base_url}?instanceId={instance_id}",
+        json=response_body,
+        status=200,
+        content_type="application/nipc+json"
+    )
+    mock_server.get(
+        base_url,
+        json=response_body,
+        status=200,
+        content_type="application/nipc+json"
+    )
+
+    event_response = control_client.get_event(device_id, instance_id)
+    all_events_response = control_client.get_all_events(device_id)
+
+    assert event_response.is_success
+    assert event_response.body is not None
+    assert event_response.body.root[0].event == event_ref
+    assert event_response.body.root[0].instance_id == instance_id
+    assert isinstance(event_response.body.root[1], ProblemDetails)
+    assert event_response.body.root[1].status == 404
+    assert all_events_response.is_success
+    assert all_events_response.body is not None
+    assert all_events_response.body.root[0].event == event_ref
+    assert all_events_response.body.root[0].instance_id == instance_id
+    assert isinstance(all_events_response.body.root[1], ProblemDetails)
+    assert all_events_response.body.root[1].status == 404

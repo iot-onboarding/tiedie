@@ -12,11 +12,19 @@ clusters, endpoints, and various Zigbee request types.
 """
 
 
+from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from tiedie.models.common import DataParameter
 from tiedie.models.responses import SuccessResponse
+
+
+class ZigbeeEventType(str, Enum):
+    """ Zigbee event types supported by the SDF protocol mapping. """
+
+    ATTRIBUTE_REPORTING = "attribute_reporting"
+    WRITE_EVENT = "write_event"
 
 
 class Attribute(BaseModel):

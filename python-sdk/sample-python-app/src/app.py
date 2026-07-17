@@ -28,7 +28,7 @@ from tiedie.models import (Device, BleDataParameter,
                            EndpointAppsExtension)
 from tiedie.models.ble import BleConnectRequest, BleService
 from tiedie.models.requests import SdfModel
-from tiedie.models.responses import Event, MqttBrokerConfig
+from tiedie.models.responses import Event, MqttBrokerConfig, TiedieEventResponse
 from tiedie.models.scim import Application, NullPairing, PairingJustWorks
 import configuration
 
@@ -485,10 +485,12 @@ def get_device(device_id):
         ]
 
     events = []
-    if device.ble_extension is not None:
-        response = app.control_client.get_all_events(device_id)
-        if response.http and response.http.status_code == 200 and response.body is not None:
-            events = list(response.body.root)
+    response = app.control_client.get_all_events(device_id)
+    if response.http and response.http.status_code == 200 and response.body is not None:
+        events = [
+            event for event in response.body.root
+            if isinstance(event, TiedieEventResponse)
+        ]
 
     return render_template(
         "device.html",
@@ -722,10 +724,11 @@ def register_event(device_id: str):
     else:
         response = app.control_client.disable_event(device_id, instance_id)
 
-    if response.http and response.http.status_code == 201 and not enable:
+    if response.http and response.http.status_code == 204 and not enable:
         update_data_app(sdf_name, enable)
 
-    return response
+    status_code = response.http.status_code if response.http else 500
+    return "", status_code
 
 
 if __name__ == '__main__':

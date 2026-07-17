@@ -449,13 +449,24 @@ class ControlClient(AbstractHttpClient):
         Returns:
             NipcResponse[Optional[str]]: NIPC response object.
         """
-        encoded_sdf_name = url_parse.quote(event)
+        encoded_sdf_name = url_parse.quote(event, safe="")
         resp = self.post_with_nipc_response(
             f"/devices/{device_id}/events?eventName={encoded_sdf_name}",
             None,
             None
         )
-        resp.body = resp.http.headers.get('Location').split('?instanceId=')[1]
+        if resp.is_success and resp.http is not None and resp.http.headers is not None:
+            location = next(
+                (value for key, value in resp.http.headers.items()
+                 if key.lower() == "location"),
+                None
+            )
+            if location is not None:
+                instance_ids = url_parse.parse_qs(
+                    url_parse.urlparse(location).query
+                ).get("instanceId")
+                if instance_ids:
+                    resp.body = instance_ids[0]
         return resp
 
     def disable_event(self,
@@ -477,7 +488,9 @@ class ControlClient(AbstractHttpClient):
 
     def get_event(self,
                   device_id: str,
-                  instance_id: str) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
+                  instance_id: str) -> NipcResponse[
+                      Optional[List[Union[TiedieEventResponse, ProblemDetails]]]
+                  ]:
         """Retrieve the status of a specific event for a device.
 
         Args:
@@ -485,25 +498,29 @@ class ControlClient(AbstractHttpClient):
             instance_id (str): The unique identifier of the event.
 
         Returns:
-            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
+            NipcResponse[Optional[List[Union[TiedieEventResponse, ProblemDetails]]]]:
+                NIPC response object.
         """
         return self.get_with_nipc_response(
             f"/devices/{device_id}/events?instanceId={instance_id}",
             None,
-            RootModel[List[TiedieEventResponse]]
+            RootModel[List[Union[TiedieEventResponse, ProblemDetails]]]
         )
 
     def get_all_events(
             self, device_id: str
-    ) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
+    ) -> NipcResponse[
+        Optional[List[Union[TiedieEventResponse, ProblemDetails]]]
+    ]:
         """Retrieve the status of all events for a device.
 
         Args:
             device_id (str): The unique identifier of the device.
 
         Returns:
-            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
+            NipcResponse[Optional[List[Union[TiedieEventResponse, ProblemDetails]]]]:
+                NIPC response object.
         """
         endpoint = f"/devices/{device_id}/events"
-        response_type = RootModel[List[TiedieEventResponse]]
+        response_type = RootModel[List[Union[TiedieEventResponse, ProblemDetails]]]
         return self.get_with_nipc_response(endpoint, None, response_type)
