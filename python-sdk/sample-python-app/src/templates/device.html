@@ -177,7 +177,7 @@ SPDX-License-Identifier: Apache-2.0
     {%- endmacro %}
 
     {% macro render_sdf_events(path, sdf_thing_or_object) %}
-        {% if device.ble_extension != None and sdf_thing_or_object.sdf_event != None and sdf_thing_or_object.sdf_event|length > 0 %}
+        {% if sdf_thing_or_object.sdf_event != None and sdf_thing_or_object.sdf_event|length > 0 %}
             <table class="table">
                 <thead>
                     <th scope="col">Event Name</th>
