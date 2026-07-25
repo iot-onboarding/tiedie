@@ -16,6 +16,7 @@ import json
 import sys
 import os
 
+from datetime import datetime, timezone
 import logging
 from urllib.parse import quote, unquote
 
@@ -76,7 +77,6 @@ def load_oauth_token():
     try:
         with open(TOKEN_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        from datetime import datetime, timezone
         expires_at = None
         if 'expires_at' in data and data['expires_at'] is not None:
             expires_at = datetime.fromisoformat(data['expires_at'])
