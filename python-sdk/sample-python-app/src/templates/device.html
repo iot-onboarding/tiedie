@@ -20,7 +20,13 @@ SPDX-License-Identifier: Apache-2.0
             </form>
         </div>
 
-        {% if parameters != None %}
+        {% if device.zigbee_extension != None %}
+            {% if zigbee_joined %}
+            <span class="badge rounded-pill text-bg-success">Joined</span>
+            {% else %}
+            <span class="badge rounded-pill text-bg-danger">Not joined</span>
+            {% endif %}
+        {% elif parameters != None %}
             <span class="badge rounded-pill text-bg-success">Connected</span>
         {% endif %}
 
@@ -35,13 +41,25 @@ SPDX-License-Identifier: Apache-2.0
                     <td>{{ device.display_name }}</td>
                 </tr>
                 <tr>
+                    <th>Protocol</th>
+                    <td>{{ "Zigbee" if device.zigbee_extension != None else "BLE" }}</td>
+                </tr>
+                {% if device.zigbee_extension != None %}
+                <tr>
+                    <th>Device EUI-64 Address</th>
+                    <td>{{ device.zigbee_extension.device_eui64_address }}</td>
+                </tr>
+                {% else %}
+                <tr>
                     <th>Device MAC Address</th>
                     <td>{{ device.ble_extension.device_mac_address }}</td>
                 </tr>
+                {% endif %}
                 <tr>
                     <th>Active</th>
                     <td>{{ "Yes" if device.active else "No" }}</td>
                 </tr>
+                {% if device.ble_extension != None %}
                 <tr>
                     <th>Address Type</th>
                     <td>
@@ -66,6 +84,12 @@ SPDX-License-Identifier: Apache-2.0
                     <th>Mobility</th>
                     <td>{{ device.ble_extension.mobility }}</td>
                 </tr>
+                {% else %}
+                <tr>
+                    <th>Device Version Support</th>
+                    <td>{{ device.zigbee_extension.version_support | join(", ") }}</td>
+                </tr>
+                {% endif %}
             </tbody>
         </table>
     </div>
@@ -258,6 +282,7 @@ SPDX-License-Identifier: Apache-2.0
         </div>
     {% endfor %}
  
+    {% if device.ble_extension != None %}
     <div class="row border my-3 p-3">
         {% if parameters == None %}
         <form class="col-4" action="/devices/{{ device.device_id }}/connect" method="POST">
@@ -311,6 +336,7 @@ SPDX-License-Identifier: Apache-2.0
             </tbody>
         </table>
     </div>
+    {% endif %}
     {% endif %}
 
     <script type="text/javascript">

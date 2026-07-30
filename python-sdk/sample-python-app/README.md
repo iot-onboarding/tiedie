@@ -51,6 +51,8 @@ To enable OAuth2 in the sample app, set the following keys in `config/config.ini
 - `OAUTH_SCOPES`
 
 When `OAUTH_CLIENT_ID` is set, the app uses OAuth2 for onboarding and control clients.
+In a container, OAuth tokens are cached in `/config/.oauth_tokens.json`, so the
+`/config` volume must be writable and persistent across container runs.
 
 OAuth2 flow in the app:
 

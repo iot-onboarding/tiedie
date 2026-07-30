@@ -27,5 +27,5 @@ soupsieve>=2.4.1
 urllib3>=2.0.4
 Werkzeug>=2.3.7
 zipp>=3.16.2
-gunicorn>=21.2.0
-eventlet>=0.33.3
+gunicorn>=26.0.0
+simple-websocket>=1.0.0

@@ -26,10 +26,12 @@ from tiedie.models.requests import (
     PropertyWriteRequest,
     SdfModel,
     TiedieConnectRequest,
+    TiedieZigbeeDiscoverRequest,
     TiedieReadRequest,
     TiedieWriteRequest,
     PropertyProtocolMap,
     BlePropertyProtocolMap,
+    ZigbeeProtocolInformation,
 )
 from tiedie.models.responses import (
     BleDiscoverResponse,
@@ -44,6 +46,7 @@ from tiedie.models.responses import (
     DataAppRegistration
 )
 from tiedie.models.scim import Device
+from tiedie.models.zigbee import ZigbeeDiscoverResponse
 
 from .auth import Authenticator
 from .http_client import AbstractHttpClient
@@ -82,6 +85,8 @@ class ControlClient(AbstractHttpClient):
         """
         if device.device_id is None:
             raise ValueError("Device ID is required for connection")
+        if device.ble_extension is None:
+            raise ValueError("BLE device is required for connection")
 
         tiedie_request = TiedieConnectRequest(
             protocol_information=BleProtocolInformation(ble=request),
@@ -110,6 +115,8 @@ class ControlClient(AbstractHttpClient):
 
     def disconnect(self, device: Device) -> NipcResponse[Optional[TiedieDeviceResponse]]:
         """ Disconnects from a connected IoT device. """
+        if device.ble_extension is None:
+            raise ValueError("BLE device is required for connection")
         return self.delete_with_nipc_response(f'/devices/{device.device_id}/connections',
                                              None, TiedieDeviceResponse)
 
@@ -127,25 +134,30 @@ class ControlClient(AbstractHttpClient):
         if device.device_id is None:
             raise ValueError("Device ID is required for connection")
 
-        ble_discover_response = self.get_with_nipc_response(
+        response_type = BleDiscoverResponse
+        if device.zigbee_extension is not None:
+            response_type = ZigbeeDiscoverResponse
+
+        discover_response = self.get_with_nipc_response(
             f'/devices/{device.device_id}/connections',
-            None, BleDiscoverResponse
+            None, response_type
         )
 
-        # Handle success case: extract parameter list from BLE discovery response
-        if (ble_discover_response.is_success and
-                isinstance(ble_discover_response.body, BleDiscoverResponse)):
-            parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
-            if parameter_list:
+        if (discover_response.is_success and
+                isinstance(discover_response.body,
+                           (BleDiscoverResponse, ZigbeeDiscoverResponse))):
+            parameter_list = discover_response.body.to_parameter_list(device.device_id)
+            if parameter_list or isinstance(discover_response.body,
+                                            ZigbeeDiscoverResponse):
                 return NipcResponse[Optional[Sequence[DataParameter]]](
-                    http=ble_discover_response.http,
+                    http=discover_response.http,
                     body=parameter_list
                 )
 
         # Handle error case or empty response
         return NipcResponse[Optional[Sequence[DataParameter]]](
-            http=ble_discover_response.http,
-            error=ble_discover_response.error,
+            http=discover_response.http,
+            error=discover_response.error,
             body=None
         )
 
@@ -172,28 +184,36 @@ class ControlClient(AbstractHttpClient):
         if device.device_id is None:
             raise ValueError("Device ID is required for connection")
 
-        tiedie_request = TiedieConnectRequest(
-            protocol_information=BleProtocolInformation(ble=request),
-            retries=retries
-        )
+        response_type = BleDiscoverResponse
+        if device.zigbee_extension is not None:
+            tiedie_request = TiedieZigbeeDiscoverRequest(
+                protocol_information=ZigbeeProtocolInformation(zigbee={})
+            )
+            response_type = ZigbeeDiscoverResponse
+        else:
+            tiedie_request = TiedieConnectRequest(
+                protocol_information=BleProtocolInformation(ble=request),
+                retries=retries
+            )
 
-        ble_discover_response = self.put_with_nipc_response(
-            f'/devices/{device.device_id}/connections', tiedie_request, BleDiscoverResponse)
+        discover_response = self.put_with_nipc_response(
+            f'/devices/{device.device_id}/connections', tiedie_request, response_type)
 
-        # Handle success case: extract parameter list from BLE discovery response
-        if ble_discover_response.is_success and \
-            isinstance(ble_discover_response.body, BleDiscoverResponse):
-            parameter_list = ble_discover_response.body.to_parameter_list(device.device_id)
-            if parameter_list:
+        if (discover_response.is_success and
+                isinstance(discover_response.body,
+                           (BleDiscoverResponse, ZigbeeDiscoverResponse))):
+            parameter_list = discover_response.body.to_parameter_list(device.device_id)
+            if parameter_list or isinstance(discover_response.body,
+                                            ZigbeeDiscoverResponse):
                 return NipcResponse[Optional[Sequence[DataParameter]]](
-                    http=ble_discover_response.http,
+                    http=discover_response.http,
                     body=parameter_list
                 )
 
         # Handle error case or empty response
         return NipcResponse[Optional[Sequence[DataParameter]]](
-            http=ble_discover_response.http,
-            error=ble_discover_response.error,
+            http=discover_response.http,
+            error=discover_response.error,
             body=None
         )
 
@@ -257,7 +277,7 @@ class ControlClient(AbstractHttpClient):
             NipcResponse[Optional[Union[PropertyResponse, ProblemDetails]]]:
                 The NIPC response object containing the value of the property.
         """
-        encoded_sdf_name = url_parse.quote(sdf_name)
+        encoded_sdf_name = url_parse.quote(sdf_name, safe="")
         endpoint = f"/devices/{device}/properties?propertyName={encoded_sdf_name}"
         response_type = RootModel[List[Union[PropertyResponse, ProblemDetails]]]
         return self.get_with_nipc_response(endpoint, None, response_type)
@@ -328,6 +348,7 @@ class ControlClient(AbstractHttpClient):
             HttpResponse[ModelRegistrationResponse]: The response object containing
                 the status of the request.
         """
+        self.headers['Accept'] = "application/sdf+json"
         return self.get("/registrations/models",
                             RootModel[List[ModelRegistrationResponse]])
 
@@ -343,6 +364,7 @@ class ControlClient(AbstractHttpClient):
                 the status of the request.
         """
         encoded_sdf_name = url_parse.quote(sdf_name)
+        self.headers['Accept'] = "application/sdf+json"
         return self.get(f"/registrations/models?sdfName={encoded_sdf_name}", SdfModel)
 
     def unregister_sdf_model(self, sdf_name: str):
@@ -427,13 +449,24 @@ class ControlClient(AbstractHttpClient):
         Returns:
             NipcResponse[Optional[str]]: NIPC response object.
         """
-        encoded_sdf_name = url_parse.quote(event)
+        encoded_sdf_name = url_parse.quote(event, safe="")
         resp = self.post_with_nipc_response(
             f"/devices/{device_id}/events?eventName={encoded_sdf_name}",
             None,
             None
         )
-        resp.body = resp.http.headers.get('Location').split('?instanceId=')[1]
+        if resp.is_success and resp.http is not None and resp.http.headers is not None:
+            location = next(
+                (value for key, value in resp.http.headers.items()
+                 if key.lower() == "location"),
+                None
+            )
+            if location is not None:
+                instance_ids = url_parse.parse_qs(
+                    url_parse.urlparse(location).query
+                ).get("instanceId")
+                if instance_ids:
+                    resp.body = instance_ids[0]
         return resp
 
     def disable_event(self,
@@ -455,7 +488,9 @@ class ControlClient(AbstractHttpClient):
 
     def get_event(self,
                   device_id: str,
-                  instance_id: str) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
+                  instance_id: str) -> NipcResponse[
+                      Optional[List[Union[TiedieEventResponse, ProblemDetails]]]
+                  ]:
         """Retrieve the status of a specific event for a device.
 
         Args:
@@ -463,25 +498,29 @@ class ControlClient(AbstractHttpClient):
             instance_id (str): The unique identifier of the event.
 
         Returns:
-            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
+            NipcResponse[Optional[List[Union[TiedieEventResponse, ProblemDetails]]]]:
+                NIPC response object.
         """
         return self.get_with_nipc_response(
             f"/devices/{device_id}/events?instanceId={instance_id}",
             None,
-            RootModel[List[TiedieEventResponse]]
+            RootModel[List[Union[TiedieEventResponse, ProblemDetails]]]
         )
 
     def get_all_events(
             self, device_id: str
-    ) -> NipcResponse[Optional[List[TiedieEventResponse]]]:
+    ) -> NipcResponse[
+        Optional[List[Union[TiedieEventResponse, ProblemDetails]]]
+    ]:
         """Retrieve the status of all events for a device.
 
         Args:
             device_id (str): The unique identifier of the device.
 
         Returns:
-            NipcResponse[Optional[List[TiedieEventResponse]]]: NIPC response object.
+            NipcResponse[Optional[List[Union[TiedieEventResponse, ProblemDetails]]]]:
+                NIPC response object.
         """
         endpoint = f"/devices/{device_id}/events"
-        response_type = RootModel[List[TiedieEventResponse]]
+        response_type = RootModel[List[Union[TiedieEventResponse, ProblemDetails]]]
         return self.get_with_nipc_response(endpoint, None, response_type)
