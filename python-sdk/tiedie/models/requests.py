@@ -16,6 +16,7 @@ from typing import Optional
 from pydantic import Base64Bytes, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from tiedie.models.ble import (BleConnectRequest, BleTopicType)
+from tiedie.models.zigbee import ZigbeeEventType
 
 class BlePropertyProtocolMap(BaseModel):
     """ Object with BLE property protocol map """
@@ -25,11 +26,24 @@ class BlePropertyProtocolMap(BaseModel):
     characteristic_id: str = Field(alias=str("characteristicID"))
 
 
+class ZigbeePropertyProtocolMap(BaseModel):
+    """ Object with Zigbee property protocol map """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    endpoint_id: int = Field(alias=str("endpointID"))
+    cluster_id: int = Field(alias=str("clusterID"))
+    attribute_id: int = Field(alias=str("attributeID"))
+    attribute_type: int
+    manufacturer_code: Optional[int] = None
+    profile_id: int = Field(alias=str("profileID"), default=260)
+
+
 class PropertyProtocolMap(BaseModel):
     """ Object with protocol map for property """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    ble: BlePropertyProtocolMap
+    ble: Optional[BlePropertyProtocolMap] = None
+    zigbee: Optional[ZigbeePropertyProtocolMap] = None
 
 
 class TiedieReadRequest(BaseModel):
@@ -66,6 +80,20 @@ class TiedieConnectRequest(BaseModel):
     protocol_information: BleProtocolInformation
     retries: Optional[int] = 3
 
+
+class ZigbeeProtocolInformation(BaseModel):
+    """ Object with Zigbee protocol information """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    zigbee: dict
+
+
+class TiedieZigbeeDiscoverRequest(BaseModel):
+    """ A request for discovering Zigbee endpoints. """
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
+
+    protocol_information: ZigbeeProtocolInformation
+
 class SdfProperty(BaseModel):
     """ Object with SDF property """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
@@ -97,11 +125,23 @@ class ConnectionEventProtocolMap(BaseModel):
     type: str = Field(alias=str("type"), default=BleTopicType.CONNECTION_EVENTS)
 
 
+class ZigbeeEventProtocolMap(ZigbeePropertyProtocolMap):
+    """ Object with Zigbee event protocol map """
+
+    type: ZigbeeEventType
+    min_reporting_interval: Optional[int] = None
+    max_reporting_interval: Optional[int] = None
+    reportable_change: Optional[int | float] = None
+
+
 class EventProtocolMap(BaseModel):
     """ Object with event protocol map """
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
-    ble: GattEventProtocolMap | AdvertisementEventProtocolMap | ConnectionEventProtocolMap
+    ble: Optional[
+        GattEventProtocolMap | AdvertisementEventProtocolMap | ConnectionEventProtocolMap
+    ] = None
+    zigbee: Optional[ZigbeeEventProtocolMap] = None
 
 class SdfOutputData(BaseModel):
     """ Object with SDF output data """
